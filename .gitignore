@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Artefacts d'entraînement / données
+checkpoints/
+outputs/
+wandb/
+*.safetensors
+*.gguf
+*.wav
+!data/examples/**/*.wav
+datasets_cache/
+chroma_db/
+
+.env

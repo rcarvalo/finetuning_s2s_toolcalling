@@ -1,0 +1,23 @@
+# Phase 3 — Orchestrateur de l'agent d'accueil.
+
+model:
+  model_id: LiquidAI/LFM2.5-Audio-1.5B   # remplacer par le checkpoint Phase 2b
+  device: cuda
+
+agent:
+  max_new_tokens: 2048
+  max_tool_rounds: 4
+  audio_temperature: 1.0
+  audio_top_k: 4
+  # filler_dir: assets/fillers           # wavs pré-rendus <tool>_<i>.wav
+  # system_instructions: ...             # défaut : chat_format.DEFAULT_SYSTEM_INSTRUCTIONS
+
+postgres:
+  # dsn: postgresql://agent_ro:***@db-host:5432/reception   # rôle LECTURE SEULE (cf. sql/schema.sql)
+  max_rows: 50
+
+rag:
+  # persist_dir: ./chroma_db
+  collection: company_kb
+  embedding_model: paraphrase-multilingual-MiniLM-L12-v2
+  top_k: 4
