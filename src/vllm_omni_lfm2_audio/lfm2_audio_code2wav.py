@@ -58,8 +58,19 @@ class Lfm2AudioCode2Wav(nn.Module):
         return {f"detokenizer.{name}" for name, _ in detok.named_parameters()}
 
     @torch.no_grad()
-    def forward(self, codes: torch.Tensor, additional_information: dict[str, Any] | None = None, **kwargs: Any):
-        """codes : ids plats (frames × codebooks, col-major par frame) ou (8, T).
+    def forward(
+        self,
+        input_ids: torch.Tensor | None = None,
+        positions: torch.Tensor | None = None,
+        intermediate_tensors: Any = None,
+        inputs_embeds: torch.Tensor | None = None,
+        additional_information: dict[str, Any] | None = None,
+        codes: torch.Tensor | None = None,
+        **kwargs: Any,
+    ):
+        """Signature alignée sur le runner vLLM (vu sur Colab : il appelle avec
+        input_ids/positions/...) — les codes arrivent dans ``input_ids`` (ids
+        plats, frames × codebooks) ou en kwarg ``codes`` (frames (8, T)).
 
         ``additional_information["left_context_size"]`` (frames) : préfixe de
         contexte décodé mais NON émis (sémantique delta du async_chunk).
@@ -68,6 +79,11 @@ class Lfm2AudioCode2Wav(nn.Module):
 
         if self.detokenizer is None:
             raise RuntimeError("detokenizer not loaded")
+
+        if codes is None:
+            codes = input_ids
+        if codes is None or codes.numel() == 0:
+            return OmniOutput(text_hidden_states=None, multimodal_outputs={"model_outputs": None})
 
         frames = self._to_frames(codes)
         # retire les frames EOA (2048 hors vocabulaire du détokeniseur)

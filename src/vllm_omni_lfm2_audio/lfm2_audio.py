@@ -19,6 +19,39 @@ CODE2WAV_STAGE = "code2wav"
 
 
 class Lfm2AudioOmniForConditionalGeneration(nn.Module):
+    # Protocoles IsHybrid / HasInnerState de vLLM (attributs de CLASSE, lus par
+    # le registre sans instanciation) : le backbone Lfm2 a des couches ShortConv
+    # (état type mamba) → sans ces marqueurs, mamba_block_size n'est jamais
+    # dérivé et get_kv_cache_spec assert (vu sur Colab T4).
+    is_hybrid = True
+    has_inner_state = True
+
+    @classmethod
+    def get_mamba_state_dtype_from_config(cls, vllm_config):
+        from vllm.model_executor.models.lfm2 import Lfm2ForCausalLM
+
+        return Lfm2ForCausalLM.get_mamba_state_dtype_from_config(vllm_config)
+
+    @classmethod
+    def get_mamba_state_shape_from_config(cls, vllm_config):
+        # Réimplémenté (et non délégué) : la version Lfm2 lit conv_dim /
+        # conv_L_cache sur hf_config DIRECTEMENT ; chez nous ils vivent dans la
+        # section lfm (exposée par get_text_config()).
+        from vllm.model_executor.layers.mamba.mamba_utils import MambaStateShapeCalculator
+
+        lfm = vllm_config.model_config.hf_config.get_text_config()
+        return MambaStateShapeCalculator.short_conv_state_shape(
+            tp_world_size=vllm_config.parallel_config.tensor_parallel_size,
+            intermediate_size=lfm.conv_dim,
+            conv_kernel=lfm.conv_L_cache,
+        )
+
+    @classmethod
+    def get_mamba_state_copy_func(cls):
+        from vllm.model_executor.models.lfm2 import Lfm2ForCausalLM
+
+        return Lfm2ForCausalLM.get_mamba_state_copy_func()
+
     def __init__(self, *, vllm_config, prefix: str = "") -> None:
         super().__init__()
         from vllm.model_executor.models import SupportsPP  # noqa: F401  (interface vérifiée au runtime)
