@@ -68,6 +68,7 @@ class Lfm2AudioHead(nn.Module):
         Port fidèle de ``LFM2AudioModel._sample_audio_frame``.
         """
         greedy = temperature is None or temperature <= 0 or top_k == 1
+        hidden = hidden.to(self.depth_linear.weight.dtype)  # suit le dtype du modèle (fp16/bf16)
         depthformer_in = self.depth_linear(hidden).view(self.codebooks, self.depthformer_dim)
         depthformer_token = torch.zeros_like(depthformer_in[0])
         cache = None

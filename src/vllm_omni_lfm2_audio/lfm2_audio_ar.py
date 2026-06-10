@@ -272,7 +272,7 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         assert self._pending_hidden is not None, "compute_logits must run before sample"
         hidden = self._pending_hidden[row]
         frame = self.audio_head.sample_frame(
-            hidden.float(),
+            hidden,
             temperature=self.audio_temperature,
             top_k=self.audio_top_k,
         )
