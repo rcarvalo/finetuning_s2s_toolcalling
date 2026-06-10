@@ -1,27 +1,27 @@
 """Stage 0 — AR interleaved (« thinker-talker fusionné ») de LFM2.5-Audio.
 
-Intégration vLLM suivant le pattern MiMo-Audio (``vllm_omni/model_executor/
-models/mimo_audio``), adapté à l'architecture LFM2.5-Audio :
+Architecture v2, calée sur les hooks RÉELS du runner vllm-omni 0.22.0
+(vérifiés dans gpu_model_runner/gpu_ar_model_runner, validés sur Colab) :
 
-- backbone texte = ``Lfm2ForCausalLM`` de vLLM core (cache conv hybride géré
-  par vLLM), instancié via ``init_vllm_registered_model`` ;
-- entrée audio (micro) = mel-128 → ConformerEncoder + adaptateur (modules
-  liquid-audio), exposée par l'interface multimodale standard ;
-- steps audio : le token échantillonné est un PLACEHOLDER (cf. constants) —
-  forcé via ``OmniOutput.next_token_id`` + masquage des logits ; les 8 codes
-  Mimi sont produits par le depthformer (``audio_head.sample_frame``) et
-  exportés step par step via ``multimodal_outputs["codes"]["audio"]`` ;
-- l'embedding du step suivant d'une frame = somme des 8 embeddings, servi par
-  un cache par requête (décode) ou reconstruit depuis
-  ``multi_modal_data["audio_out_codes"]`` (prefill / recompute après
-  préemption) ;
-- la décision texte/audio de chaque step est REJOUÉE depuis la séquence d'ids
-  du tour assistant courant (``modality.replay`` — fonction pure), jamais
-  stockée seule : robuste à la préemption, compatible prefix caching.
+- ``preprocess_batch(req_ids, …)``   : appelé 1×/step AVANT le forward avec la
+  liste ordonnée des requêtes du batch → fixe le mapping ligne→requête ;
+- ``preprocess(input_ids, input_embeds, request_id, …)`` : appelé par requête
+  avec son span de tokens → construit les embeddings du span et OVERLAYE
+  l'embedding de frame (somme des 8 codebooks, cache par requête) sur les
+  positions placeholder — c'est ici que vit l'identité de requête (§3bis.3) ;
+- ``compute_logits(hidden)``         : stash du hidden (aligné 1:1 avec les
+  lignes de sample) + logits texte du backbone Lfm2 ;
+- ``sample(logits, sampling_metadata)`` (``prefer_model_sampler=True``) :
+  modalité rejouée par ligne depuis ``output_token_ids`` (fonction pure de
+  ``modality.replay``) ; lignes TEXT → sampling texte standard ; lignes AUDIO
+  → rollout du depthformer sur le hidden stashé → 8 codes Mimi, id émis =
+  placeholder (frame ou EOA), embedding mis en cache pour le preprocess du
+  step suivant ;
+- ``forward``                        : backbone Lfm2 pur ; exporte les frames
+  en attente via ``OmniOutput.multimodal_outputs`` (payload sparse par req_id).
 
-NOTE runtime : les signatures suivent vllm-omni v0.22.0 (vérifiées sur le
-package PyPI). La validation finale (parité greedy vs liquid-audio, phase P2
-du plan) s'exécute sur GPU via tests/test_omni_parity.py.
+Les mécanismes de la v1 (``OmniOutput.next_token_id``, kwarg ``request_ids``)
+n'existent pas dans le runtime — voir §3bis de docs/vllm_omni_integration.md.
 """
 
 from __future__ import annotations
@@ -33,15 +33,17 @@ import torch
 from torch import nn
 
 from vllm_omni_lfm2_audio.audio_head import Lfm2AudioHead
-from vllm_omni_lfm2_audio.constants import TEXT_VOCAB_SIZE
+from vllm_omni_lfm2_audio.constants import IM_END_TOKEN_ID
 from vllm_omni_lfm2_audio.modality import Modality, ModalityConfig, replay
 
 logger = logging.getLogger(__name__)
 
+_SAMPLING_EPS = 1e-5
+_MAX_TRACKED_REQUESTS = 1024  # garde-fou mémoire si free_request n'est pas appelé
+
 
 class Lfm2AudioARForConditionalGeneration(nn.Module):
-    """Stage AR interleaved. Interfaces vLLM ajoutées au runtime via le wrapper
-    (SupportsPP/SupportsMultiModal sont déclarées sur la classe wrapper)."""
+    """Stage AR interleaved (hooks runner exposés via le wrapper)."""
 
     def __init__(self, *, vllm_config, prefix: str = "") -> None:
         super().__init__()
@@ -49,8 +51,6 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
 
         config = vllm_config.model_config.hf_config
         self.config = config
-        self.have_multimodal_outputs = True
-        self.requires_raw_input_tokens = True
 
         # --- machine à états (ratio lu DANS le checkpoint, source unique) --- #
         self.modality_cfg = ModalityConfig(
@@ -89,26 +89,71 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
             audio_tie=getattr(config, "tie_audio_embeddings", False),
         )
 
-        # sampling audio (prosodie) — défauts du démo liquid-audio
+        # sampling audio (prosodie) — None/<=0 → greedy (parité)
         self.audio_temperature: float | None = getattr(config, "audio_temperature", 1.0)
         self.audio_top_k: int | None = getattr(config, "audio_top_k", 4)
 
+        # --- état par step (fixé par preprocess_batch/preprocess) --- #
+        self._step_req_ids: list[str] = []
+        self._step_sampling_reqs: list[str] = []
+        self._pending_hidden: torch.Tensor | None = None  # stash de compute_logits
+
         # --- état par requête --- #
-        # ids du tour assistant courant (pour replay de la modalité)
-        self._turn_ids_by_req: dict[str, list[int]] = {}
         # embedding (somme des 8 codebooks) de la dernière frame générée,
-        # à utiliser comme embedding d'entrée du prochain step de la requête
+        # consommé par preprocess() au step suivant
         self._frame_emb_by_req: dict[str, torch.Tensor] = {}
-        # codes de la frame produite à CE step (exportés via OmniOutput)
-        self._frame_codes_by_req: dict[str, torch.Tensor] = {}
+        # frames générées non encore exportées vers le stage 1
+        self._pending_codes_by_req: dict[str, list[torch.Tensor]] = {}
 
     # ------------------------------------------------------------------ #
-    # Multimodal : audio-in (mel) et audio-out passé (codes)
+    # Hooks runner : preprocess (identité de requête + embeddings)
+    # ------------------------------------------------------------------ #
+
+    def preprocess_batch(self, *, req_ids: list[str], model_intermediate_buffer=None, device=None) -> None:
+        """1×/step, avant les preprocess par requête : ordre du batch."""
+        self._step_req_ids = list(req_ids)
+        self._step_sampling_reqs = []
+
+    def preprocess(
+        self,
+        *,
+        input_ids: torch.Tensor,
+        input_embeds: torch.Tensor | None = None,
+        request_id: str = "",
+        _omni_is_prefill: bool = False,
+        _omni_prompt_len: int = 0,
+        _omni_num_computed_tokens: int = 0,
+        **infos: Any,
+    ) -> tuple[torch.Tensor, torch.Tensor, dict[str, Any]]:
+        """Par requête : embeddings du span + overlay des placeholders audio.
+
+        Cette requête échantillonnera ce step sauf si c'est un chunk de prefill
+        partiel — c'est ce qui aligne ``_step_sampling_reqs`` avec les lignes
+        de ``sample()``.
+        """
+        span_len = int(input_ids.shape[0])
+        samples_this_step = (not _omni_is_prefill) or (_omni_num_computed_tokens + span_len >= _omni_prompt_len)
+        if samples_this_step:
+            self._step_sampling_reqs.append(request_id)
+
+        embeds = self.language_model.model.embed_tokens(input_ids)
+
+        if span_len == 1:  # décode : un placeholder porte l'embedding de SA frame
+            token_id = int(input_ids[0].item())
+            if token_id in (self.modality_cfg.frame_placeholder_id, self.modality_cfg.eoa_placeholder_id):
+                frame_emb = self._frame_emb_by_req.get(request_id)
+                if frame_emb is not None:
+                    embeds[0] = frame_emb.to(dtype=embeds.dtype, device=embeds.device)
+                else:  # préemption/recompute : cache perdu (cf. risques de la spec)
+                    logger.warning("frame embedding cache miss for request %s", request_id)
+
+        return input_ids, embeds, {}
+
+    # ------------------------------------------------------------------ #
+    # Multimodal : audio-in (mel) — pattern standard vLLM
     # ------------------------------------------------------------------ #
 
     def embed_multimodal(self, **kwargs: Any) -> dict[str, torch.Tensor]:
-        """mel (128, T) → embeddings conformer+adapter pour les placeholders
-        d'entrée audio du prompt (pattern Qwen2-Audio)."""
         mel = kwargs.get("input_audio_features")
         mel_lens = kwargs.get("input_audio_lens")
         if mel is None:
@@ -121,35 +166,16 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         self,
         input_ids: torch.Tensor,
         multimodal_embeddings=None,
-        is_multimodal: bool = False,
-        request_ids: list[str] | None = None,
-        audio_out_codes: torch.Tensor | None = None,
+        is_multimodal: torch.Tensor | None = None,
+        **kwargs: Any,
     ) -> torch.Tensor:
-        """Embeddings d'entrée. Les positions placeholder audio sont remplacées :
-        - prefill / recompute : depuis ``audio_out_codes`` (mm data, frames (N, 8)) ;
-        - décode : depuis le cache de la dernière frame de la requête.
-        """
         embeds = self.language_model.model.embed_tokens(input_ids)
-
-        placeholder_mask = (input_ids == self.modality_cfg.frame_placeholder_id) | (
-            input_ids == self.modality_cfg.eoa_placeholder_id
-        )
-        if placeholder_mask.any():
-            if audio_out_codes is not None:  # prefill : reconstruit depuis les codes passés
-                frames = audio_out_codes.to(embeds.device)
-                frame_embeds = torch.stack([self.audio_head.embed_frame(f) for f in frames])
-                embeds[placeholder_mask] = frame_embeds.to(embeds.dtype)
-            elif request_ids is not None:  # décode : cache de la frame du step précédent
-                for row, req_id in enumerate(request_ids):
-                    if placeholder_mask[row].any() and req_id in self._frame_emb_by_req:
-                        embeds[row][placeholder_mask[row]] = self._frame_emb_by_req[req_id].to(embeds.dtype)
-            else:
-                raise RuntimeError("audio placeholder without codes nor per-request cache")
-
+        if multimodal_embeddings is not None and is_multimodal is not None:
+            embeds[is_multimodal] = multimodal_embeddings
         return embeds
 
     # ------------------------------------------------------------------ #
-    # Forward / logits
+    # Forward / logits / sampling
     # ------------------------------------------------------------------ #
 
     def forward(
@@ -158,13 +184,12 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         positions: torch.Tensor,
         intermediate_tensors=None,
         inputs_embeds: torch.Tensor | None = None,
-        request_ids: list[str] | None = None,
         **kwargs: Any,
     ):
         from vllm_omni.model_executor.models.output_templates import OmniOutput
 
         if inputs_embeds is None:
-            inputs_embeds = self.embed_input_ids(input_ids, request_ids=request_ids)
+            inputs_embeds = self.embed_input_ids(input_ids)
 
         hidden = self.language_model.model(
             input_ids=None,
@@ -173,89 +198,134 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
             inputs_embeds=inputs_embeds,
         )
 
-        # Décision de modalité du PROCHAIN token, par requête (replay pur).
-        codes_payload: dict[str, torch.Tensor] = {}
-        next_token_ids: dict[str, int] = {}
-        if request_ids is not None and input_ids.dim() >= 1:
-            self._track_turn_ids(input_ids, request_ids)
-            for row, req_id in enumerate(request_ids):
-                state = replay(self._turn_ids_by_req.get(req_id, []), self.modality_cfg)
-                if state.current is Modality.AUDIO:
-                    frame = self.audio_head.sample_frame(
-                        hidden[row, -1].float(),
-                        temperature=self.audio_temperature,
-                        top_k=self.audio_top_k,
-                    )
-                    is_eoa = bool(frame[0].item() == 2048)
-                    if is_eoa:
-                        frame = torch.full_like(frame, 2048)
-                    self._frame_codes_by_req[req_id] = frame
-                    self._frame_emb_by_req[req_id] = self.audio_head.embed_frame(frame)
-                    codes_payload[req_id] = frame
-                    next_token_ids[req_id] = (
-                        self.modality_cfg.eoa_placeholder_id if is_eoa else self.modality_cfg.frame_placeholder_id
-                    )
-                else:
-                    self._frame_emb_by_req.pop(req_id, None)
-
         return OmniOutput(
             text_hidden_states=hidden,
-            multimodal_outputs={"codes": {"audio": codes_payload}} if codes_payload else None,
-            next_token_id=next_token_ids or None,
+            multimodal_outputs=self._drain_pending_codes(),
         )
 
-    def compute_logits(self, hidden_states: torch.Tensor, sampling_metadata=None) -> torch.Tensor:
-        logits = self.language_model.compute_logits(hidden_states)
-        return logits
+    def _drain_pending_codes(self) -> dict[str, Any] | None:
+        """Frames produites par sample() au(x) step(s) précédent(s), exportées
+        en payload sparse par req_id (consommé par stage_input_processors)."""
+        req_ids, codes = [], []
+        for req_id in self._step_req_ids:
+            frames = self._pending_codes_by_req.pop(req_id, None)
+            if frames:
+                req_ids.append(req_id)
+                codes.append(torch.stack(frames))  # (n_frames, codebooks)
+        if not req_ids:
+            return None
+        return {"codes": {"audio": codes}, "meta": {"req_id": req_ids, "sparse_audio": True}}
 
-    def mask_logits_for_audio_steps(self, logits: torch.Tensor, request_ids: list[str]) -> torch.Tensor:
-        """Défense en profondeur : pendant un step audio, seul le placeholder est
-        échantillonnable (en plus de ``next_token_id`` qui dicte déjà l'id)."""
-        for row, req_id in enumerate(request_ids):
-            state = replay(self._turn_ids_by_req.get(req_id, []), self.modality_cfg)
+    def compute_logits(self, hidden_states: torch.Tensor, sampling_metadata=None) -> torch.Tensor:
+        # hidden gathered aux logits_indices : alignement 1:1 avec sample()
+        self._pending_hidden = hidden_states
+        return self.language_model.compute_logits(hidden_states)
+
+    def sample(self, logits: torch.Tensor, sampling_metadata):
+        """Sampler custom (``prefer_model_sampler``) : machine à états interleaved.
+
+        Retourner ``None`` délègue tout au sampler standard (utilisé si le
+        mapping ligne→requête n'est pas fiable ce step).
+        """
+        from vllm.v1.outputs import SamplerOutput
+
+        if logits is None or logits.numel() == 0:
+            return None
+
+        n_rows = int(logits.shape[0])
+        reqs = self._step_sampling_reqs
+        if len(reqs) != n_rows:
+            # dummy run / profiling, ou divergence de plomberie : sampler standard
+            if self._step_req_ids:
+                logger.warning("sample(): %d rows vs %d tracked sampling reqs — falling back", n_rows, len(reqs))
+            return None
+
+        sampled: list[int] = []
+        for row in range(n_rows):
+            history = (
+                sampling_metadata.output_token_ids[row]
+                if row < len(sampling_metadata.output_token_ids)
+                else []
+            )
+            state = replay(self._turn_suffix(history), self.modality_cfg)
             if state.current is Modality.AUDIO:
-                masked = torch.full_like(logits[row], -float("inf"))
-                masked[self.modality_cfg.frame_placeholder_id] = 0.0
-                masked[self.modality_cfg.eoa_placeholder_id] = 0.0
-                logits[row] = masked
-        return logits
+                sampled.append(self._sample_audio_row(row, reqs[row]))
+            else:
+                sampled.append(self._sample_text_row(logits[row], row, sampling_metadata))
+
+        out = torch.tensor(sampled, device=logits.device, dtype=torch.int32)
+        return SamplerOutput(sampled_token_ids=out.unsqueeze(-1), logprobs_tensors=None)
 
     # ------------------------------------------------------------------ #
 
-    def _track_turn_ids(self, input_ids: torch.Tensor, request_ids: list[str]) -> None:
-        """Maintient les ids du tour assistant courant par requête.
+    @staticmethod
+    def _turn_suffix(history: list[int]) -> list[int]:
+        """Ids du tour assistant courant : suffixe après le dernier <|im_end|>."""
+        try:
+            last_end = len(history) - 1 - history[::-1].index(IM_END_TOKEN_ID)
+            return history[last_end + 1 :]
+        except ValueError:
+            return history
 
-        Prefill (plusieurs ids) : reconstruit depuis le suffixe après le dernier
-        début de tour assistant. Décode (1 id) : append. Toute requête inconnue
-        (préemption/recompute) repart du prompt complet — l'état reste correct
-        car ``replay`` est une fonction pure des ids.
-        """
-        for row, req_id in enumerate(request_ids):
-            ids = input_ids[row] if input_ids.dim() > 1 else input_ids
-            ids_list = ids.tolist() if ids.dim() > 0 else [int(ids.item())]
-            if len(ids_list) > 1 or req_id not in self._turn_ids_by_req:
-                self._turn_ids_by_req[req_id] = self._extract_current_assistant_turn(
-                    self._turn_ids_by_req.get(req_id, []) + ids_list
-                )
-            else:
-                self._turn_ids_by_req[req_id].append(ids_list[0])
+    def _sample_audio_row(self, row: int, request_id: str) -> int:
+        """Rollout depthformer → frame complète ; émet le placeholder."""
+        assert self._pending_hidden is not None, "compute_logits must run before sample"
+        hidden = self._pending_hidden[row]
+        frame = self.audio_head.sample_frame(
+            hidden.float(),
+            temperature=self.audio_temperature,
+            top_k=self.audio_top_k,
+        )
+        is_eoa = bool(frame[0].item() == 2048)
+        if is_eoa:
+            frame = torch.full_like(frame, 2048)
+
+        self._frame_emb_by_req[request_id] = self.audio_head.embed_frame(frame)
+        self._pending_codes_by_req.setdefault(request_id, []).append(frame.cpu())
+        self._evict_stale_requests()
+        return self.modality_cfg.eoa_placeholder_id if is_eoa else self.modality_cfg.frame_placeholder_id
+
+    def _sample_text_row(self, row_logits: torch.Tensor, row: int, md) -> int:
+        """Sampling texte standard pour une ligne (greedy / temp / top-k / top-p)."""
+        temperature = self._req_scalar(md.temperature, row, 0.0)
+        if getattr(md, "all_greedy", False) or temperature < _SAMPLING_EPS:
+            return int(row_logits.argmax().item())
+
+        logits = row_logits.to(torch.float32) / temperature
+        top_k = int(self._req_scalar(md.top_k, row, 0))
+        if 0 < top_k < logits.shape[-1]:
+            min_kept = torch.topk(logits, top_k).values[-1]
+            logits = logits.masked_fill(logits < min_kept, -float("inf"))
+        top_p = float(self._req_scalar(md.top_p, row, 1.0))
+        if top_p < 1.0 - _SAMPLING_EPS:
+            sorted_logits, sorted_idx = logits.sort(descending=True)
+            cumprobs = sorted_logits.softmax(-1).cumsum(-1)
+            cutoff = int((cumprobs <= top_p).sum().item()) + 1
+            keep = sorted_idx[:cutoff]
+            mask = torch.full_like(logits, -float("inf"))
+            mask[keep] = logits[keep]
+            logits = mask
+        generator = md.generators.get(row) if getattr(md, "generators", None) else None
+        probs = logits.softmax(-1)
+        return int(torch.multinomial(probs, 1, generator=generator).item())
 
     @staticmethod
-    def _extract_current_assistant_turn(ids: list[int]) -> list[int]:
-        """Suffixe après le dernier ``<|im_end|>`` (id 7) : le tour en cours."""
-        from vllm_omni_lfm2_audio.constants import IM_END_TOKEN_ID
+    def _req_scalar(values, row: int, default: float) -> float:
+        if values is None:
+            return default
+        if isinstance(values, torch.Tensor):
+            return float(values[row].item()) if values.numel() > row else default
+        return float(values)
 
-        try:
-            last_end = len(ids) - 1 - ids[::-1].index(IM_END_TOKEN_ID)
-            return ids[last_end + 1 :]
-        except ValueError:
-            return ids
+    def _evict_stale_requests(self) -> None:
+        """Garde-fou si free_request n'est jamais appelé par le runner."""
+        for cache in (self._frame_emb_by_req, self._pending_codes_by_req):
+            while len(cache) > _MAX_TRACKED_REQUESTS:
+                cache.pop(next(iter(cache)))
 
     def free_request(self, request_id: str) -> None:
-        """Libère l'état d'une requête terminée/annulée (appelé par le runner)."""
-        self._turn_ids_by_req.pop(request_id, None)
         self._frame_emb_by_req.pop(request_id, None)
-        self._frame_codes_by_req.pop(request_id, None)
+        self._pending_codes_by_req.pop(request_id, None)
 
     # ------------------------------------------------------------------ #
 
@@ -264,8 +334,7 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         audio_adapter./depthformer./depth_*/audio_embedding.).
 
         Retourne les noms de PARAMÈTRES de CE module (contrat
-        ``track_weights_loading`` du loader vLLM : comparaison avec
-        ``named_parameters()`` du modèle, pas avec les clés du checkpoint).
+        ``track_weights_loading`` du loader vLLM).
         """
         weights = dict(weights)
         loaded: set[str] = set()

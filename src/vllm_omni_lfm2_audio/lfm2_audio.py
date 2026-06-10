@@ -66,6 +66,10 @@ class Lfm2AudioOmniForConditionalGeneration(nn.Module):
             from vllm_omni_lfm2_audio.lfm2_audio_ar import Lfm2AudioARForConditionalGeneration
 
             self.model = Lfm2AudioARForConditionalGeneration(vllm_config=vllm_config, prefix=prefix)
+            # hooks du runner (lus sur CETTE instance par gpu_model_runner) :
+            # preprocess par requête + sampler custom (machine à états interleaved)
+            self.has_preprocess = True
+            self.prefer_model_sampler = True
         elif self.model_stage == CODE2WAV_STAGE:
             from vllm_omni_lfm2_audio.lfm2_audio_code2wav import Lfm2AudioCode2Wav
 
@@ -100,6 +104,18 @@ class Lfm2AudioOmniForConditionalGeneration(nn.Module):
         if self.model_stage == CODE2WAV_STAGE:
             return None
         return self.model.compute_logits(hidden_states, sampling_metadata)
+
+    def preprocess_batch(self, **kwargs):
+        if self.model_stage == AR_STAGE:
+            self.model.preprocess_batch(**kwargs)
+
+    def preprocess(self, **kwargs):
+        return self.model.preprocess(**kwargs)
+
+    def sample(self, logits, sampling_metadata):
+        if self.model_stage == AR_STAGE:
+            return self.model.sample(logits, sampling_metadata)
+        return None  # code2wav : sampler standard
 
     def load_weights(self, weights, **kwargs):
         loaded = self.model.load_weights(weights, **kwargs) or set()
