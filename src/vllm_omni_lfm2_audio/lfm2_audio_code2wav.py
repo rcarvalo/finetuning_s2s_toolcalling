@@ -53,7 +53,9 @@ class Lfm2AudioCode2Wav(nn.Module):
         ]
         detok = LFM2AudioDetokenizer(detok_config).eval()
         detok.load_state_dict(load_file(detok_dir / "model.safetensors"))
-        self.detokenizer = detok
+        # float32 : torch.polar (rotary freqs du forward) n'existe pas en Half
+        # sur CPU, et le coût mémoire du détokeniseur est marginal.
+        self.detokenizer = detok.float()
         # contrat track_weights_loading : noms de paramètres du module
         return {f"detokenizer.{name}" for name, _ in detok.named_parameters()}
 
@@ -91,11 +93,18 @@ class Lfm2AudioCode2Wav(nn.Module):
         frames = frames[:, keep]
         if frames.shape[1] == 0:
             return OmniOutput(text_hidden_states=None, multimodal_outputs={"model_outputs": None})
+        # garde-fou dummy/profile run de vLLM : ids arbitraires → clamp dans le
+        # vocabulaire Mimi (sans effet sur de vrais codes, toujours < 2048)
+        frames = frames.clamp_(0, END_OF_AUDIO_CODE - 1)
 
         info = additional_information or {}
         left_context = int(info.get("left_context_size", 0))
 
-        wav = self.detokenizer(frames.unsqueeze(0).to(next(self.detokenizer.parameters()).device))  # (1, T')
+        # le détokeniseur est construit dans load_weights (CPU) : suit le device
+        # des codes au premier appel
+        if next(self.detokenizer.parameters()).device != frames.device:
+            self.detokenizer = self.detokenizer.to(frames.device)
+        wav = self.detokenizer(frames.unsqueeze(0))  # (1, T')
         if left_context > 0:
             wav = wav[:, left_context * SAMPLES_PER_FRAME :]
 

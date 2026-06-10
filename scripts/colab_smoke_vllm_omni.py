@@ -232,7 +232,8 @@ def check_engine(checkpoint: Path, max_tokens: int, dtype: str) -> list[str]:
         from vllm_omni import Omni
 
         kwargs: dict[str, Any] = {} if dtype == "auto" else {"dtype": dtype}
-        omni = Omni(model=str(checkpoint), **kwargs)
+        # T4/GPU lents : profiling + capture > 300 s par stage
+        omni = Omni(model=str(checkpoint), stage_init_timeout=1200, init_timeout=1800, **kwargs)
         _ok("engine", "Omni(...) initialisé — stages chargés")
         outputs = omni.generate(
             "Bonjour, qui es-tu ?",
