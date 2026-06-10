@@ -1,0 +1,185 @@
+"""Processors inter-stages : codes Mimi du stage 0 → payloads du stage 1.
+
+Modelés sur ``stage_input_processors/mimo_audio.py``, adaptés à nos frames :
+1 step = 1 frame de 8 codes (MiMo : patches 8×4). Accumulation par requête
+dans le connector ; un payload part quand ``codec_chunk_frames`` est atteint
+(ou à la fin), préfixé de ``codec_left_context_frames`` de contexte gauche
+décodé mais non émis (frontières propres).
+
+Aplatissement : col-major par frame — frame f, codebook c → index f*8+c —
+inversé par ``Lfm2AudioCode2Wav._to_frames``.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+import torch
+
+from vllm_omni_lfm2_audio.constants import CODEBOOKS, END_OF_AUDIO_CODE, MIMI_FRAME_RATE
+
+logger = logging.getLogger(__name__)
+
+# 12,5 frames/s : 10 frames = 800 ms par chunk ; contexte gauche 13 ≈ 1 s.
+DEFAULT_CODEC_CHUNK_FRAMES = 10
+DEFAULT_CODEC_LEFT_CONTEXT_FRAMES = 13
+MIN_CODEC_CHUNK_FRAMES = 3
+
+
+def _frame_from_payload(codes: Any) -> torch.Tensor | None:
+    """Normalise la frame du step ((8,) attendu) ; None si invalide/absente."""
+    if codes is None:
+        return None
+    t = codes if isinstance(codes, torch.Tensor) else torch.tensor(codes, dtype=torch.long)
+    t = t.reshape(-1).to(torch.long)
+    if t.numel() != CODEBOOKS:
+        return None
+    if int(t[0].item()) == END_OF_AUDIO_CODE:  # frame EOA : marqueur de fin, pas de l'audio
+        return None
+    return t
+
+
+def _connector_cfg(transfer_manager: Any) -> tuple[int, int]:
+    connector = getattr(transfer_manager, "connector", None)
+    raw = getattr(connector, "config", {}) or {}
+    cfg = raw.get("extra", raw) if isinstance(raw, dict) else {}
+    chunk = int(cfg.get("codec_chunk_frames", DEFAULT_CODEC_CHUNK_FRAMES))
+    if chunk < MIN_CODEC_CHUNK_FRAMES:
+        logger.warning("codec_chunk_frames=%d < %d, fallback %d", chunk, MIN_CODEC_CHUNK_FRAMES, DEFAULT_CODEC_CHUNK_FRAMES)
+        chunk = DEFAULT_CODEC_CHUNK_FRAMES
+    left = int(cfg.get("codec_left_context_frames", DEFAULT_CODEC_LEFT_CONTEXT_FRAMES))
+    return chunk, left
+
+
+def _buffers(transfer_manager: Any) -> dict[str, list[list[int]]]:
+    if not hasattr(transfer_manager, "code_prompt_token_ids"):
+        transfer_manager.code_prompt_token_ids = {}
+    return transfer_manager.code_prompt_token_ids
+
+
+def _build_payload(frames: list[list[int]], *, new_frames: int, left_context: int, finished: bool):
+    from vllm_omni.data_entry_keys import CodesStruct, MetaStruct, OmniPayloadStruct
+
+    end = len(frames)
+    start = max(0, end - new_frames - left_context)
+    actual_left = end - new_frames - start
+    flat = torch.tensor(frames[start:end], dtype=torch.long).reshape(-1)
+    return OmniPayloadStruct(
+        codes=CodesStruct(audio=flat),
+        meta=MetaStruct(
+            left_context_size=actual_left,
+            codec_chunk_frames=new_frames,
+            codec_left_context_frames=left_context,
+            code_flat_numel=int(flat.numel()),
+            finished=torch.tensor(finished, dtype=torch.bool),
+        ),
+    )
+
+
+def ar2code2wav_async_chunk(transfer_manager: Any, pooling_output: Any, request: Any, is_finished: bool = False):
+    """Mode async_chunk : appelé à chaque step émis par le stage 0."""
+    request_id = getattr(request, "external_req_id", None)
+    if request_id is None:
+        return None
+    chunk_size, left_context = _connector_cfg(transfer_manager)
+    buffers = _buffers(transfer_manager)
+    pending = buffers.setdefault(request_id, [])
+
+    if isinstance(pooling_output, dict):
+        codes = pooling_output.get("codes", {})
+        audio = codes.get("audio") if isinstance(codes, dict) else None
+        # stage 0 exporte {req_id: frame} ; tolère aussi une frame brute
+        if isinstance(audio, dict):
+            audio = audio.get(request_id)
+        frame = _frame_from_payload(audio)
+        if frame is not None:
+            pending.append(frame.tolist())
+
+    sent = getattr(transfer_manager, "_lfm2_sent_frames", None)
+    if sent is None:
+        sent = transfer_manager._lfm2_sent_frames = {}
+    already = sent.get(request_id, 0)
+    unsent = len(pending) - already
+
+    if unsent >= chunk_size or (is_finished and unsent > 0):
+        new_frames = chunk_size if unsent >= chunk_size else unsent
+        sent[request_id] = already + new_frames
+        payload = _build_payload(
+            pending[: already + new_frames], new_frames=new_frames, left_context=left_context, finished=is_finished
+        )
+        if is_finished:
+            buffers.pop(request_id, None)
+            sent.pop(request_id, None)
+        return payload
+
+    if is_finished:
+        buffers.pop(request_id, None)
+        sent.pop(request_id, None)
+    return None
+
+
+def ar2code2wav(source_outputs: list[Any], prompt=None, requires_multimodal_data: bool = False):
+    """Mode synchrone (pipeline legacy) : tout l'audio d'un coup, en fin de tour."""
+    from vllm.inputs import TextPrompt  # noqa: F401
+    from vllm_omni.inputs.data import OmniTokensPrompt
+
+    results: list[OmniTokensPrompt] = []
+    for output in source_outputs:
+        frames: list[list[int]] = []
+        mm = getattr(output.outputs[0], "multimodal_output", None) or {}
+        codes = mm.get("codes", {})
+        audio = codes.get("audio") if isinstance(codes, dict) else None
+        if isinstance(audio, dict):
+            for frame_like in audio.values():
+                frame = _frame_from_payload(frame_like)
+                if frame is not None:
+                    frames.append(frame.tolist())
+        elif audio is not None:
+            tensor = audio if isinstance(audio, torch.Tensor) else torch.tensor(audio, dtype=torch.long)
+            for frame_like in tensor.reshape(-1, CODEBOOKS):
+                frame = _frame_from_payload(frame_like)
+                if frame is not None:
+                    frames.append(frame.tolist())
+
+        flat = [c for frame in frames for c in frame]
+        results.append(
+            OmniTokensPrompt(
+                prompt_token_ids=flat,
+                additional_information={"left_context_size": 0, "n_frames": len(frames)},
+                multi_modal_data=None,
+            )
+        )
+    return results
+
+
+def ar2code2wav_token_only(source_outputs: list[Any], prompt=None, requires_multimodal_data: bool = False):
+    return ar2code2wav(source_outputs, prompt=prompt, requires_multimodal_data=requires_multimodal_data)
+
+
+def ar2code2wav_full_payload(transfer_manager: Any, pooling_output: Any, request: Any, is_finished: bool = False):
+    """Variante sync du chemin connector : accumule à chaque step, n'émet qu'à la fin."""
+    request_id = getattr(request, "external_req_id", None)
+    if request_id is None:
+        return None
+    buffers = _buffers(transfer_manager)
+    pending = buffers.setdefault(request_id, [])
+    if isinstance(pooling_output, dict):
+        codes = pooling_output.get("codes", {})
+        audio = codes.get("audio") if isinstance(codes, dict) else None
+        if isinstance(audio, dict):
+            audio = audio.get(request_id)
+        frame = _frame_from_payload(audio)
+        if frame is not None:
+            pending.append(frame.tolist())
+    if not is_finished:
+        return None
+    buffers.pop(request_id, None)
+    if not pending:
+        return None
+    return _build_payload(pending, new_frames=len(pending), left_context=0, finished=True)
+
+
+def estimate_chunk_latency_ms(chunk_frames: int) -> float:
+    """Latence d'accumulation d'un chunk (diagnostic) : frames / 12,5 Hz."""
+    return chunk_frames / MIMI_FRAME_RATE * 1000.0

@@ -139,14 +139,25 @@ SQL `agent_ro` sans droits d'écriture.
 
 ## Inférence optimisée : vLLM / vLLM-Omni
 
-État vérifié (juin 2026, vLLM-Omni v0.22.0) : **LFM2.5-Audio n'est pas supporté
-par vLLM-Omni** ; le backbone **Lfm2 texte est, lui, supporté par vLLM core**.
-Le design complet d'intégration (stages, vocab unifié texte+codec0, depthformer
-en code-predictor, prefix caching du tool round-trip) est spécifié dans
-[`docs/vllm_omni_integration.md`](docs/vllm_omni_integration.md) — à implémenter
-dans un fork de `vllm-project/vllm-omni`.
+LFM2.5-Audio n'est pas supporté nativement par vLLM-Omni → ce repo fournit le
+**plugin out-of-tree `vllm_omni_lfm2_audio`** (`src/vllm_omni_lfm2_audio/`,
+entry point `vllm_omni.general_plugins`, pas de fork) : stage 0 AR interleaved
+(backbone Lfm2 de vLLM core + depthformer, pattern MiMo-Audio) → stage 1
+détokeniseur, avec **prefix caching** (tours et tool round-trips sans
+re-prefill du contexte). Design et statut :
+[`docs/vllm_omni_integration.md`](docs/vllm_omni_integration.md).
 
-Déjà disponible ici (phase P0) :
+```bash
+pip install -e ".[vllm-omni]"
+python -m vllm_omni_lfm2_audio.convert_checkpoint \
+    --checkpoint exports/lfm25_audio_fr --output exports/lfm25_audio_fr_omni
+vllm-omni serve exports/lfm25_audio_fr_omni \
+    --stage-config-path configs/vllm_omni_lfm2_audio.yaml
+# parité vs liquid-audio (GPU, critère bloquant P2) :
+OMNI_CHECKPOINT=exports/lfm25_audio_fr_omni python -m pytest tests/test_omni_parity.py -m gpu
+```
+
+Également disponible (phase P0, voie hybride / parité backbone) :
 
 ```bash
 # merge LoRA → checkpoint complet (ratio interleaved calibré écrit dans config.json)
