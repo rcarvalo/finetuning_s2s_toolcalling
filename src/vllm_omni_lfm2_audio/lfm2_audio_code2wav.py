@@ -115,11 +115,17 @@ class Lfm2AudioCode2Wav(nn.Module):
 
     @staticmethod
     def _to_frames(codes: torch.Tensor) -> torch.Tensor:
-        """Normalise vers (codebooks, T)."""
+        """Normalise vers (codebooks, T).
+
+        Tolérant aux longueurs non multiples de 8 : le dummy/profile run de
+        vLLM envoie des tailles arbitraires — on tronque au multiple inférieur
+        (les vrais payloads, construits par stage_input_processors, sont
+        toujours des frames complètes)."""
         codes = codes.to(torch.long)
         if codes.dim() == 2 and codes.shape[0] == CODEBOOKS:
             return codes
         flat = codes.reshape(-1)
-        if flat.numel() % CODEBOOKS != 0:
-            raise ValueError(f"flat codes length {flat.numel()} is not a multiple of {CODEBOOKS}")
-        return flat.view(-1, CODEBOOKS).T.contiguous()
+        usable = (flat.numel() // CODEBOOKS) * CODEBOOKS
+        if usable != flat.numel():
+            logger.debug("trimming %d trailing codes (not a full frame)", flat.numel() - usable)
+        return flat[:usable].view(-1, CODEBOOKS).T.contiguous()
