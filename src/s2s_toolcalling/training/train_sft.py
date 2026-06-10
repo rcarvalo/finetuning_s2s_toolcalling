@@ -142,7 +142,7 @@ def main() -> None:
     if cfg.lora.enabled and trainer.accelerator.is_main_process:
         from s2s_toolcalling.training.lora import save_lora
 
-        path = save_lora(trainer.accelerator.unwrap_model(trainer.model), Path(cfg.output_dir) / "final_adapter")
+        path = save_lora(trainer.accelerator.unwrap_model(trainer.model), Path(cfg.output_dir) / "final_adapter", cfg.lora)
         print(f"LoRA adapter saved to {path}")
 
 

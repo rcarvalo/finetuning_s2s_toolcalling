@@ -49,3 +49,6 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "gpu: tests nécessitant un GPU et les checkpoints (désélectionnés par défaut : -m 'not gpu')",
+]

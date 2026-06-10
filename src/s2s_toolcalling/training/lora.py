@@ -56,14 +56,39 @@ def lora_state_dict(model) -> dict:
     return {k: v for k, v in model.state_dict().items() if "lora_" in k}
 
 
-def save_lora(model, output_dir: str | Path) -> Path:
+def save_lora(model, output_dir: str | Path, settings: LoraSettings | None = None) -> Path:
+    """Sauve les poids de l'adaptateur + sa config (nécessaire pour réinjecter
+    le LoRA à l'identique au moment du merge/export)."""
+    import json
+
     from safetensors.torch import save_file
 
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     path = out / "adapter_model.safetensors"
     save_file({k: v.contiguous().cpu() for k, v in lora_state_dict(model).items()}, str(path))
+    if settings is not None:
+        (out / "adapter_config.json").write_text(
+            json.dumps(
+                {
+                    "r": settings.r,
+                    "alpha": settings.alpha,
+                    "dropout": settings.dropout,
+                    "target_modules": settings.target_modules,
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
     return path
+
+
+def load_lora_settings(adapter_dir: str | Path) -> LoraSettings:
+    """Relit la config d'adaptateur écrite par ``save_lora``."""
+    import json
+
+    cfg = json.loads((Path(adapter_dir) / "adapter_config.json").read_text(encoding="utf-8"))
+    return LoraSettings(enabled=True, **cfg)
 
 
 def load_lora(model, adapter_path: str | Path) -> None:

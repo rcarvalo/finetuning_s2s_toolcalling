@@ -137,6 +137,34 @@ Sécurité `query_database` : garde syntaxique SELECT-only **et** session
 PostgreSQL `default_transaction_read_only=on` + `statement_timeout` **et** rôle
 SQL `agent_ro` sans droits d'écriture.
 
+## Inférence optimisée : vLLM / vLLM-Omni
+
+État vérifié (juin 2026, vLLM-Omni v0.22.0) : **LFM2.5-Audio n'est pas supporté
+par vLLM-Omni** ; le backbone **Lfm2 texte est, lui, supporté par vLLM core**.
+Le design complet d'intégration (stages, vocab unifié texte+codec0, depthformer
+en code-predictor, prefix caching du tool round-trip) est spécifié dans
+[`docs/vllm_omni_integration.md`](docs/vllm_omni_integration.md) — à implémenter
+dans un fork de `vllm-project/vllm-omni`.
+
+Déjà disponible ici (phase P0) :
+
+```bash
+# merge LoRA → checkpoint complet (ratio interleaved calibré écrit dans config.json)
+python -m s2s_toolcalling.training.export_checkpoint \
+    --base LiquidAI/LFM2.5-Audio-1.5B --adapter outputs/phase2b_sft/final_adapter \
+    --output exports/lfm25_audio_fr --mode full \
+    --interleaved-text-tokens 6 --interleaved-audio-tokens 10
+
+# backbone texte seul → servable immédiatement par vLLM (voie hybride / parité P0)
+python -m s2s_toolcalling.training.export_checkpoint \
+    --base LiquidAI/LFM2.5-Audio-1.5B --adapter outputs/phase2b_sft/final_adapter \
+    --output exports/lfm25_backbone_fr --mode backbone
+vllm serve exports/lfm25_backbone_fr
+
+# parité backbone (GPU) — prérequis avant d'investir dans les stages vLLM-Omni
+EXPORTED_BACKBONE=exports/lfm25_backbone_fr python -m pytest tests/test_backbone_parity.py -m gpu
+```
+
 ## Risque technique tracé
 
 L'émission d'un tool call en mode interleaved audio n'est **pas documentée par
