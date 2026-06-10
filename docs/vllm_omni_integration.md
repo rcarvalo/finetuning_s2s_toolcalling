@@ -7,6 +7,12 @@
 > workers), `register_pipeline()` est documenté « for out-of-tree plugins »,
 > et `OmniModelRegistry.register_model()` accepte les architectures externes.
 > Reste à valider sur GPU : parité P2/P3 (`tests/test_omni_parity.py`).
+>
+> ⚠️ **Audit du wheel 0.22.0 (10 juin 2026)** : deux mécanismes utilisés par
+> la première version du stage 0 n'existent pas dans le runtime — voir
+> §3bis. Le stage 0 doit migrer vers le hook `sample()` /
+> `prefer_model_sampler` (idiome cosyvoice3/glm_tts). Itération en cours sur
+> Colab (`scripts/colab_smoke_vllm_omni.py`).
 
 ## 1. Pourquoi
 
@@ -52,10 +58,9 @@ interleave texte et audio dans la même séquence (ratio `n_text:n_audio`).
 1. **Chaque step audio apparaît dans le flux d'ids comme un token
    PLACEHOLDER** (MiMo : `<|empty|>` ; nous : deux ids réservés, frame
    normale et frame EOA — deux ids distincts pour que l'état soit rejouable
-   depuis la seule séquence). Le modèle dicte cet id via
-   `OmniOutput.next_token_id` (+ masquage des logits en défense) ; la
-   séquence vLLM reste standard → KV paginé, prefix caching, préemption
-   inchangés.
+   depuis la seule séquence). Le modèle force cet id dans son **`sample()`
+   custom** (`prefer_model_sampler = True`, cf. §3bis) ; la séquence vLLM
+   reste standard → KV paginé, prefix caching, préemption inchangés.
 2. **Les 8 codes Mimi de la frame sont produits en interne** par le rollout
    du depthformer sur le hidden state du step (`audio_head.sample_frame`,
    port de `_sample_audio_frame`) et exportés step par step via
@@ -65,6 +70,40 @@ interleave texte et audio dans la même séquence (ratio `n_text:n_audio`).
    cache par requête (`_frame_emb_by_req`, équivalent du
    `_cached_new_audio_emb_by_req` de MiMo) en décode, ou reconstruit depuis
    `multi_modal_data["audio_out_codes"]` au prefill/recompute.
+
+## 3bis. Écarts vérifiés dans le runtime 0.22.0 (audit du wheel, 10 juin 2026)
+
+Constatés en inspectant `gpu_ar_model_runner.py` / `gpu_model_runner.py` du
+wheel PyPI — pas spéculatifs :
+
+1. **`OmniOutput.next_token_id` n'est consommé nulle part** dans le runtime
+   (champ déclaré dans le NamedTuple, zéro lecteur). Le forçage du
+   placeholder DOIT passer par le hook sampler du modèle :
+   `prefer_model_sampler = True` + `sample(logits, sampling_metadata)`,
+   routé par `GPUARModelRunner._sample()`. Les modèles in-tree cosyvoice3 et
+   glm_tts donnent l'idiome exact : itération par ligne du batch,
+   `sampling_metadata.output_token_ids[req_idx]` = historique généré de la
+   ligne (reconstruit par `_build_model_sampler_output_token_ids` dans
+   l'ordre `input_batch.req_ids`), retour `SamplerOutput(sampled_token_ids=…)`.
+2. **`forward()` ne reçoit pas de `request_ids`** — aucun kwarg d'identité de
+   requête n'est passé par le runner. Conséquences :
+   - le replay de modalité se fait dans `sample()` (l'historique par ligne y
+     est fourni), pas dans `forward()` ;
+   - le rollout du depthformer migre aussi dans `sample()` ; le hidden gathered
+     aux `logits_indices` est stashé par `compute_logits()` (alignement 1:1
+     avec les lignes de logits) ;
+   - `extract_multimodal_outputs()` (runner) consomme bien
+     `OmniOutput.multimodal_outputs` — l'export des codes reste valable, avec
+     `meta.req_id` supporté pour les payloads sparses.
+3. **Question ouverte (à résoudre sur Colab, runtime vivant)** : la clé
+   d'identité requête pour le cache `{req: frame_embedding}` entre `sample()`
+   (indices de ligne) et `embed_input_ids()` du step suivant (pas d'identité
+   non plus). Pistes, par ordre de préférence :
+   a. canal `additional_information` / `model_intermediate_buffer` du runner
+      (persisté par requête, passé à `forward` chez MiMo) ;
+   b. variante vocab unifié à la MiMo (l'id échantillonné = code codebook-0
+      offset → l'embedding se recalcule depuis l'id, plus de cache) ;
+   c. en dernier recours : appariement par fingerprint d'historique.
 
 ## 4. Design LFM2.5-Audio (implémenté dans `src/vllm_omni_lfm2_audio/`)
 
@@ -107,11 +146,13 @@ est reconstruit depuis les codes passés en mm data.
 ### 4.3 Sortie texte / logits
 
 Les steps texte passent par `compute_logits` du backbone Lfm2 de vLLM core
-(embeddings liés). Pendant un step audio, `next_token_id` dicte le
-placeholder et `mask_logits_for_audio_steps` interdit tout autre id. Le
-sampling **audio** (prosodie : temperature/top-k du depthformer) est interne
-au modèle (`audio_temperature`/`audio_top_k` du config) — le sampling texte
-reste celui de l'API (greedy recommandé pour les tool calls).
+(embeddings liés). Pendant un step audio, le `sample()` custom du modèle
+(`prefer_model_sampler`, cf. §3bis) force le placeholder — la décision
+texte/audio est rejouée depuis `sampling_metadata.output_token_ids` (machine
+à états pure de `modality.py`). Le sampling **audio** (prosodie :
+temperature/top-k du depthformer) est interne au modèle
+(`audio_temperature`/`audio_top_k` du config) — le sampling texte reste celui
+de l'API (greedy recommandé pour les tool calls).
 
 ### 4.4 Entrées audio
 
@@ -200,8 +241,9 @@ préfillée.
 
 | Risque | Mitigation |
 |---|---|
-| Flux mixte texte+codes dans un seul stage | précédent in-tree MiMo-Audio (même topologie) ; `next_token_id` + masquage restent dans le contrat « 1 id/step » |
-| Plomberie runtime (kwargs `request_ids`, mm processor, hooks du runner) à ajuster sur la version exacte de vllm-omni | signatures calées sur le source PyPI 0.22.0 ; les écarts se révèlent au premier `vllm-omni serve` (P2 GPU), localisés dans `lfm2_audio_ar.py` |
+| Flux mixte texte+codes dans un seul stage | précédent in-tree MiMo-Audio (même topologie) ; le forçage du placeholder via `sample()` custom reste dans le contrat « 1 id/step » (idiome cosyvoice3) |
+| Plomberie runtime (mm processor, hooks du runner) à ajuster sur la version exacte de vllm-omni | écarts majeurs déjà identifiés par audit du wheel (§3bis) ; le reste se révèle au smoke Colab (`scripts/colab_smoke_vllm_omni.py`), localisé dans `lfm2_audio_ar.py` |
+| Clé d'identité requête pour le cache d'embedding de frame (§3bis.3) | 3 pistes hiérarchisées ; la variante vocab unifié supprime le cache si le canal `additional_information` ne convient pas |
 | Embedding de frame perdu en préemption | reconstruit au prefill depuis les codes (mm data), déterministe |
 | Divergence ratio entraînement/serving | ratio lu uniquement depuis le config exporté |
 | Échec de parité P2 | rester sur liquid-audio en S2S ; la voie hybride vLLM (backbone texte, validée P0) reste le plan B d'optimisation |
