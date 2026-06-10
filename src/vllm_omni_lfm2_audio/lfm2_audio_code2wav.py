@@ -54,7 +54,8 @@ class Lfm2AudioCode2Wav(nn.Module):
         detok = LFM2AudioDetokenizer(detok_config).eval()
         detok.load_state_dict(load_file(detok_dir / "model.safetensors"))
         self.detokenizer = detok
-        return set()
+        # contrat track_weights_loading : noms de paramètres du module
+        return {f"detokenizer.{name}" for name, _ in detok.named_parameters()}
 
     @torch.no_grad()
     def forward(self, codes: torch.Tensor, additional_information: dict[str, Any] | None = None, **kwargs: Any):

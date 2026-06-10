@@ -69,7 +69,9 @@ class Lfm2AudioOmniForConditionalGeneration(nn.Module):
         return self.model.compute_logits(hidden_states, sampling_metadata)
 
     def load_weights(self, weights, **kwargs):
-        return self.model.load_weights(weights, **kwargs)
+        loaded = self.model.load_weights(weights, **kwargs) or set()
+        # le sous-modèle est monté sous `model.` : préfixe pour le tracking vLLM
+        return {f"model.{name}" for name in loaded}
 
     def free_request(self, request_id: str) -> None:
         if hasattr(self.model, "free_request"):

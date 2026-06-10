@@ -22,10 +22,11 @@ class Lfm2AudioHead(nn.Module):
     """Sous-ensemble audio-out de LFM2AudioModel (poids partagés à l'identique)."""
 
     def __init__(self, *, lfm_hidden_size: int, depthformer_layers: int, depthformer_dim: int,
-                 depthformer_tie: bool, codebooks: int = 8, audio_vocab_size: int = 2049) -> None:
+                 depthformer_tie: bool, codebooks: int = 8, audio_vocab_size: int = 2049,
+                 audio_tie: bool = False) -> None:
         super().__init__()
-        from liquid_audio.model.mlp import SharedEmbedding  # noqa: PLC0415
-        from liquid_audio.model.transformer import MHA, RawLMBackbone, StandardBlock  # noqa: PLC0415
+        # SharedEmbedding vit dans model.transformer (vérifié sur liquid-audio 1.3.0)
+        from liquid_audio.model.transformer import MHA, RawLMBackbone, SharedEmbedding, StandardBlock  # noqa: PLC0415
 
         self.codebooks = codebooks
         self.audio_vocab_size = audio_vocab_size
@@ -37,7 +38,7 @@ class Lfm2AudioHead(nn.Module):
             vocab_size=audio_vocab_size * codebooks,
             embed_init_scale=1.0,
             norm_eps=0.00001,
-            tie_embedding=False,
+            tie_embedding=audio_tie,
         )
         scale = 1 / math.sqrt(2 * depthformer_layers)
         layers = [
@@ -99,7 +100,10 @@ class Lfm2AudioHead(nn.Module):
     def load_weights(self, weights: dict[str, torch.Tensor]) -> set[str]:
         """Charge le sous-ensemble audio depuis un state dict liquid-audio complet
         (clés ``audio_embedding.*``, ``depthformer.*``, ``depth_linear.*``,
-        ``depth_embeddings.*``)."""
+        ``depth_embeddings.*`` — identiques aux noms de modules ici).
+
+        Retourne les noms de PARAMÈTRES du module chargés (contrat
+        ``track_weights_loading`` de vLLM)."""
         own = {k: v for k, v in weights.items() if k.split(".")[0] in
                ("audio_embedding", "depthformer", "depth_linear", "depth_embeddings")}
         missing, unexpected = self.load_state_dict(own, strict=False)
@@ -109,3 +113,7 @@ class Lfm2AudioHead(nn.Module):
         if unexpected:
             raise RuntimeError(f"unexpected audio head weights: {unexpected[:5]}...")
         return set(own)
+
+    def loaded_param_names(self) -> set[str]:
+        """Noms de paramètres du module (pour le tracking du loader vLLM)."""
+        return {name for name, _ in self.named_parameters()}

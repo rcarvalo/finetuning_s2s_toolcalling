@@ -86,6 +86,7 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
             depthformer_dim=depth_cfg["dim"],
             depthformer_tie=depth_cfg["tie"],
             codebooks=getattr(config, "codebooks", 8),
+            audio_tie=getattr(config, "tie_audio_embeddings", False),
         )
 
         # sampling audio (prosodie) — défauts du démo liquid-audio
@@ -260,21 +261,27 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
 
     def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> set[str]:
         """Répartit le state dict liquid-audio (préfixes lfm./conformer./
-        audio_adapter./depthformer./depth_*/audio_embedding.)."""
+        audio_adapter./depthformer./depth_*/audio_embedding.).
+
+        Retourne les noms de PARAMÈTRES de CE module (contrat
+        ``track_weights_loading`` du loader vLLM : comparaison avec
+        ``named_parameters()`` du modèle, pas avec les clés du checkpoint).
+        """
         weights = dict(weights)
         loaded: set[str] = set()
 
         lfm_weights = [("model." + k[len("lfm.") :], v) for k, v in weights.items() if k.startswith("lfm.")]
-        self.language_model.load_weights(lfm_weights)
-        loaded.update(k for k in weights if k.startswith("lfm."))
+        lfm_loaded = self.language_model.load_weights(lfm_weights) or set()
+        loaded.update(f"language_model.{name}" for name in lfm_loaded)
 
         enc_state = {k[len("conformer.") :]: v for k, v in weights.items() if k.startswith("conformer.")}
         self.conformer.load_state_dict(enc_state, strict=True)
-        loaded.update(k for k in weights if k.startswith("conformer."))
+        loaded.update(f"conformer.{name}" for name, _ in self.conformer.named_parameters())
 
         adapter_state = {k[len("audio_adapter.") :]: v for k, v in weights.items() if k.startswith("audio_adapter.")}
         self.audio_adapter.load_state_dict(adapter_state, strict=True)
-        loaded.update(k for k in weights if k.startswith("audio_adapter."))
+        loaded.update(f"audio_adapter.{name}" for name, _ in self.audio_adapter.named_parameters())
 
-        loaded.update(self.audio_head.load_weights(weights))
+        self.audio_head.load_weights(weights)
+        loaded.update(f"audio_head.{name}" for name in self.audio_head.loaded_param_names())
         return loaded
