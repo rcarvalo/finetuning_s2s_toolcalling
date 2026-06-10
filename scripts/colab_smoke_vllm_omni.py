@@ -223,7 +223,7 @@ def check_checkpoint(checkpoint: Path) -> list[str]:
     return problems
 
 
-def check_engine(checkpoint: Path, max_tokens: int) -> list[str]:
+def check_engine(checkpoint: Path, max_tokens: int, dtype: str) -> list[str]:
     import torch
 
     if not torch.cuda.is_available():
@@ -231,7 +231,8 @@ def check_engine(checkpoint: Path, max_tokens: int) -> list[str]:
     try:
         from vllm_omni import Omni
 
-        omni = Omni(model=str(checkpoint))
+        kwargs: dict[str, Any] = {} if dtype == "auto" else {"dtype": dtype}
+        omni = Omni(model=str(checkpoint), **kwargs)
         _ok("engine", "Omni(...) initialisé — stages chargés")
         outputs = omni.generate(
             "Bonjour, qui es-tu ?",
@@ -251,6 +252,7 @@ def main() -> int:
     parser.add_argument("--checkpoint", type=Path, default=None, help="checkpoint converti (convert_checkpoint)")
     parser.add_argument("--engine", action="store_true", help="démarre l'engine Omni (GPU)")
     parser.add_argument("--max-tokens", type=int, default=32)
+    parser.add_argument("--dtype", default="auto", help="ex. float16 sur T4 (pas de bf16)")
     args = parser.parse_args()
 
     stages: list[tuple[str, list[str]]] = []
@@ -264,7 +266,7 @@ def main() -> int:
             if args.checkpoint is None:
                 stages.append(("engine", ["--engine requiert --checkpoint"]))
             else:
-                stages.append(("engine", check_engine(args.checkpoint, args.max_tokens)))
+                stages.append(("engine", check_engine(args.checkpoint, args.max_tokens, args.dtype)))
 
     failed = [name for name, problems in stages if problems]
     print()

@@ -27,8 +27,12 @@ def register() -> None:
     from vllm_omni.config.stage_config import register_pipeline
     from vllm_omni.model_executor.models.registry import OmniModelRegistry
 
+    from vllm_omni_lfm2_audio.configuration import register_config
     from vllm_omni_lfm2_audio.pipeline import LFM2_AUDIO_PIPELINE
 
+    # AutoConfig d'abord : vLLM core charge le config HF avant de résoudre
+    # l'architecture (un model_type inconnu tue l'orchestrateur au démarrage).
+    register_config()
     OmniModelRegistry.register_model(
         "Lfm2AudioOmniModel",
         "vllm_omni_lfm2_audio.lfm2_audio:Lfm2AudioOmniForConditionalGeneration",
