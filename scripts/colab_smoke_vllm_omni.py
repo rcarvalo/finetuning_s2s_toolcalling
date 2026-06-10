@@ -240,6 +240,9 @@ def check_engine(checkpoint: Path, max_tokens: int, dtype: str) -> list[str]:
             stage_init_timeout=1200,
             init_timeout=1800,
             enforce_eager=True,
+            # les 2 stages partagent le même GPU : 0.92 par défaut → le stage 1
+            # n'a plus de VRAM (vu sur T4 : 1.1 GiB libre au launch du stage 1)
+            gpu_memory_utilization=0.42,
             **kwargs,
         )
         _ok("engine", "Omni(...) initialisé — stages chargés")
