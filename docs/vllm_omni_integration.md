@@ -13,6 +13,18 @@
 > §3bis. Le stage 0 doit migrer vers le hook `sample()` /
 > `prefer_model_sampler` (idiome cosyvoice3/glm_tts). Itération en cours sur
 > Colab (`scripts/colab_smoke_vllm_omni.py`).
+>
+> ✅ **Jalon engine (10 juin 2026, Colab T4)** : `Omni(model=…)` démarre les
+> 2 stages et `generate()` produit du texte (stage 0) + une sortie typée
+> audio (stage 1) de bout en bout. 10 écarts runtime corrigés en itérant
+> (commits `a9d9336`→`0225145`) : AutoConfig.register, ModelRegistry vLLM
+> core, import SharedEmbedding (model.transformer), contrat
+> track_weights_loading (noms de paramètres), IsHybrid/HasInnerState sur la
+> classe (mamba_block_size), signature forward du runner, détokeniseur
+> float32 (torch.polar ∄ en Half) + suivi de device, tolérance dummy-run
+> (trim frames partielles, clamp vocab), enforce_eager (capture CUDA graph à
+> traiter plus tard à la mimo), partage VRAM entre stages. Manque encore :
+> le flux audio réel (sample() + replay + depthformer) — critère P2.
 
 ## 1. Pourquoi
 
