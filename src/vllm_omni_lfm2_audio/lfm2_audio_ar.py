@@ -27,6 +27,7 @@ n'existent pas dans le runtime — voir §3bis de docs/vllm_omni_integration.md.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Iterable
 
 import torch
@@ -89,9 +90,12 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
             audio_tie=getattr(config, "tie_audio_embeddings", False),
         )
 
-        # sampling audio (prosodie) — None/<=0 → greedy (parité)
-        self.audio_temperature: float | None = getattr(config, "audio_temperature", 1.0)
-        self.audio_top_k: int | None = getattr(config, "audio_top_k", 4)
+        # sampling audio (prosodie) — défaut GREEDY (None) pour la parité avec
+        # generate_interleaved (qui est greedy par défaut) ; un sampling trop
+        # chaud empêche l'émission de l'EOA → boucle/sur-génération. Surchargeable
+        # via le config (audio_temperature/audio_top_k) une fois la parité tenue.
+        self.audio_temperature: float | None = getattr(config, "audio_temperature", None)
+        self.audio_top_k: int | None = getattr(config, "audio_top_k", None)
 
         # --- état par step (fixé par preprocess_batch/preprocess) --- #
         self._step_req_ids: list[str] = []
@@ -104,6 +108,8 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         self._frame_emb_by_req: dict[str, torch.Tensor] = {}
         # frames générées non encore exportées vers le stage 1
         self._pending_codes_by_req: dict[str, list[torch.Tensor]] = {}
+        # historique COMPLET par requête, pour debug (dump si LFM2_DUMP_FRAMES)
+        self._all_frames_by_req: dict[str, list[torch.Tensor]] = {}
 
     # ------------------------------------------------------------------ #
     # Hooks runner : preprocess (identité de requête + embeddings)
@@ -290,6 +296,8 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
 
         self._frame_emb_by_req[request_id] = self.audio_head.embed_frame(frame)
         self._pending_codes_by_req.setdefault(request_id, []).append(frame.cpu())
+        if os.environ.get("LFM2_DUMP_FRAMES"):
+            self._all_frames_by_req.setdefault(request_id, []).append(frame.cpu())
         self._evict_stale_requests()
         return self.modality_cfg.eoa_placeholder_id if is_eoa else self.modality_cfg.frame_placeholder_id
 
@@ -334,6 +342,12 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
     def free_request(self, request_id: str) -> None:
         self._frame_emb_by_req.pop(request_id, None)
         self._pending_codes_by_req.pop(request_id, None)
+        frames = self._all_frames_by_req.pop(request_id, None)
+        dump = os.environ.get("LFM2_DUMP_FRAMES")
+        if dump and frames:
+            safe = request_id.replace("/", "_")
+            torch.save(torch.stack(frames), f"{dump}_{safe}.pt")
+            logger.info("dumped %d frames for %s", len(frames), request_id)
 
     # ------------------------------------------------------------------ #
 
