@@ -233,11 +233,19 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
             return None
 
         n_rows = int(logits.shape[0])
-        reqs = self._step_sampling_reqs
-        if len(reqs) != n_rows:
+        # mapping ligne→requête : selon le scheduler, les logits couvrent soit
+        # toutes les requêtes du batch, soit seulement celles qui échantillonnent
+        if len(self._step_req_ids) == n_rows:
+            reqs = self._step_req_ids
+        elif len(self._step_sampling_reqs) == n_rows:
+            reqs = self._step_sampling_reqs
+        else:
             # dummy run / profiling, ou divergence de plomberie : sampler standard
             if self._step_req_ids:
-                logger.warning("sample(): %d rows vs %d tracked sampling reqs — falling back", n_rows, len(reqs))
+                logger.warning(
+                    "sample(): %d rows vs %d batch reqs / %d sampling reqs — falling back",
+                    n_rows, len(self._step_req_ids), len(self._step_sampling_reqs),
+                )
             return None
 
         sampled: list[int] = []
