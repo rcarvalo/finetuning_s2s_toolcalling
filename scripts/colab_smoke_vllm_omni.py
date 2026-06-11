@@ -243,6 +243,8 @@ def check_engine(checkpoint: Path, max_tokens: int, dtype: str) -> list[str]:
             # les 2 stages partagent le même GPU : 0.92 par défaut → le stage 1
             # n'a plus de VRAM (vu sur T4 : 1.1 GiB libre au launch du stage 1)
             gpu_memory_utilization=0.42,
+            # historique tronqué pour le sampler custom en async (cf. probe)
+            async_scheduling=False,
             **kwargs,
         )
         _ok("engine", "Omni(...) initialisé — stages chargés")

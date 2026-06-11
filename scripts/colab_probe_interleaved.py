@@ -68,6 +68,10 @@ def main() -> int:
         enforce_eager=True,
         gpu_memory_utilization=0.42,
         dtype="float16",
+        # le scheduling async tronque l'historique remis au sampler custom
+        # (token in-flight) → le replay de modalité décide avec un step de
+        # retard aux frontières 6:12. Désactivé jusqu'au support propre (TTFA).
+        async_scheduling=False,
     )
     # un SamplingParams PAR stage (stage 1 non-AR : défauts)
     sp0 = SamplingParams(temperature=0.0, max_tokens=args.max_tokens, stop_token_ids=[IM_END_TOKEN_ID])

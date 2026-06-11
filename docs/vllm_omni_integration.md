@@ -107,15 +107,19 @@ wheel PyPI — pas spéculatifs :
    - `extract_multimodal_outputs()` (runner) consomme bien
      `OmniOutput.multimodal_outputs` — l'export des codes reste valable, avec
      `meta.req_id` supporté pour les payloads sparses.
-3. **Question ouverte (à résoudre sur Colab, runtime vivant)** : la clé
-   d'identité requête pour le cache `{req: frame_embedding}` entre `sample()`
-   (indices de ligne) et `embed_input_ids()` du step suivant (pas d'identité
-   non plus). Pistes, par ordre de préférence :
-   a. canal `additional_information` / `model_intermediate_buffer` du runner
-      (persisté par requête, passé à `forward` chez MiMo) ;
-   b. variante vocab unifié à la MiMo (l'id échantillonné = code codebook-0
-      offset → l'embedding se recalcule depuis l'id, plus de cache) ;
-   c. en dernier recours : appariement par fingerprint d'historique.
+3. **RÉSOLU (runtime vivant, 11 juin 2026)** : l'identité de requête vient du
+   hook ``has_preprocess`` — le runner appelle ``preprocess_batch(req_ids=…)``
+   1×/step puis ``preprocess(input_ids=span, input_embeds=…, request_id=…,
+   _omni_is_prefill=…, …)`` PAR requête avant le forward (et le retour
+   ``(ids, embeds, update_dict)`` overlaye les embeddings du span). Le cache
+   ``{request_id: frame_embedding}`` est servi là ; le mapping ligne→requête
+   de ``sample()`` se déduit de l'ordre des appels preprocess.
+4. **Async scheduling incompatible avec le replay de modalité (vérifié)** :
+   ``_build_model_sampler_output_token_ids`` TRONQUE l'historique quand le
+   token in-flight n'est pas encore copié → la décision 6:12 part en retard
+   d'un step à la frontière de bloc et le flux émis viole la grammaire
+   (garde-fou ``modality.advance`` fatal). ``async_scheduling=False`` requis
+   pour l'instant ; support propre à concevoir en phase TTFA.
 
 ## 4. Design LFM2.5-Audio (implémenté dans `src/vllm_omni_lfm2_audio/`)
 
