@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -87,49 +88,97 @@ class Lfm2AudioCode2Wav(nn.Module):
         if codes is None or codes.numel() == 0:
             return OmniOutput(text_hidden_states=None, multimodal_outputs={"model_outputs": None})
 
-        frames, left_context = self._to_frames(codes)
-        # retire les frames EOA (2048 hors vocabulaire du détokeniseur)
-        keep = frames[0] != END_OF_AUDIO_CODE
-        frames = frames[:, keep]
-        if frames.shape[1] == 0:
-            return OmniOutput(text_hidden_states=None, multimodal_outputs={"model_outputs": None})
-        # garde-fou dummy/profile run de vLLM : ids arbitraires → clamp dans le
-        # vocabulaire Mimi (sans effet sur de vrais codes, toujours < 2048)
-        frames = frames.clamp_(0, END_OF_AUDIO_CODE - 1)
+        # Découpe le batch par requête (comme mimo_audio_code2wav) : sous
+        # concurrence, le runner concatène les tokens de plusieurs requêtes ;
+        # un wav unique serait attribué à toutes les requêtes du batch.
+        seq_token_counts = kwargs.get("seq_token_counts")
+        if (
+            codes.dim() != 2
+            and isinstance(seq_token_counts, (list, tuple))
+            and len(seq_token_counts) > 1
+        ):
+            flat, parts, off = codes.reshape(-1), [], 0
+            for count in seq_token_counts:
+                parts.append(flat[off : off + int(count)])
+                off += int(count)
+            wavs_per_req = [self._decode_request(p) for p in parts]
+            return OmniOutput(text_hidden_states=None, multimodal_outputs={"model_outputs": wavs_per_req})
 
-        # le détokeniseur est construit dans load_weights (CPU) : suit le device
-        # des codes au premier appel
-        if next(self.detokenizer.parameters()).device != frames.device:
-            self.detokenizer = self.detokenizer.to(frames.device)
-        wav = self.detokenizer(frames.unsqueeze(0))  # (1, T')
-        if left_context > 0:
-            wav = wav[:, left_context * SAMPLES_PER_FRAME :]
-
+        wav = self._decode_request(codes)
         return OmniOutput(
             text_hidden_states=None,
-            multimodal_outputs={"model_outputs": wav.reshape(1, -1).float().cpu()},
+            multimodal_outputs={"model_outputs": wav if wav.numel() else None},
         )
 
+    def _decode_request(self, codes: torch.Tensor) -> torch.Tensor:
+        """Décode tous les segments (chunks) d'une requête en un wav (1, T) CPU."""
+        wavs = []
+        for frames, left_context in self._to_segments(codes):
+            # retire les frames EOA (2048 hors vocabulaire du détokeniseur)
+            keep = frames[0] != END_OF_AUDIO_CODE
+            frames = frames[:, keep]
+            if frames.shape[1] == 0:
+                continue
+            # garde-fou dummy/profile run de vLLM : ids arbitraires → clamp dans
+            # le vocabulaire Mimi (sans effet sur de vrais codes, toujours < 2048)
+            frames = frames.clamp_(0, END_OF_AUDIO_CODE - 1)
+
+            # le détokeniseur est construit dans load_weights (CPU) : suit le
+            # device des codes au premier appel
+            if next(self.detokenizer.parameters()).device != frames.device:
+                self.detokenizer = self.detokenizer.to(frames.device)
+            wav = self.detokenizer(frames.unsqueeze(0))  # (1, T')
+            if left_context > 0:
+                wav = wav[:, left_context * SAMPLES_PER_FRAME :]
+            if os.environ.get("LFM2_DEBUG_CHUNK"):
+                logger.warning(
+                    "[c2w] frames_in=%d left=%d frames_out=%d",
+                    frames.shape[1], left_context, wav.shape[1] // SAMPLES_PER_FRAME,
+                )
+            wavs.append(wav)
+
+        if not wavs:
+            return torch.zeros((1, 0), dtype=torch.float32)
+        return torch.cat(wavs, dim=1).reshape(1, -1).float().cpu()
+
     @staticmethod
-    def _to_frames(codes: torch.Tensor) -> tuple[torch.Tensor, int]:
-        """Normalise vers (codebooks, T) et extrait left_context_size.
+    def _to_segments(codes: torch.Tensor) -> list[tuple[torch.Tensor, int]]:
+        """Normalise vers une liste de segments ((codebooks, T), left_context).
 
-        Le premier élément du tenseur plat peut être un token-en-tête encodant
-        left_context_size (valeur >= LEFT_CONTEXT_HEADER_MAGIC, hors vocabulaire
-        Mimi). Ce header est inséré par _build_payload / ar2code2wav pour
-        contourner l'absence de forwarding de meta.left_context_size par
-        vLLM-Omni vers additional_information du forward().
+        Chaque payload de _build_payload est préfixé de deux tokens-en-tête
+        hors vocabulaire Mimi (>= LEFT_CONTEXT_HEADER_MAGIC) : left_context_size
+        puis nombre de frames du body. Sous charge, vLLM-Omni concatène
+        plusieurs payloads d'une même requête avant que le stage 1 ne les
+        consomme — la longueur encodée permet de re-découper chunk par chunk
+        (chacun avec son propre left_context à tronquer).
 
-        Tolérant aux longueurs non multiples de 8 (dummy/profile run de vLLM)."""
+        Compat : header à 1 token (ancien format, left seul) et flux sans
+        header (left=0). Tolérant aux longueurs non multiples de 8
+        (dummy/profile run de vLLM)."""
         codes = codes.to(torch.long)
         if codes.dim() == 2 and codes.shape[0] == CODEBOOKS:
-            return codes, 0
+            return [(codes, 0)]
         flat = codes.reshape(-1)
-        left_context = 0
-        if flat.numel() > 0 and int(flat[0].item()) >= LEFT_CONTEXT_HEADER_MAGIC:
-            left_context = int(flat[0].item()) - LEFT_CONTEXT_HEADER_MAGIC
-            flat = flat[1:]
-        usable = (flat.numel() // CODEBOOKS) * CODEBOOKS
-        if usable != flat.numel():
-            logger.debug("trimming %d trailing codes (not a full frame)", flat.numel() - usable)
-        return flat[:usable].view(-1, CODEBOOKS).T.contiguous(), left_context
+        segments: list[tuple[torch.Tensor, int]] = []
+        i, n = 0, flat.numel()
+        while i < n:
+            left_context = 0
+            if int(flat[i].item()) >= LEFT_CONTEXT_HEADER_MAGIC:
+                left_context = int(flat[i].item()) - LEFT_CONTEXT_HEADER_MAGIC
+                i += 1
+                if i < n and int(flat[i].item()) >= LEFT_CONTEXT_HEADER_MAGIC:
+                    n_frames = int(flat[i].item()) - LEFT_CONTEXT_HEADER_MAGIC
+                    i += 1
+                    end = min(i + n_frames * CODEBOOKS, n)
+                else:  # ancien format : tout le reste appartient à ce segment
+                    end = n
+            else:
+                end = n
+            body = flat[i:end]
+            i = end
+            usable = (body.numel() // CODEBOOKS) * CODEBOOKS
+            if usable != body.numel():
+                logger.debug("trimming %d trailing codes (not a full frame)", body.numel() - usable)
+            if usable:
+                segments.append((body[:usable].view(-1, CODEBOOKS).T.contiguous(), left_context))
+        return segments

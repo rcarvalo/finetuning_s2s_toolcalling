@@ -94,9 +94,55 @@ class Lfm2AudioHead(nn.Module):
         return torch.cat(out_tokens)
 
     @torch.no_grad()
+    def sample_frames(
+        self,
+        hidden: torch.Tensor,  # (batch, hidden_size)
+        *,
+        temperature: float | None = None,
+        top_k: int | None = None,
+    ) -> torch.Tensor:
+        """Rollout AR du depthformer batché sur les lignes → (batch, codebooks).
+
+        Même calcul que ``sample_frame`` mais en un seul rollout pour toutes
+        les requêtes du step : 8 passes depthformer au total au lieu de
+        8 × batch (le coût d'échantillonnage audio ne croît plus avec la
+        concurrence)."""
+        greedy = temperature is None or temperature <= 0 or top_k == 1
+        hidden = hidden.to(self.depth_linear.weight.dtype)
+        bsz = hidden.shape[0]
+        depthformer_in = self.depth_linear(hidden).view(bsz, self.codebooks, self.depthformer_dim)
+        depthformer_token = torch.zeros_like(depthformer_in[:, 0])  # (B, D)
+        cache = None
+
+        out_tokens: list[torch.Tensor] = []
+        for i in range(self.codebooks):
+            cur_input = (depthformer_in[:, i] + depthformer_token).unsqueeze(1)  # (B, 1, D)
+            depthformer_out, cache = self.depthformer.forward_cached(cur_input, cache)
+            logits = self.depth_embeddings[i].get_logits(depthformer_out[:, -1])  # (B, V)
+
+            if greedy:
+                next_token = logits.argmax(dim=-1)  # (B,)
+            else:
+                logits = logits / float(temperature)
+                if top_k is not None:
+                    min_score = torch.topk(logits, top_k, dim=-1).values[..., -1:]
+                    logits = torch.masked_fill(logits, logits < min_score, -float("inf"))
+                next_token = torch.multinomial(logits.softmax(-1), 1).squeeze(-1)
+
+            out_tokens.append(next_token)
+            depthformer_token = self.depth_embeddings[i](next_token)  # (B, D)
+
+        return torch.stack(out_tokens, dim=1)  # (B, codebooks)
+
+    @torch.no_grad()
     def embed_frame(self, frame: torch.Tensor) -> torch.Tensor:
         """(codebooks,) codes → (hidden_size,) embedding d'entrée du step suivant."""
         return self.audio_embedding(frame.to(self.codebook_offsets.device) + self.codebook_offsets).sum(0)
+
+    @torch.no_grad()
+    def embed_frames(self, frames: torch.Tensor) -> torch.Tensor:
+        """(batch, codebooks) codes → (batch, hidden_size) embeddings."""
+        return self.audio_embedding(frames.to(self.codebook_offsets.device) + self.codebook_offsets).sum(1)
 
     def load_weights(self, weights: dict[str, torch.Tensor]) -> set[str]:
         """Charge le sous-ensemble audio depuis un state dict liquid-audio complet

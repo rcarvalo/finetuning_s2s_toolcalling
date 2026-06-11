@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Any, Iterable
 
 import torch
@@ -110,6 +111,9 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         self._pending_codes_by_req: dict[str, list[torch.Tensor]] = {}
         # historique COMPLET par requête, pour debug (dump si LFM2_DUMP_FRAMES)
         self._all_frames_by_req: dict[str, list[torch.Tensor]] = {}
+        # compteurs de profiling du sampler (LFM2_DEBUG_TIMING)
+        self._tim_n = self._tim_rows = 0
+        self._tim_replay = self._tim_audio = self._tim_text = 0.0
 
     # ------------------------------------------------------------------ #
     # Hooks runner : preprocess (identité de requête + embeddings)
@@ -254,7 +258,11 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
                 )
             return None
 
-        sampled: list[int] = []
+        timing = os.environ.get("LFM2_DEBUG_TIMING")
+        t0 = time.perf_counter() if timing else 0.0
+
+        audio_rows: list[int] = []
+        text_rows: list[int] = []
         for row in range(n_rows):
             history = (
                 sampling_metadata.output_token_ids[row]
@@ -262,10 +270,33 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
                 else []
             )
             state = replay(self._turn_suffix(history), self.modality_cfg)
-            if state.current is Modality.AUDIO:
-                sampled.append(self._sample_audio_row(row, reqs[row]))
-            else:
-                sampled.append(self._sample_text_row(logits[row], row, sampling_metadata))
+            (audio_rows if state.current is Modality.AUDIO else text_rows).append(row)
+        t1 = time.perf_counter() if timing else 0.0
+
+        sampled: list[int] = [0] * n_rows
+        if audio_rows:
+            sampled_audio = self._sample_audio_rows(audio_rows, [reqs[r] for r in audio_rows])
+            for row, tok in zip(audio_rows, sampled_audio):
+                sampled[row] = tok
+        t2 = time.perf_counter() if timing else 0.0
+        for row in text_rows:
+            sampled[row] = self._sample_text_row(logits[row], row, sampling_metadata)
+
+        if timing:
+            t3 = time.perf_counter()
+            self._tim_n += 1
+            self._tim_rows += n_rows
+            self._tim_replay += t1 - t0
+            self._tim_audio += t2 - t1
+            self._tim_text += t3 - t2
+            if self._tim_n % 100 == 0:
+                logger.warning(
+                    "[timing] steps=%d rows/step=%.1f replay=%.2fms audio=%.2fms text=%.2fms (moy/step)",
+                    self._tim_n, self._tim_rows / self._tim_n,
+                    1e3 * self._tim_replay / self._tim_n,
+                    1e3 * self._tim_audio / self._tim_n,
+                    1e3 * self._tim_text / self._tim_n,
+                )
 
         out = torch.tensor(sampled, device=logits.device, dtype=torch.int32)
         return SamplerOutput(sampled_token_ids=out.unsqueeze(-1), logprobs_tensors=None)
@@ -281,25 +312,34 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         except ValueError:
             return history
 
-    def _sample_audio_row(self, row: int, request_id: str) -> int:
-        """Rollout depthformer → frame complète ; émet le placeholder."""
+    def _sample_audio_rows(self, rows: list[int], request_ids: list[str]) -> list[int]:
+        """Rollout depthformer batché sur les lignes audio du step ; émet les placeholders."""
         assert self._pending_hidden is not None, "compute_logits must run before sample"
-        hidden = self._pending_hidden[row]
-        frame = self.audio_head.sample_frame(
-            hidden,
+        frames = self.audio_head.sample_frames(
+            self._pending_hidden[rows],
             temperature=self.audio_temperature,
             top_k=self.audio_top_k,
-        )
-        is_eoa = bool(frame[0].item() == 2048)
-        if is_eoa:
-            frame = torch.full_like(frame, 2048)
+        )  # (B, codebooks)
+        is_eoa = frames[:, 0] == 2048
+        if bool(is_eoa.any()):
+            frames[is_eoa] = 2048  # frame EOA pleine (rejouable par replay)
+        embs = self.audio_head.embed_frames(frames)
+        frames_cpu = frames.cpu()
 
-        self._frame_emb_by_req[request_id] = self.audio_head.embed_frame(frame)
-        self._pending_codes_by_req.setdefault(request_id, []).append(frame.cpu())
-        if os.environ.get("LFM2_DUMP_FRAMES"):
-            self._all_frames_by_req.setdefault(request_id, []).append(frame.cpu())
+        dump = bool(os.environ.get("LFM2_DUMP_FRAMES"))
+        sampled: list[int] = []
+        for j, request_id in enumerate(request_ids):
+            self._frame_emb_by_req[request_id] = embs[j]
+            self._pending_codes_by_req.setdefault(request_id, []).append(frames_cpu[j])
+            if dump:
+                self._all_frames_by_req.setdefault(request_id, []).append(frames_cpu[j])
+            sampled.append(
+                self.modality_cfg.eoa_placeholder_id
+                if bool(is_eoa[j])
+                else self.modality_cfg.frame_placeholder_id
+            )
         self._evict_stale_requests()
-        return self.modality_cfg.eoa_placeholder_id if is_eoa else self.modality_cfg.frame_placeholder_id
+        return sampled
 
     def _sample_text_row(self, row_logits: torch.Tensor, row: int, md) -> int:
         """Sampling texte standard pour une ligne (greedy / temp / top-k / top-p)."""
@@ -338,6 +378,14 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         for cache in (self._frame_emb_by_req, self._pending_codes_by_req):
             while len(cache) > _MAX_TRACKED_REQUESTS:
                 cache.pop(next(iter(cache)))
+
+    def on_requests_finished(self, req_ids: Iterable[str]) -> None:
+        """Hook appelé par GPUARModelRunner (``scheduler_output.finished_req_ids``)
+        — c'est le point de nettoyage d'état par requête du runtime, pas
+        ``free_request`` (jamais invoqué côté worker). Délègue au cleanup +
+        dump existant."""
+        for req_id in list(req_ids):
+            self.free_request(req_id)
 
     def free_request(self, request_id: str) -> None:
         self._frame_emb_by_req.pop(request_id, None)

@@ -7,12 +7,13 @@ dans le connector ; un payload part quand ``codec_chunk_frames`` est atteint
 décodé mais non émis (frontières propres).
 
 Aplatissement : col-major par frame — frame f, codebook c → index f*8+c —
-inversé par ``Lfm2AudioCode2Wav._to_frames``.
+inversé par ``Lfm2AudioCode2Wav._to_segments``.
 """
 
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 import torch
@@ -65,9 +66,15 @@ def _build_payload(frames: list[list[int]], *, new_frames: int, left_context: in
     start = max(0, end - new_frames - left_context)
     actual_left = end - new_frames - start
     body = torch.tensor(frames[start:end], dtype=torch.long).reshape(-1)
-    # Encode actual_left en tête du tenseur : vLLM-Omni ne forwarde pas
-    # meta.left_context_size vers additional_information du forward() du stage 1.
-    header = torch.tensor([LEFT_CONTEXT_HEADER_MAGIC + actual_left], dtype=torch.long)
+    # Encode actual_left + longueur du body en tête du tenseur : vLLM-Omni ne
+    # forwarde pas meta.left_context_size vers additional_information du
+    # forward() du stage 1, et sous charge plusieurs payloads d'une même
+    # requête sont concaténés avant d'être consommés par le stage 1 — la
+    # longueur permet à _to_segments de re-découper chunk par chunk.
+    header = torch.tensor(
+        [LEFT_CONTEXT_HEADER_MAGIC + actual_left, LEFT_CONTEXT_HEADER_MAGIC + (end - start)],
+        dtype=torch.long,
+    )
     flat = torch.cat([header, body])
     return OmniPayloadStruct(
         codes=CodesStruct(audio=flat),
@@ -106,12 +113,25 @@ def ar2code2wav_async_chunk(transfer_manager: Any, pooling_output: Any, request:
     already = sent.get(request_id, 0)
     unsent = len(pending) - already
 
+    if os.environ.get("LFM2_DEBUG_CHUNK"):
+        shape = getattr(audio, "shape", None) if isinstance(pooling_output, dict) else "?"
+        logger.warning(
+            "[chunk] req=%s audio_shape=%s pending=%d already=%d unsent=%d finished=%s",
+            request_id[:12], shape, len(pending), already, unsent, is_finished,
+        )
+
     if unsent >= chunk_size or (is_finished and unsent > 0):
         new_frames = chunk_size if unsent >= chunk_size else unsent
         sent[request_id] = already + new_frames
         payload = _build_payload(
             pending[: already + new_frames], new_frames=new_frames, left_context=left_context, finished=is_finished
         )
+        if os.environ.get("LFM2_DEBUG_CHUNK"):
+            logger.warning(
+                "[chunk-send] req=%s new=%d left_in_payload=%d total_sent=%d finished=%s",
+                request_id[:12], new_frames,
+                int(payload.meta.left_context_size), already + new_frames, is_finished,
+            )
         if is_finished:
             buffers.pop(request_id, None)
             sent.pop(request_id, None)
