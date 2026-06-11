@@ -18,7 +18,7 @@ from typing import Any
 import torch
 from torch import nn
 
-from vllm_omni_lfm2_audio.constants import CODEBOOKS, END_OF_AUDIO_CODE, SAMPLES_PER_FRAME
+from vllm_omni_lfm2_audio.constants import CODEBOOKS, END_OF_AUDIO_CODE, LEFT_CONTEXT_HEADER_MAGIC, SAMPLES_PER_FRAME
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ class Lfm2AudioCode2Wav(nn.Module):
         if codes is None or codes.numel() == 0:
             return OmniOutput(text_hidden_states=None, multimodal_outputs={"model_outputs": None})
 
-        frames = self._to_frames(codes)
+        frames, left_context = self._to_frames(codes)
         # retire les frames EOA (2048 hors vocabulaire du détokeniseur)
         keep = frames[0] != END_OF_AUDIO_CODE
         frames = frames[:, keep]
@@ -96,9 +96,6 @@ class Lfm2AudioCode2Wav(nn.Module):
         # garde-fou dummy/profile run de vLLM : ids arbitraires → clamp dans le
         # vocabulaire Mimi (sans effet sur de vrais codes, toujours < 2048)
         frames = frames.clamp_(0, END_OF_AUDIO_CODE - 1)
-
-        info = additional_information or {}
-        left_context = int(info.get("left_context_size", 0))
 
         # le détokeniseur est construit dans load_weights (CPU) : suit le device
         # des codes au premier appel
@@ -114,18 +111,25 @@ class Lfm2AudioCode2Wav(nn.Module):
         )
 
     @staticmethod
-    def _to_frames(codes: torch.Tensor) -> torch.Tensor:
-        """Normalise vers (codebooks, T).
+    def _to_frames(codes: torch.Tensor) -> tuple[torch.Tensor, int]:
+        """Normalise vers (codebooks, T) et extrait left_context_size.
 
-        Tolérant aux longueurs non multiples de 8 : le dummy/profile run de
-        vLLM envoie des tailles arbitraires — on tronque au multiple inférieur
-        (les vrais payloads, construits par stage_input_processors, sont
-        toujours des frames complètes)."""
+        Le premier élément du tenseur plat peut être un token-en-tête encodant
+        left_context_size (valeur >= LEFT_CONTEXT_HEADER_MAGIC, hors vocabulaire
+        Mimi). Ce header est inséré par _build_payload / ar2code2wav pour
+        contourner l'absence de forwarding de meta.left_context_size par
+        vLLM-Omni vers additional_information du forward().
+
+        Tolérant aux longueurs non multiples de 8 (dummy/profile run de vLLM)."""
         codes = codes.to(torch.long)
         if codes.dim() == 2 and codes.shape[0] == CODEBOOKS:
-            return codes
+            return codes, 0
         flat = codes.reshape(-1)
+        left_context = 0
+        if flat.numel() > 0 and int(flat[0].item()) >= LEFT_CONTEXT_HEADER_MAGIC:
+            left_context = int(flat[0].item()) - LEFT_CONTEXT_HEADER_MAGIC
+            flat = flat[1:]
         usable = (flat.numel() // CODEBOOKS) * CODEBOOKS
         if usable != flat.numel():
             logger.debug("trimming %d trailing codes (not a full frame)", flat.numel() - usable)
-        return flat[:usable].view(-1, CODEBOOKS).T.contiguous()
+        return flat[:usable].view(-1, CODEBOOKS).T.contiguous(), left_context

@@ -40,6 +40,12 @@ AUDIO_EOA_PLACEHOLDER_ID = 129
 DEFAULT_INTERLEAVED_N_TEXT = 6
 DEFAULT_INTERLEAVED_N_AUDIO = 12
 
+# Encodage inline de left_context_size dans le tenseur de codes envoyé au stage 1.
+# vLLM-Omni ne transmet pas meta.left_context_size de OmniPayloadStruct vers
+# additional_information du forward() → on l'encode en tête du tenseur flat.
+# Valeur > 2048 (END_OF_AUDIO_CODE) pour être hors vocabulaire Mimi.
+LEFT_CONTEXT_HEADER_MAGIC = 1_000_000
+
 
 def verify_placeholder_ids(tokenizer, frame_id: int, eoa_id: int) -> list[str]:
     """Garde-fous au démarrage du serveur : les placeholders doivent être des

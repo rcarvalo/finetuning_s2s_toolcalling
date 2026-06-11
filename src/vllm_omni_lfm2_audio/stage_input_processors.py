@@ -17,7 +17,7 @@ from typing import Any
 
 import torch
 
-from vllm_omni_lfm2_audio.constants import CODEBOOKS, END_OF_AUDIO_CODE, MIMI_FRAME_RATE
+from vllm_omni_lfm2_audio.constants import CODEBOOKS, END_OF_AUDIO_CODE, LEFT_CONTEXT_HEADER_MAGIC, MIMI_FRAME_RATE
 
 logger = logging.getLogger(__name__)
 
@@ -64,14 +64,18 @@ def _build_payload(frames: list[list[int]], *, new_frames: int, left_context: in
     end = len(frames)
     start = max(0, end - new_frames - left_context)
     actual_left = end - new_frames - start
-    flat = torch.tensor(frames[start:end], dtype=torch.long).reshape(-1)
+    body = torch.tensor(frames[start:end], dtype=torch.long).reshape(-1)
+    # Encode actual_left en tête du tenseur : vLLM-Omni ne forwarde pas
+    # meta.left_context_size vers additional_information du forward() du stage 1.
+    header = torch.tensor([LEFT_CONTEXT_HEADER_MAGIC + actual_left], dtype=torch.long)
+    flat = torch.cat([header, body])
     return OmniPayloadStruct(
         codes=CodesStruct(audio=flat),
         meta=MetaStruct(
             left_context_size=actual_left,
             codec_chunk_frames=new_frames,
             codec_left_context_frames=left_context,
-            code_flat_numel=int(flat.numel()),
+            code_flat_numel=int(body.numel()),
             finished=torch.tensor(finished, dtype=torch.bool),
         ),
     )
@@ -142,7 +146,9 @@ def ar2code2wav(source_outputs: list[Any], prompt=None, requires_multimodal_data
                 if frame is not None:
                     frames.append(frame.tolist())
 
-        flat = [c for frame in frames for c in frame]
+        body = [c for frame in frames for c in frame]
+        # Préfixe header avec left_context_size=0 (chemin sync : tout l'audio d'un coup).
+        flat = [LEFT_CONTEXT_HEADER_MAGIC] + body
         results.append(
             OmniTokensPrompt(
                 prompt_token_ids=flat,
