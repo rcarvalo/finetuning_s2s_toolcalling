@@ -69,8 +69,10 @@ def main() -> int:
         gpu_memory_utilization=0.42,
         dtype="float16",
     )
-    sp = SamplingParams(temperature=0.0, max_tokens=args.max_tokens, stop_token_ids=[IM_END_TOKEN_ID])
-    outputs = omni.generate({"prompt_token_ids": prompt_ids}, [sp])
+    # un SamplingParams PAR stage (stage 1 non-AR : défauts)
+    sp0 = SamplingParams(temperature=0.0, max_tokens=args.max_tokens, stop_token_ids=[IM_END_TOKEN_ID])
+    sp1 = SamplingParams(max_tokens=1, detokenize=False)
+    outputs = omni.generate({"prompt_token_ids": prompt_ids}, [sp0, sp1])
 
     ok = True
     for out in outputs:
