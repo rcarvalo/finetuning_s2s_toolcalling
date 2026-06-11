@@ -51,6 +51,13 @@ def main() -> int:
     prompt_ids = build_prompt_ids(args.checkpoint, args.prompt)
     print(f"prompt: {len(prompt_ids)} tokens")
 
+    # la détection de pipeline d'Omni() précède le chargement des plugins par
+    # l'engine : pour un pipeline out-of-tree il faut charger explicitement
+    # (sinon model_type lfm2_audio tombe dans le registre diffusion)
+    from vllm_omni.plugins import load_omni_general_plugins
+
+    load_omni_general_plugins()
+
     from vllm import SamplingParams
     from vllm_omni import Omni
 
