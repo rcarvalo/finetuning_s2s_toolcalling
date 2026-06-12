@@ -11,6 +11,15 @@ import logging
 import os
 
 from torch import nn
+from vllm.model_executor.models.interfaces import SupportsMultiModal
+from vllm.multimodal import MULTIMODAL_REGISTRY
+
+from vllm_omni_lfm2_audio.multimodal import (
+    Lfm2AudioDummyInputsBuilder,
+    Lfm2AudioMultiModalProcessor,
+    Lfm2AudioProcessingInfo,
+    audio_in_token_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +27,26 @@ AR_STAGE = "ar_interleaved"
 CODE2WAV_STAGE = "code2wav"
 
 
-class Lfm2AudioOmniForConditionalGeneration(nn.Module):
+@MULTIMODAL_REGISTRY.register_processor(
+    Lfm2AudioMultiModalProcessor,
+    info=Lfm2AudioProcessingInfo,
+    dummy_inputs=Lfm2AudioDummyInputsBuilder,
+)
+class Lfm2AudioOmniForConditionalGeneration(nn.Module, SupportsMultiModal):
     # Protocoles IsHybrid / HasInnerState de vLLM (attributs de CLASSE, lus par
     # le registre sans instanciation) : le backbone Lfm2 a des couches ShortConv
     # (état type mamba) → sans ces marqueurs, mamba_block_size n'est jamais
     # dérivé et get_kv_cache_spec assert (vu sur Colab T4).
     is_hybrid = True
     has_inner_state = True
+
+    @classmethod
+    def get_placeholder_str(cls, modality: str, i: int) -> str | None:
+        """Placeholder textuel par item (1 token audio_in par audio dans le
+        prompt — remplacé par ceil(T_mel/8) positions par le processor)."""
+        if modality.startswith("audio"):
+            return "<|audio_in|>"
+        raise ValueError("Only audio modality is supported")
 
     @classmethod
     def get_mamba_state_dtype_from_config(cls, vllm_config):
@@ -91,6 +113,8 @@ class Lfm2AudioOmniForConditionalGeneration(nn.Module):
         return self.model.embed_input_ids(input_ids, multimodal_embeddings, is_multimodal=is_multimodal, **kwargs)
 
     def embed_multimodal(self, **kwargs):
+        if self.model_stage == CODE2WAV_STAGE:
+            return ()  # l'audio-in ne concerne que le stage AR
         return self.model.embed_multimodal(**kwargs)
 
     def forward(self, *args, **kwargs):

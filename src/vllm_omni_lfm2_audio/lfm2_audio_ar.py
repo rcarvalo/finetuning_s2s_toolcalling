@@ -176,7 +176,13 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         if samples_this_step:
             self._step_sampling_reqs.append(request_id)
 
-        embeds = self.language_model.model.embed_tokens(input_ids)
+        # Audio-in : en prefill le runner fournit input_embeds DÉJÀ mergés par
+        # le chemin mm standard (embed_input_ids aux positions placeholder) —
+        # ré-embedder écraserait les embeddings du conformer.
+        if _omni_is_prefill and input_embeds is not None and input_embeds.shape[0] == span_len:
+            embeds = input_embeds
+        else:
+            embeds = self.language_model.model.embed_tokens(input_ids)
 
         if span_len == 1:  # décode : un placeholder porte l'embedding de SA frame
             token_id = int(input_ids[0].item())
@@ -193,14 +199,40 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
     # Multimodal : audio-in (mel) — pattern standard vLLM
     # ------------------------------------------------------------------ #
 
-    def embed_multimodal(self, **kwargs: Any) -> dict[str, torch.Tensor]:
+    def embed_multimodal(self, **kwargs: Any) -> tuple[torch.Tensor, ...]:
+        """mm_kwargs du processor → embeddings par item audio.
+
+        Contrat ``MultiModalEmbeddings`` (vLLM 0.22) : une séquence de tenseurs
+        ``(n_i, hidden)``, un par audio, dans l'ordre des items. Chemin de
+        référence : pad → conformer (B, 128, T) → masque par longueurs →
+        adapter — identique à ``LFM2AudioModel`` (liquid)."""
         mel = kwargs.get("input_audio_features")
         mel_lens = kwargs.get("input_audio_lens")
         if mel is None:
-            return {}
-        audio_enc, enc_lens = self.conformer(mel, mel_lens)
-        len_mask = torch.arange(audio_enc.shape[-1], device=audio_enc.device).unsqueeze(0) < enc_lens.unsqueeze(1)
-        return {"audio": self.audio_adapter(audio_enc.mT[len_mask])}
+            return ()
+
+        device = self.depthformer_device()
+        dtype = self.audio_adapter_dtype()
+        if isinstance(mel, torch.Tensor) and mel.dim() == 2:
+            mel = [mel]
+        items = [m.to(device=device, dtype=dtype) for m in mel]
+        if mel_lens is None:
+            lens = torch.tensor([m.shape[-1] for m in items], device=device, dtype=torch.long)
+        else:
+            lens = torch.as_tensor(mel_lens, device=device, dtype=torch.long).reshape(-1)
+
+        # pad (B, 128, T_max) — pad_sequence travaille sur (T, 128)
+        padded = torch.nn.utils.rnn.pad_sequence([m.mT for m in items], batch_first=True).mT
+        audio_enc, enc_lens = self.conformer(padded, lens)  # (B, D, T_out)
+        len_mask = torch.arange(audio_enc.shape[-1], device=device).unsqueeze(0) < enc_lens.unsqueeze(1)
+        flat = self.audio_adapter(audio_enc.mT[len_mask])  # (sum n_i, hidden)
+        return tuple(flat.split([int(n) for n in enc_lens.tolist()]))
+
+    def depthformer_device(self) -> torch.device:
+        return self.audio_head.depth_linear.weight.device
+
+    def audio_adapter_dtype(self) -> torch.dtype:
+        return next(self.audio_adapter.parameters()).dtype
 
     def embed_input_ids(
         self,
@@ -211,7 +243,11 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
     ) -> torch.Tensor:
         embeds = self.language_model.model.embed_tokens(input_ids)
         if multimodal_embeddings is not None and is_multimodal is not None:
-            embeds[is_multimodal] = multimodal_embeddings
+            if isinstance(multimodal_embeddings, (list, tuple)):
+                if not multimodal_embeddings:
+                    return embeds
+                multimodal_embeddings = torch.cat(list(multimodal_embeddings))
+            embeds[is_multimodal] = multimodal_embeddings.to(dtype=embeds.dtype, device=embeds.device)
         return embeds
 
     # ------------------------------------------------------------------ #

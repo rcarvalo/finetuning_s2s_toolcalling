@@ -157,17 +157,30 @@ class VllmBackend:
 
     def reply(self, text: str | None = None, audio_path: Path | None = None,
               max_new_tokens: int = 400) -> tuple[str, np.ndarray | None, dict]:
+        multi_modal_data = None
         if audio_path is not None:
-            raise NotImplementedError(
-                "entrée audio non câblée pour le backend vllm — utilisez --text, "
-                "ou --backend liquid pour le speech-to-speech complet"
-            )
+            # Audio-in NATIF : 1 token audio_in dans le tour user, remplacé par
+            # ceil(T_mel/8) placeholders par le processor mm ; les embeddings
+            # conformer sont mergés au prefill (cf. docs/audio_in_spec.md).
+            import soundfile as sf
+
+            wave, sr = sf.read(str(audio_path), dtype="float32")
+            if wave.ndim > 1:
+                wave = wave.mean(axis=1)
+            multi_modal_data = {"audio": [(wave, sr)]}
+            from vllm_omni_lfm2_audio.constants import AUDIO_FRAME_PLACEHOLDER_ID
+
+            audio_tok = self.tok.decode([AUDIO_FRAME_PLACEHOLDER_ID])
+            text = f"{audio_tok}{text or ''}"
         if not text:
-            raise ValueError("--text requis avec le backend vllm")
+            raise ValueError("--text et/ou --audio-in requis avec le backend vllm")
         self.history.append(("user", text))
 
         t0 = time.time()
-        outs = self.omni.generate({"prompt_token_ids": self._render()}, self.sp_pair, use_tqdm=False)
+        prompt: dict = {"prompt_token_ids": self._render()}
+        if multi_modal_data is not None:
+            prompt["multi_modal_data"] = multi_modal_data
+        outs = self.omni.generate(prompt, self.sp_pair, use_tqdm=False)
         total = time.time() - t0
 
         txt, wav = "", None

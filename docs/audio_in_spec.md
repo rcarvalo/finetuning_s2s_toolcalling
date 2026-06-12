@@ -21,10 +21,12 @@
    - `Lfm2AudioProcessingInfo` : limites (1+ audio / prompt), nombre de
      placeholders = `ceil(T_mel/8)` ;
    - `Lfm2AudioDummyInputsBuilder` (profiling) ;
-   - `Lfm2AudioMultiModalProcessor` : audio brut → mel (préprocesseur mel
-     PORTÉ en numpy/torch CPU depuis la config `preprocessor` du checkpoint —
-     ne pas dépendre de liquid_audio au runtime serveur) ; insère
-     `ceil(T_mel/8)` tokens placeholder dans le prompt.
+   - `Lfm2AudioMultiModalProcessor` : audio brut → mel via le
+     `AudioToMelSpectrogramPreprocessor` de liquid_audio (RÉVISION : liquid
+     est déjà une dépendance runtime du plugin — ConformerEncoder importé par
+     le stage AR — donc on réutilise le préprocesseur de référence, parité
+     garantie, zéro port) ; insère `ceil(T_mel/8)` tokens placeholder.
+     IMPLÉMENTÉ — reste la validation GPU (smoke + parité E2E).
    - Placeholder : RÉUTILISER `audio_frame_token_id` (128) côté prompt est
      ambigu avec l'audio-out → préférer un id dédié lu du config
      (`audio_in_token_id`, à défaut 128 documenté). Vérifier avec
