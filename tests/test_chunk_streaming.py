@@ -152,3 +152,30 @@ def test_eoa_frame_not_buffered():
     mgr, req = _Manager(codec_chunk_frames=10, initial_codec_chunk_frames=1), _Request()
     assert _step(mgr, req, [END_OF_AUDIO_CODE] * 8) is None  # EOA ≠ frame audio
     assert _step(mgr, req, FRAME) is not None
+
+
+def _step_flat(mgr, req, tensor, finished=False):
+    """Payload forme APLATIE ({"codes.audio": t}, chemin omni prefix cache)."""
+    from vllm_omni_lfm2_audio.stage_input_processors import ar2code2wav_async_chunk
+
+    return ar2code2wav_async_chunk(mgr, {"codes.audio": tensor}, req, is_finished=finished)
+
+
+def test_flattened_payload_key():
+    mgr, req = _Manager(codec_chunk_frames=10, initial_codec_chunk_frames=2), _Request()
+    assert _step_flat(mgr, req, torch.tensor(FRAME)) is None
+    payload = _step_flat(mgr, req, torch.tensor(FRAME))
+    assert payload is not None
+    assert payload.meta.codec_chunk_frames == 2
+
+
+def test_multiframe_tensor_unrolled():
+    from vllm_omni_lfm2_audio.constants import END_OF_AUDIO_CODE
+
+    mgr, req = _Manager(codec_chunk_frames=10, initial_codec_chunk_frames=3), _Request()
+    # (3, 8) : 2 frames audio + 1 EOA → 2 frames bufferisées, pas de send (< 3)
+    stacked = torch.tensor([FRAME, FRAME, [END_OF_AUDIO_CODE] * 8])
+    assert _step_flat(mgr, req, stacked) is None
+    payload = _step_flat(mgr, req, torch.tensor(FRAME))  # 3e frame → seuil initial
+    assert payload is not None
+    assert payload.meta.codec_chunk_frames == 3

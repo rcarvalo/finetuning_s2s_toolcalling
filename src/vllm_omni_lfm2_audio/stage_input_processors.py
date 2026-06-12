@@ -47,6 +47,25 @@ def _frame_from_payload(codes: Any) -> torch.Tensor | None:
     return t
 
 
+def _frames_from_payload(codes: Any) -> list[torch.Tensor]:
+    """Toutes les frames d'un payload : (8,), (n, 8) ou plat multiple de 8.
+
+    Le runner peut livrer plusieurs frames d'un coup (export stacké par
+    ``_drain_pending_codes``, chemin omni prefix cache) — on les déroule en
+    filtrant les frames EOA."""
+    if codes is None:
+        return []
+    t = codes if isinstance(codes, torch.Tensor) else torch.tensor(codes, dtype=torch.long)
+    t = t.reshape(-1).to(torch.long)
+    if t.numel() == 0 or t.numel() % CODEBOOKS != 0:
+        return []
+    frames = []
+    for row in t.view(-1, CODEBOOKS):
+        if int(row[0].item()) != END_OF_AUDIO_CODE:
+            frames.append(row)
+    return frames
+
+
 def _connector_cfg(transfer_manager: Any) -> tuple[int, int, int]:
     connector = getattr(transfer_manager, "connector", None)
     raw = getattr(connector, "config", {}) or {}
@@ -108,14 +127,19 @@ def ar2code2wav_async_chunk(transfer_manager: Any, pooling_output: Any, request:
     buffers = _buffers(transfer_manager)
     pending = buffers.setdefault(request_id, [])
 
+    audio = None
     if isinstance(pooling_output, dict):
-        codes = pooling_output.get("codes", {})
+        codes = pooling_output.get("codes")
         audio = codes.get("audio") if isinstance(codes, dict) else None
-        # stage 0 exporte {req_id: frame} ; tolère aussi une frame brute
+        if audio is None:
+            # Forme APLATIE : le runner passe les payloads par
+            # flatten_payload ({"codes": {"audio": t}} → {"codes.audio": t}),
+            # et le chemin omni prefix cache ne livre QUE cette forme.
+            audio = pooling_output.get("codes.audio")
+        # export sparse {req_id: frames} ; tolère aussi des frames brutes
         if isinstance(audio, dict):
             audio = audio.get(request_id)
-        frame = _frame_from_payload(audio)
-        if frame is not None:
+        for frame in _frames_from_payload(audio):
             pending.append(frame.tolist())
 
     sent = getattr(transfer_manager, "_lfm2_sent_frames", None)
@@ -125,10 +149,11 @@ def ar2code2wav_async_chunk(transfer_manager: Any, pooling_output: Any, request:
     unsent = len(pending) - already
 
     if os.environ.get("LFM2_DEBUG_CHUNK"):
-        shape = getattr(audio, "shape", None) if isinstance(pooling_output, dict) else "?"
+        keys = sorted(pooling_output.keys()) if isinstance(pooling_output, dict) else type(pooling_output).__name__
         logger.warning(
-            "[chunk] req=%s audio_shape=%s pending=%d already=%d unsent=%d finished=%s",
-            request_id[:12], shape, len(pending), already, unsent, is_finished,
+            "[chunk] req=%s payload_keys=%s audio_shape=%s pending=%d already=%d unsent=%d finished=%s",
+            request_id[:12], keys, getattr(audio, "shape", None),
+            len(pending), already, unsent, is_finished,
         )
 
     # Premier chunk de la requête : seuil court (TTFA), puis régime normal.
