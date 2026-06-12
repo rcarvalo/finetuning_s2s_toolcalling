@@ -112,6 +112,12 @@ class Lfm2AudioOmniForConditionalGeneration(nn.Module, SupportsMultiModal):
             return torch.zeros_like(input_ids).reshape(-1, 1).repeat(1, hidden)
         return self.model.embed_input_ids(input_ids, multimodal_embeddings, is_multimodal=is_multimodal, **kwargs)
 
+    def get_language_model(self):
+        """Requis par SupportsMultiModal (probe MoE du loader vLLM)."""
+        if self.model_stage == AR_STAGE:
+            return self.model.language_model
+        return self.model
+
     def embed_multimodal(self, **kwargs):
         if self.model_stage == CODE2WAV_STAGE:
             return ()  # l'audio-in ne concerne que le stage AR

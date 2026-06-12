@@ -212,6 +212,14 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
             return ()
 
         device = self.depthformer_device()
+        # liquid crée certains paramètres du conformer via torch.FloatTensor
+        # (constructeur legacy, ignore le device context de vLLM) et le
+        # load_state_dict copie les données sans déplacer le paramètre →
+        # migration paresseuse au premier appel.
+        if not getattr(self, "_audio_encoder_on_device", False):
+            self.conformer.to(device=device)
+            self.audio_adapter.to(device=device)
+            self._audio_encoder_on_device = True
         dtype = self.audio_adapter_dtype()
         if isinstance(mel, torch.Tensor) and mel.dim() == 2:
             mel = [mel]
