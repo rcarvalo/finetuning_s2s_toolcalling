@@ -65,6 +65,15 @@ def _load_engine(checkpoint: Path, deploy_config: Path | None):
                       dtype="bfloat16", async_scheduling=False)
     t0 = time.time()
     omni = Omni(**kwargs)
+    # Streaming in-process (même recette que s2s_webrtc_demo, validée) :
+    # - Omni.generate force output_kind=FINAL_ONLY sur tous les stages LLM
+    #   (_set_final_only_for_llm_stages) → AUCUN chunk audio ne sort en cours
+    #   de génération ; on neutralise pour respecter le DELTA du stage 1 ;
+    # - le générateur py_generator fait close() de l'engine à l'épuisement
+    #   (finally de _run_generation_with_generator) → no-op, vraie fermeture
+    #   via _real_close en fin de bench.
+    omni._set_final_only_for_llm_stages = lambda spl: list(spl)
+    omni._real_close, omni.close = omni.close, lambda: None
     print(f"[engine] prêt en {time.time()-t0:.0f}s — async_chunk={omni.async_chunk}", flush=True)
     return omni
 
@@ -85,22 +94,22 @@ def _wave(x) -> np.ndarray | None:
 
 def bench_once(omni, prompt_ids: list[int], max_tokens: int) -> dict:
     from vllm import SamplingParams
+    from vllm.sampling_params import RequestOutputKind
     from vllm_omni_lfm2_audio.constants import IM_END_TOKEN_ID
 
+    # stage 0 FINAL_ONLY (texte complet à la fin), stage 1 DELTA (chunks audio
+    # au fil de l'eau — clé "audio" du multimodal_output)
     sp = [
-        SamplingParams(temperature=0.0, max_tokens=max_tokens, stop_token_ids=[IM_END_TOKEN_ID]),
-        SamplingParams(max_tokens=1, detokenize=False),
+        SamplingParams(temperature=0.0, max_tokens=max_tokens, stop_token_ids=[IM_END_TOKEN_ID],
+                       output_kind=RequestOutputKind.FINAL_ONLY),
+        SamplingParams(max_tokens=1, detokenize=False, output_kind=RequestOutputKind.DELTA),
     ]
     t0 = time.time()
-    ttft = ttfa = None
+    ttfa = None
     n_chunks, samples = 0, 0
-    for out in omni.generate({"prompt_token_ids": prompt_ids}, sp, py_generator=True):
+    for out in omni.generate({"prompt_token_ids": prompt_ids}, sp, py_generator=True, use_tqdm=False):
         now = time.time()
-        if out.final_output_type == "text" and ttft is None:
-            ro = out.request_output
-            if ro and ro.outputs and (ro.outputs[0].token_ids or ro.outputs[0].text):
-                ttft = now - t0
-        elif out.final_output_type == "audio":
+        if out.final_output_type == "audio":
             ro = out.request_output
             w = _wave(getattr(out, "multimodal_output", None) or getattr(ro, "multimodal_output", None))
             if w is not None and w.size:
@@ -110,7 +119,7 @@ def bench_once(omni, prompt_ids: list[int], max_tokens: int) -> dict:
                 samples += int(w.size)
     total = time.time() - t0
     audio_s = samples / 24_000
-    return {"ttft": ttft, "ttfa": ttfa, "total": total, "audio_s": audio_s,
+    return {"ttfa": ttfa, "total": total, "audio_s": audio_s,
             "chunks": n_chunks, "rtf": total / audio_s if audio_s else float("inf")}
 
 
@@ -148,13 +157,14 @@ def main() -> int:
         prompt = PROMPTS[i % len(PROMPTS)]
         r = bench_once(omni, render(prompt), args.max_tokens)
         rows.append(r)
-        print(f"[run {i+1}] ttft={_fmt_ms(r['ttft'])} ttfa={_fmt_ms(r['ttfa'])} "
+        print(f"[run {i+1}] ttfa={_fmt_ms(r['ttfa'])} "
               f"total={r['total']:5.1f}s audio={r['audio_s']:5.1f}s "
               f"chunks={r['chunks']:3d} rtf={r['rtf']:.2f}  « {prompt[:30]} »")
 
     ttfas = [r["ttfa"] for r in rows if r["ttfa"] is not None]
     if not ttfas:
         print("\n❌ aucun chunk audio reçu — vérifier async_chunk / initial_codec_chunk_frames")
+        omni._real_close()
         return 1
     p50 = statistics.median(ttfas)
     p95 = max(ttfas) if len(ttfas) < 20 else statistics.quantiles(ttfas, n=20)[18]
@@ -166,6 +176,7 @@ def main() -> int:
     if statistics.median(rtfs) > 1.0:
         print("⚠️  RTF > 1 : la lecture rattrapera la génération (trous après le 1er chunk) — "
               "voir docs/optimization_audit.md §1.3-1.4 (CUDA graphs depthformer/détokeniseur)")
+    omni._real_close()
     return 0
 
 
