@@ -80,6 +80,13 @@ class LiquidBackend:
         src = Path(checkpoint) if Path(checkpoint).exists() else checkpoint
         self.model = LFM2AudioModel.from_pretrained(src, device="cuda").eval()
         self.proc = LFM2AudioProcessor.from_pretrained(src, device="cuda")
+        # détokeniseur Mimi en mode streaming + warmup, comme la démo
+        # officielle (liquid_audio.demo.model) : décode frame par frame
+        # pendant la génération au lieu d'un decode en bloc à la fin.
+        self.mimi = self.proc.mimi.eval()
+        with self.mimi.streaming(1), torch.no_grad():
+            for _ in range(5):
+                self.mimi.decode(torch.randint(2048, (1, 8, 1), device="cuda"))
         self._ChatState = ChatState
         self.chat = None
         self.reset()
@@ -100,37 +107,34 @@ class LiquidBackend:
         self.chat.end_turn()
         self.chat.new_turn("assistant")
 
-        text_ids, frames = [], []
-        t0, first_frame = time.time(), None
-        with torch.no_grad():
-            # audio_temperature/audio_top_k : valeurs de l'exemple officiel
-            # LFM2.5-Audio (parité avec le sampling audio du plugin vLLM)
+        text_ids, chunks = [], []
+        t0, first_frame, ttfa = time.time(), None, None
+        # Décodage Mimi STREAMING frame par frame (80 ms audible dès la 1re
+        # frame), recette de la démo officielle (liquid_audio.demo.chat) —
+        # TTFA directement comparable au pipeline vLLM-Omni (chunks DELTA).
+        # audio_temperature/audio_top_k : valeurs de l'exemple officiel.
+        with torch.no_grad(), self.mimi.streaming(1):
             for t in self.model.generate_interleaved(
                 **self.chat, max_new_tokens=max_new_tokens,
                 audio_temperature=1.0, audio_top_k=4,
             ):
                 if t.numel() == 1:
                     text_ids.append(t.detach().cpu())
-                else:
-                    first_frame = first_frame or (time.time() - t0)
-                    frames.append(t.detach().cpu())
+                    continue
+                first_frame = first_frame or (time.time() - t0)
+                if bool((t == END_OF_AUDIO_CODE).any()):
+                    continue
+                w = self.mimi.decode(t[None, :, None])[0]
+                ttfa = ttfa or (time.time() - t0)
+                chunks.append(w.float().cpu().numpy().reshape(-1))
         txt = self.proc.text.decode([int(x) for x in text_ids]).replace("<|text_end|>", "").strip()
         # réinjecte le texte de la réponse dans l'historique pour le tour
         # suivant (les frames audio sont omises, comme côté vLLM)
         self.chat.add_text(txt)
         self.chat.end_turn()
-        keep = [f.flatten() for f in frames if int(f.flatten()[0]) != END_OF_AUDIO_CODE]
-        wav = None
-        if keep:
-            with torch.no_grad():
-                w = self.proc.decode(torch.stack(keep, dim=1).cuda().unsqueeze(0))
-            wav = w.float().cpu().numpy().reshape(-1)
+        wav = np.concatenate(chunks) if chunks else None
         total = time.time() - t0
-        # TTFA = premier audio AUDIBLE (convention bench_ttfa) : liquid décode
-        # Mimi en bloc à la fin → rien n'est jouable avant `total`. Le premier
-        # token audio (non audible) est reporté à part (first_frame_s).
-        return txt, wav, {"ttfa_s": total if wav is not None else None,
-                          "first_frame_s": first_frame, "total_s": total}
+        return txt, wav, {"ttfa_s": ttfa, "first_frame_s": first_frame, "total_s": total}
 
 
 # ───────────────────────────── backend vLLM-Omni ─────────────────────────────
