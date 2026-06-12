@@ -213,9 +213,14 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
             multimodal_outputs=self._drain_pending_codes(),
         )
 
-    def _drain_pending_codes(self) -> dict[str, Any] | None:
+    def _drain_pending_codes(self) -> dict[str, Any]:
         """Frames produites par sample() au(x) step(s) précédent(s), exportées
-        en payload sparse par req_id (consommé par stage_input_processors)."""
+        en payload sparse par req_id (consommé par stage_input_processors).
+
+        Toujours un dict ({} si rien) : avec enable_prefix_caching, le chemin
+        omni_prefix_cache du runner fait ``multimodal_outputs.keys()`` sans
+        garde None (prefix_cache.get_merged_multimodal_states, vllm-omni
+        0.22.0) — None crash le step de prefill."""
         req_ids, codes = [], []
         for req_id in self._step_req_ids:
             frames = self._pending_codes_by_req.pop(req_id, None)
@@ -223,7 +228,7 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
                 req_ids.append(req_id)
                 codes.append(torch.stack(frames))  # (n_frames, codebooks)
         if not req_ids:
-            return None
+            return {}
         return {"codes": {"audio": codes}, "meta": {"req_id": req_ids, "sparse_audio": True}}
 
     def compute_logits(self, hidden_states: torch.Tensor, sampling_metadata=None) -> torch.Tensor:

@@ -38,6 +38,11 @@ stages:
     # une issue (cf. docs/optimization_audit.md §1.1).
     enforce_eager: false
     trust_remote_code: true
+    # vLLM 0.22 active l'async scheduling PAR DÉFAUT : notre sampler rejoue la
+    # modalité depuis output_token_ids, tronqué d'un token in-flight en async
+    # (écart 5) → désactivé tant que la compensation n'est pas implémentée
+    # (action 6 de docs/optimization_audit.md).
+    async_scheduling: false
     enable_prefix_caching: true      # LE gain : tours + tool rounds sans re-prefill
     max_num_batched_tokens: 8192
     max_model_len: 32768
