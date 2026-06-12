@@ -74,14 +74,23 @@ Le constat « vLLM pas plus rapide » a trois causes de natures différentes :
 
 ## 2. Limitations upstream réelles (à tracer, pas de notre fait)
 
-0. **omni_prefix_cache × export audio sparse** (MESURÉ 12/06, Colab,
-   vllm-omni 0.22.0) : quand `enable_prefix_caching: true` sur le stage 0,
-   `prefix_cache.get_merged_multimodal_states` reconstruit le payload par
-   requête en tranchant par tokens schedulés — notre export sparse
-   `codes.audio` (liste par requête) est PERDU (`payload_keys=['hidden']`
-   à chaque step, zéro chunk vers le stage 1) et un hit de cache corrompt
-   la génération (réponse tronquée à 2 frames). APC désactivé dans le YAML
-   jusqu'à correction upstream ; issue à ouvrir chez vllm-omni.
+0. **FULL CUDA graphs × export Python dans forward()** (MESURÉ 12/06,
+   Colab, vllm-omni 0.22.0 — diagnostic confirmé par A/B : symptôme
+   identique APC on/off) : en mode FULL(_AND_PIECEWISE), la capture
+   englobe le forward EXTERNE du modèle ; pendant un replay le Python ne
+   s'exécute plus et `OmniOutput.multimodal_outputs` reste l'objet de la
+   capture (dict vide) → `payload_keys=['hidden']` à chaque step, zéro
+   code vers le stage 1, alors que le texte marche (tenseur dans le
+   buffer statique du graph). Fix : `cudagraph_mode: "PIECEWISE"` par
+   stage (précédent in-tree : glm_image.yaml) — le forward externe tourne
+   en Python à chaque step, seuls les segments compilés du backbone
+   rejouent en graph. Garde-fou à l'init du modèle (refuse FULL). Règle
+   générale : tout stage qui exporte un payload Python par step est
+   incompatible FULL — c'est pourquoi mimo (export codes) est eager
+   in-tree et fish (export hidden pur tenseur) peut être en FULL.
+   Diagnostic APC antérieur erroné : l'APC reste off par prudence
+   (expérimental sur hybride, suspicion non confirmée sur le run dupliqué
+   tronqué) — à re-tester isolément une fois l'audio vert.
    (V1, unified allocator) avec **granularité de bloc ~528 tokens** — hit = 0
    sous cette taille (issue vllm#40696) ; bug ouvert sur les requêtes
    multimodales incrémentales multi-tours (vllm#43587 — exactement notre

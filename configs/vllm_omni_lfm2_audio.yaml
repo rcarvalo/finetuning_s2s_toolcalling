@@ -31,12 +31,17 @@ stages:
   - stage_id: 0                      # AR interleaved (backbone + depthformer)
     max_num_seqs: 4                  # continuous batching multi-sessions
     gpu_memory_utilization: 0.6
-    # CUDA graphs actifs : vLLM capture le décode des modèles hybrides
-    # (ShortConv) en full graph par défaut (PR vllm#22594) — nos hooks
-    # preprocess/sample vivent au niveau du runner, HORS du graph.
-    # Si la capture échoue ou produit du bruit : repasser à true et ouvrir
-    # une issue (cf. docs/optimization_audit.md §1.1).
+    # CUDA graphs en PIECEWISE uniquement (diagnostic 12/06, Colab) :
+    # en FULL, la capture englobe NOTRE forward externe — pendant un replay
+    # le Python ne s'exécute plus, OmniOutput.multimodal_outputs reste le
+    # dict VIDE de la capture → payload_keys=['hidden'] à chaque step, zéro
+    # code vers le stage 1 (le texte marche : tenseur dans le buffer du
+    # graph). En PIECEWISE seuls les segments compilés du backbone Lfm2
+    # rejouent en graph, le forward externe (export des codes) tourne en
+    # Python à chaque step. Précédent in-tree : glm_image.yaml.
     enforce_eager: false
+    compilation_config:
+      cudagraph_mode: "PIECEWISE"
     trust_remote_code: true
     # vLLM 0.22 active l'async scheduling PAR DÉFAUT : notre sampler rejoue la
     # modalité depuis output_token_ids, tronqué d'un token in-flight en async

@@ -67,6 +67,23 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
                 "`async_scheduling: false` au stage 0 du deploy YAML."
             )
 
+        # Même logique pour les FULL CUDA graphs : la capture englobe notre
+        # forward externe → pendant un replay le Python ne tourne plus et
+        # multimodal_outputs reste le dict vide de la capture (aucun code
+        # audio n'atteint le stage 1). PIECEWISE garde le forward externe en
+        # Python à chaque step (seuls les segments compilés du backbone
+        # rejouent en graph).
+        cg_mode = getattr(getattr(vllm_config, "compilation_config", None), "cudagraph_mode", None)
+        if cg_mode is not None and "FULL" in getattr(cg_mode, "name", str(cg_mode)).upper():
+            raise RuntimeError(
+                f"Lfm2AudioOmniModel : cudagraph_mode={cg_mode} capture le forward "
+                "externe — l'export audio (multimodal_outputs) est gelé au contenu "
+                "de la capture (vide). Mettre dans le stage 0 du deploy YAML :\n"
+                "    compilation_config:\n"
+                '      cudagraph_mode: "PIECEWISE"\n'
+                "ou enforce_eager: true."
+            )
+
         # --- machine à états (ratio lu DANS le checkpoint, source unique) --- #
         self.modality_cfg = ModalityConfig(
             n_text=getattr(config, "interleaved_n_text", 6),
