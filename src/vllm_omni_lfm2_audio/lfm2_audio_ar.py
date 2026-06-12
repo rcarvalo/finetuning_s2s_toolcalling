@@ -54,6 +54,19 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         config = vllm_config.model_config.hf_config
         self.config = config
 
+        # Garde-fou : vLLM 0.22 active l'async scheduling PAR DÉFAUT, et notre
+        # sample() rejoue la modalité depuis output_token_ids — en async, le
+        # token in-flight remplace le placeholder forcé → replay désynchronisé
+        # (« text token encountered during an AUDIO step » en pleine
+        # génération). On échoue AU DÉMARRAGE avec la consigne, pas au 8e step.
+        if getattr(getattr(vllm_config, "scheduler_config", None), "async_scheduling", False):
+            raise RuntimeError(
+                "Lfm2AudioOmniModel : async_scheduling doit être désactivé sur le "
+                "stage 0 (replay de modalité tronqué d'un token in-flight — écart 5, "
+                "action 6 de docs/optimization_audit.md). Ajouter "
+                "`async_scheduling: false` au stage 0 du deploy YAML."
+            )
+
         # --- machine à états (ratio lu DANS le checkpoint, source unique) --- #
         self.modality_cfg = ModalityConfig(
             n_text=getattr(config, "interleaved_n_text", 6),
