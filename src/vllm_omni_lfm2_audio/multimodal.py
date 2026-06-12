@@ -92,6 +92,11 @@ class Lfm2AudioProcessingInfo(BaseProcessingInfo):
     def get_supported_mm_limits(self) -> Mapping[str, int | None]:
         return {"audio": None}
 
+    def build_data_parser(self) -> MultiModalDataParser:
+        # vLLM 0.22 construit le parser côté Info (cf. MimoAudioProcessingInfo) :
+        # resample systématique vers 16 kHz (contrat ChatState.add_audio).
+        return MultiModalDataParser(target_sr=AUDIO_IN_SAMPLE_RATE)
+
     def get_hf_processor(self, **kwargs):  # pragma: no cover - garde-fou
         raise RuntimeError(
             "LFM2.5-Audio n'a pas de processor HF — le mel est calculé par "
