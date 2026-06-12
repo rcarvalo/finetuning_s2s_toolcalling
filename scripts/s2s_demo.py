@@ -206,8 +206,11 @@ class VllmBackend:
             s += f"<|im_start|>{role}\n{txt}<|im_end|>\n"
         return self.tok(s + "<|im_start|>assistant\n", add_special_tokens=False).input_ids
 
-    def reply(self, text: str | None = None, audio_path: Path | None = None,
-              max_new_tokens: int = 400) -> tuple[str, np.ndarray | None, dict]:
+    def reply_stream(self, text: str | None = None, audio_path: Path | None = None,
+                     max_new_tokens: int = 400):
+        """Générateur : yield les chunks audio (np.float32, 24 kHz) au fil de la
+        génération. Texte final dans ``self.last_text``, métriques dans
+        ``self.last_metrics`` après épuisement."""
         multi_modal_data = None
         if audio_path is not None:
             # Audio-in NATIF : 1 token audio_in dans le tour user, remplacé par
@@ -237,7 +240,7 @@ class VllmBackend:
             AUDIO_FRAME_PLACEHOLDER_ID,
         )
 
-        txt, chunks, frames, ttfa = "", [], 0, None
+        txt, frames, ttfa = "", 0, None
         for o in self.omni.generate(prompt, self.sp_pair, py_generator=True, use_tqdm=False):
             ro = o.request_output
             if o.final_output_type == "text" and ro and ro.outputs:
@@ -250,11 +253,17 @@ class VllmBackend:
                 w = _wave(getattr(o, "multimodal_output", None) or getattr(ro, "multimodal_output", None))
                 if w is not None and w.size:
                     ttfa = ttfa or (time.time() - t0)
-                    chunks.append(w)
-        total = time.time() - t0
-        wav = np.concatenate(chunks) if chunks else None
+                    yield w
         self.history.append(("assistant", txt))
-        return txt, wav, {"ttfa_s": ttfa, "total_s": total, "frames": frames}
+        self.last_text = txt
+        self.last_metrics = {"ttfa_s": ttfa, "total_s": time.time() - t0, "frames": frames}
+
+    def reply(self, text: str | None = None, audio_path: Path | None = None,
+              max_new_tokens: int = 400) -> tuple[str, np.ndarray | None, dict]:
+        chunks = list(self.reply_stream(text=text, audio_path=audio_path,
+                                        max_new_tokens=max_new_tokens))
+        wav = np.concatenate(chunks) if chunks else None
+        return self.last_text, wav, self.last_metrics
 
 
 # ──────────────────────────────────── main ───────────────────────────────────
