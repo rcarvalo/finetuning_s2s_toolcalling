@@ -2,9 +2,11 @@
 
 Modelés sur ``stage_input_processors/mimo_audio.py``, adaptés à nos frames :
 1 step = 1 frame de 8 codes (MiMo : patches 8×4). Accumulation par requête
-dans le connector ; un payload part quand ``codec_chunk_frames`` est atteint
-(ou à la fin), préfixé de ``codec_left_context_frames`` de contexte gauche
-décodé mais non émis (frontières propres).
+dans le connector ; le PREMIER payload d'une requête part dès
+``initial_codec_chunk_frames`` (TTFA court), les suivants quand
+``codec_chunk_frames`` est atteint (ou à la fin), préfixés de
+``codec_left_context_frames`` de contexte gauche décodé mais non émis
+(frontières propres).
 
 Aplatissement : col-major par frame — frame f, codebook c → index f*8+c —
 inversé par ``Lfm2AudioCode2Wav._to_segments``.
@@ -26,6 +28,10 @@ logger = logging.getLogger(__name__)
 DEFAULT_CODEC_CHUNK_FRAMES = 10
 DEFAULT_CODEC_LEFT_CONTEXT_FRAMES = 13
 MIN_CODEC_CHUNK_FRAMES = 3
+# Premier chunk émis dès N frames (TTFA), puis régime de codec_chunk_frames.
+# Même principe que initial_codec_chunk_frames de qwen3_tts/fish in-tree :
+# 2 frames = 160 ms d'audio, audible pendant que le chunk suivant s'accumule.
+DEFAULT_INITIAL_CODEC_CHUNK_FRAMES = 2
 
 
 def _frame_from_payload(codes: Any) -> torch.Tensor | None:
@@ -41,7 +47,7 @@ def _frame_from_payload(codes: Any) -> torch.Tensor | None:
     return t
 
 
-def _connector_cfg(transfer_manager: Any) -> tuple[int, int]:
+def _connector_cfg(transfer_manager: Any) -> tuple[int, int, int]:
     connector = getattr(transfer_manager, "connector", None)
     raw = getattr(connector, "config", {}) or {}
     cfg = raw.get("extra", raw) if isinstance(raw, dict) else {}
@@ -50,7 +56,12 @@ def _connector_cfg(transfer_manager: Any) -> tuple[int, int]:
         logger.warning("codec_chunk_frames=%d < %d, fallback %d", chunk, MIN_CODEC_CHUNK_FRAMES, DEFAULT_CODEC_CHUNK_FRAMES)
         chunk = DEFAULT_CODEC_CHUNK_FRAMES
     left = int(cfg.get("codec_left_context_frames", DEFAULT_CODEC_LEFT_CONTEXT_FRAMES))
-    return chunk, left
+    # Le chunk INITIAL peut être < MIN_CODEC_CHUNK_FRAMES (1 frame autorisée) :
+    # il borne le TTFA, les frontières restent propres grâce au left_context
+    # des chunks suivants.
+    initial = int(cfg.get("initial_codec_chunk_frames", DEFAULT_INITIAL_CODEC_CHUNK_FRAMES))
+    initial = max(1, min(initial, chunk))
+    return chunk, left, initial
 
 
 def _buffers(transfer_manager: Any) -> dict[str, list[list[int]]]:
@@ -93,7 +104,7 @@ def ar2code2wav_async_chunk(transfer_manager: Any, pooling_output: Any, request:
     request_id = getattr(request, "external_req_id", None)
     if request_id is None:
         return None
-    chunk_size, left_context = _connector_cfg(transfer_manager)
+    chunk_size, left_context, initial_chunk = _connector_cfg(transfer_manager)
     buffers = _buffers(transfer_manager)
     pending = buffers.setdefault(request_id, [])
 
@@ -120,8 +131,13 @@ def ar2code2wav_async_chunk(transfer_manager: Any, pooling_output: Any, request:
             request_id[:12], shape, len(pending), already, unsent, is_finished,
         )
 
-    if unsent >= chunk_size or (is_finished and unsent > 0):
-        new_frames = chunk_size if unsent >= chunk_size else unsent
+    # Premier chunk de la requête : seuil court (TTFA), puis régime normal.
+    # On draine tout l'arriéré (new_frames = unsent) : identique au régime
+    # permanent (1 frame/step → unsent == seuil), et rattrape le retard si le
+    # stage 1 a pris du retard sous charge.
+    threshold = initial_chunk if already == 0 else chunk_size
+    if unsent >= threshold or (is_finished and unsent > 0):
+        new_frames = unsent
         sent[request_id] = already + new_frames
         payload = _build_payload(
             pending[: already + new_frames], new_frames=new_frames, left_context=left_context, finished=is_finished

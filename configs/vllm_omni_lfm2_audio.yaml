@@ -22,12 +22,21 @@ connectors:
       # plus d'appels au détokeniseur.
       codec_chunk_frames: 10
       codec_left_context_frames: 13
+      # Premier chunk émis dès 2 frames (160 ms d'audio) : borne le TTFA à
+      # ~prefill + ~8 steps + détokenisation, pendant que le chunk suivant
+      # s'accumule. Même levier que qwen3_tts (1) / fish (4) in-tree.
+      initial_codec_chunk_frames: 2
 
 stages:
   - stage_id: 0                      # AR interleaved (backbone + depthformer)
     max_num_seqs: 4                  # continuous batching multi-sessions
     gpu_memory_utilization: 0.6
-    enforce_eager: true
+    # CUDA graphs actifs : vLLM capture le décode des modèles hybrides
+    # (ShortConv) en full graph par défaut (PR vllm#22594) — nos hooks
+    # preprocess/sample vivent au niveau du runner, HORS du graph.
+    # Si la capture échoue ou produit du bruit : repasser à true et ouvrir
+    # une issue (cf. docs/optimization_audit.md §1.1).
+    enforce_eager: false
     trust_remote_code: true
     enable_prefix_caching: true      # LE gain : tours + tool rounds sans re-prefill
     max_num_batched_tokens: 8192

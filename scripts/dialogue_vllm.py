@@ -39,16 +39,21 @@ def _load_engine(checkpoint: Path, deploy_config: Path | None, gpu_util: float, 
 
     kwargs: dict = dict(
         model=str(checkpoint),
-        enforce_eager=True,
-        gpu_memory_utilization=gpu_util,
-        dtype=dtype,
-        async_scheduling=False,  # écart 5 : async tronque l'historique du sampler
         async_chunk=True,
         stage_init_timeout=1200,
         init_timeout=1800,
     )
     if deploy_config:
+        # eager/gpu_util/dtype par stage viennent du YAML (stage 0 en CUDA
+        # graphs, stage 1 eager) — ne pas les écraser globalement ici.
         kwargs["deploy_config"] = str(deploy_config)
+    else:
+        kwargs.update(
+            enforce_eager=True,
+            gpu_memory_utilization=gpu_util,
+            dtype=dtype,
+            async_scheduling=False,  # écart 5 : async tronque l'historique du sampler
+        )
 
     t0 = time.time()
     omni = Omni(**kwargs)

@@ -92,10 +92,16 @@ Le constat « vLLM pas plus rapide » a trois causes de natures différentes :
 
 ## 3. Plan d'action priorisé
 
+**Objectif produit : TTFA 200-500 ms (parité ElevenLabs).** Budget visé :
+prefill (~30-80 ms) + ~8 steps avant la 1re frame audio (interleave 6:12)
++ 2 frames + détokenisation du chunk initial. En eager ≈ 400-500 ms ; avec
+CUDA graphs stage 0 ≈ 250-350 ms. Vérification : `scripts/bench_ttfa.py`
+(TTFT/TTFA/RTF, p50/p95, verdict vs objectif).
+
 | # | Action | Effort | Impact latence |
 |---|---|---|---|
-| 1 | `initial_codec_chunk_frames` (1er chunk 3-4 frames, left_ctx 0) | S | TTFA −450-550 ms |
-| 2 | Lever `enforce_eager` stage 0 (CUDA graphs décode hybride) | S (test) | décode ×1,5-3 |
+| 1 | ✅ `initial_codec_chunk_frames: 2` (implémenté dans `ar2code2wav_async_chunk` + YAML, tests `test_chunk_streaming.py`) | S | TTFA −450-550 ms |
+| 2 | ✅ `enforce_eager: false` stage 0 dans le YAML (CUDA graphs décode hybride) — à valider au 1er run GPU | S (test) | décode ×1,5-3 |
 | 3 | Câbler l'audio-in vLLM (processor mm, pattern MiMo) | M | −~1 s/tour |
 | 4 | Détokeniseur fp16/bf16 + CUDA graph aux tailles de chunk | M | stage 1 ×2-4 |
 | 5 | Wrapper CUDA graph du depthformer (pattern MiMo) | M | −5-15 ms/frame |
