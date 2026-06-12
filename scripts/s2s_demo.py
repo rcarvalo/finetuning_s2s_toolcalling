@@ -134,6 +134,10 @@ class VllmBackend:
             gpu_memory_utilization=0.42,
             dtype="bfloat16",
             async_scheduling=False,
+            # APC actif par défaut (vLLM 0.22) → omni_prefix_cache du runner
+            # PERD l'export sparse codes.audio → texte OK mais ZÉRO chunk vers
+            # le stage 1 (mesuré 12/06, cf. configs/vllm_omni_lfm2_audio.yaml).
+            enable_prefix_caching=False,
             async_chunk=True,
             stage_init_timeout=1200,
             init_timeout=1800,
@@ -183,11 +187,20 @@ class VllmBackend:
         outs = self.omni.generate(prompt, self.sp_pair, use_tqdm=False)
         total = time.time() - t0
 
-        txt, wav = "", None
+        from vllm_omni_lfm2_audio.constants import (
+            AUDIO_EOA_PLACEHOLDER_ID,
+            AUDIO_FRAME_PLACEHOLDER_ID,
+        )
+
+        txt, wav, frames = "", None, 0
         for o in outs:
             ro = o.request_output
             if o.final_output_type == "text" and ro and ro.outputs:
                 txt = (ro.outputs[0].text or "").strip()
+                # frames émises par le stage 0 : vérité terrain sur l'audio généré
+                toks = list(ro.outputs[0].token_ids or [])
+                frames = sum(1 for t in toks
+                             if t in (AUDIO_FRAME_PLACEHOLDER_ID, AUDIO_EOA_PLACEHOLDER_ID))
             elif o.final_output_type == "audio":
                 mm = getattr(o, "multimodal_output", None) or getattr(ro, "multimodal_output", None)
                 if isinstance(mm, dict):
@@ -197,7 +210,7 @@ class VllmBackend:
                     elif isinstance(v, np.ndarray):
                         wav = v.reshape(-1)
         self.history.append(("assistant", txt))
-        return txt, wav, {"ttfa_s": None, "total_s": total}
+        return txt, wav, {"ttfa_s": None, "total_s": total, "frames": frames}
 
 
 # ──────────────────────────────────── main ───────────────────────────────────
@@ -212,6 +225,12 @@ def run_turn(backend, text, audio_in, out_path: Path) -> None:
         ttfa = f"TTFA={m['ttfa_s']:.2f}s  " if m.get("ttfa_s") else ""
         print(f"🔊 {out_path}  ({dur:.1f}s d'audio — {ttfa}total={m['total_s']:.2f}s, "
               f"RTF={m['total_s']/dur:.2f})")
+    elif m.get("frames"):
+        print(f"⚠️  {m['frames']} frames audio émises par le stage 0 mais aucun wav reçu "
+              "du stage 1 → plomberie connector/stage 1 (cf. bench_ttfa --debug-chunk)")
+    elif "frames" in m:
+        print("⚠️  le stage 0 n'a émis AUCUNE frame audio (pas de <|text_end|>) "
+              "→ prompting/modèle, pas de plomberie")
     else:
         print("(pas d'audio généré)")
 

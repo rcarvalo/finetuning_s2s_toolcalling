@@ -245,6 +245,9 @@ def check_engine(checkpoint: Path, max_tokens: int, dtype: str) -> list[str]:
             gpu_memory_utilization=0.42,
             # historique tronqué pour le sampler custom en async (cf. probe)
             async_scheduling=False,
+            # APC par défaut (vLLM 0.22) → perte de l'export codes.audio vers
+            # le stage 1 (cf. configs/vllm_omni_lfm2_audio.yaml, mesuré 12/06)
+            enable_prefix_caching=False,
             **kwargs,
         )
         _ok("engine", "Omni(...) initialisé — stages chargés")

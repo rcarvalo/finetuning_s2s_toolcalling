@@ -72,6 +72,9 @@ def main() -> int:
         # (token in-flight) → le replay de modalité décide avec un step de
         # retard aux frontières 6:12. Désactivé jusqu'au support propre (TTFA).
         async_scheduling=False,
+        # APC par défaut (vLLM 0.22) → perte de l'export codes.audio vers le
+        # stage 1 (cf. configs/vllm_omni_lfm2_audio.yaml, mesuré 12/06)
+        enable_prefix_caching=False,
     )
     # un SamplingParams PAR stage (stage 1 non-AR : défauts)
     sp0 = SamplingParams(temperature=0.0, max_tokens=args.max_tokens, stop_token_ids=[IM_END_TOKEN_ID])

@@ -53,6 +53,9 @@ def _load_engine(checkpoint: Path, deploy_config: Path | None, gpu_util: float, 
             gpu_memory_utilization=gpu_util,
             dtype=dtype,
             async_scheduling=False,  # écart 5 : async tronque l'historique du sampler
+            # APC par défaut (vLLM 0.22) → perte de l'export codes.audio vers
+            # le stage 1 (cf. configs/vllm_omni_lfm2_audio.yaml, mesuré 12/06)
+            enable_prefix_caching=False,
         )
 
     t0 = time.time()

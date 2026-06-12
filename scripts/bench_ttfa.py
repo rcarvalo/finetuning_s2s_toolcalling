@@ -64,7 +64,10 @@ def _load_engine(checkpoint: Path, deploy_config: Path | None):
         kwargs["deploy_config"] = str(deploy_config)
     else:
         kwargs.update(enforce_eager=True, gpu_memory_utilization=0.42,
-                      dtype="bfloat16", async_scheduling=False)
+                      dtype="bfloat16", async_scheduling=False,
+                      # APC par défaut (vLLM 0.22) → perte de l'export
+                      # codes.audio vers le stage 1 (cf. YAML, mesuré 12/06)
+                      enable_prefix_caching=False)
     t0 = time.time()
     omni = Omni(**kwargs)
     # Streaming in-process (même recette que s2s_webrtc_demo, validée) :

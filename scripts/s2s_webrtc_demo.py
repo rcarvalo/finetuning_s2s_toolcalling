@@ -80,6 +80,9 @@ class Models:
         self.omni = Omni(
             model=ckpt, enforce_eager=True, gpu_memory_utilization=0.42, dtype="bfloat16",
             async_scheduling=False, async_chunk=True, stage_init_timeout=1200, init_timeout=1800,
+            # APC par défaut (vLLM 0.22) → perte de l'export codes.audio vers le
+            # stage 1 (cf. configs/vllm_omni_lfm2_audio.yaml, mesuré 12/06)
+            enable_prefix_caching=False,
         )
         # streaming : pas de FINAL_ONLY forcé, stage 1 en DELTA ; py_generator ne
         # doit pas fermer l'engine entre deux tours
