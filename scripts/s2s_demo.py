@@ -7,15 +7,16 @@ Usage :
     # liquid-audio (référence) : speech → speech
     python scripts/s2s_demo.py --backend liquid --audio-in question.wav
 
-    # vLLM-Omni : texte → speech (l'entrée audio n'est pas encore câblée côté vLLM)
+    # vLLM-Omni : speech → speech (audio-in natif) ou texte → speech
+    python scripts/s2s_demo.py --backend vllm --audio-in question.wav
     python scripts/s2s_demo.py --backend vllm --text "Hello, who are you?"
 
     # mode interactif (multi-tours) : tape du texte, ou `@/chemin/audio.wav`
     python scripts/s2s_demo.py --backend liquid --interactive
 
-Limitation actuelle : le plugin vLLM expose ``embed_multimodal`` (conformer)
-mais aucun processor multimodal n'est enregistré auprès de vLLM — l'entrée
-audio du backend vllm sera disponible quand ce câblage sera fait (cf. docs).
+Backend vllm : streaming in-process py_generator (recette bench_ttfa /
+s2s_webrtc — stage 1 en DELTA ; le chemin non-streaming FINAL_ONLY ne sort
+aucun chunk audio), chunks concaténés en un WAV final.
 """
 
 from __future__ import annotations
@@ -33,6 +34,22 @@ REPO = Path(__file__).resolve().parent.parent
 SR_OUT = 24_000
 SYSTEM = "Respond with interleaved text and audio."
 END_OF_AUDIO_CODE = 2048
+
+
+def _wave(x) -> np.ndarray | None:
+    """Extrait un waveform du multimodal_output (clé "audio" en DELTA,
+    "model_outputs" en FINAL_ONLY) — même contrat que bench_ttfa."""
+    if x is None:
+        return None
+    if isinstance(x, dict):
+        for k in ("model_outputs", "audio", "waveform", "wav"):
+            if k in x:
+                return _wave(x[k])
+    if isinstance(x, torch.Tensor):
+        return x.detach().float().cpu().numpy().reshape(-1)
+    if isinstance(x, np.ndarray):
+        return x.reshape(-1)
+    return None
 
 
 def save_wav(wav: np.ndarray, path: Path, rate: int = SR_OUT) -> None:
@@ -142,10 +159,22 @@ class VllmBackend:
             stage_init_timeout=1200,
             init_timeout=1800,
         )
+        # Streaming in-process — recette VALIDÉE (bench_ttfa / s2s_webrtc) :
+        # Omni.generate force FINAL_ONLY sur les stages LLM → aucun chunk audio
+        # ne sort (ni en cours ni en fin de génération sur ce chemin) ; on
+        # neutralise pour respecter le DELTA du stage 1, et py_generator ne
+        # doit pas fermer l'engine à l'épuisement (multi-tours).
+        self.omni._set_final_only_for_llm_stages = lambda spl: list(spl)
+        self.omni._real_close, self.omni.close = self.omni.close, lambda: None
+
+        from vllm.sampling_params import RequestOutputKind
+
         self.tok = AutoTokenizer.from_pretrained(checkpoint)
         self.sp_pair = [
-            SamplingParams(temperature=0.0, max_tokens=400, stop_token_ids=[IM_END_TOKEN_ID]),
-            SamplingParams(max_tokens=1, detokenize=False),
+            SamplingParams(temperature=0.0, max_tokens=400, stop_token_ids=[IM_END_TOKEN_ID],
+                           output_kind=RequestOutputKind.FINAL_ONLY),
+            SamplingParams(max_tokens=1, detokenize=False,
+                           output_kind=RequestOutputKind.DELTA),
         ]
         self.history: list[tuple[str, str]] = []
         print(f"[{self.name}] prêt en {time.time()-t0:.0f}s")
@@ -184,33 +213,30 @@ class VllmBackend:
         prompt: dict = {"prompt_token_ids": self._render()}
         if multi_modal_data is not None:
             prompt["multi_modal_data"] = multi_modal_data
-        outs = self.omni.generate(prompt, self.sp_pair, use_tqdm=False)
-        total = time.time() - t0
 
         from vllm_omni_lfm2_audio.constants import (
             AUDIO_EOA_PLACEHOLDER_ID,
             AUDIO_FRAME_PLACEHOLDER_ID,
         )
 
-        txt, wav, frames = "", None, 0
-        for o in outs:
+        txt, chunks, frames, ttfa = "", [], 0, None
+        for o in self.omni.generate(prompt, self.sp_pair, py_generator=True, use_tqdm=False):
             ro = o.request_output
             if o.final_output_type == "text" and ro and ro.outputs:
-                txt = (ro.outputs[0].text or "").strip()
+                txt = (ro.outputs[0].text or txt).strip()
                 # frames émises par le stage 0 : vérité terrain sur l'audio généré
                 toks = list(ro.outputs[0].token_ids or [])
                 frames = sum(1 for t in toks
                              if t in (AUDIO_FRAME_PLACEHOLDER_ID, AUDIO_EOA_PLACEHOLDER_ID))
             elif o.final_output_type == "audio":
-                mm = getattr(o, "multimodal_output", None) or getattr(ro, "multimodal_output", None)
-                if isinstance(mm, dict):
-                    v = mm.get("model_outputs")
-                    if isinstance(v, torch.Tensor):
-                        wav = v.detach().float().cpu().numpy().reshape(-1)
-                    elif isinstance(v, np.ndarray):
-                        wav = v.reshape(-1)
+                w = _wave(getattr(o, "multimodal_output", None) or getattr(ro, "multimodal_output", None))
+                if w is not None and w.size:
+                    ttfa = ttfa or (time.time() - t0)
+                    chunks.append(w)
+        total = time.time() - t0
+        wav = np.concatenate(chunks) if chunks else None
         self.history.append(("assistant", txt))
-        return txt, wav, {"ttfa_s": None, "total_s": total, "frames": frames}
+        return txt, wav, {"ttfa_s": ttfa, "total_s": total, "frames": frames}
 
 
 # ──────────────────────────────────── main ───────────────────────────────────
