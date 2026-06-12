@@ -280,6 +280,9 @@ def main() -> None:
     ap.add_argument("--audio-in", type=Path, default=None, help="WAV d'entrée (speech)")
     ap.add_argument("--text", default=None, help="texte d'entrée (alternative ou complément)")
     ap.add_argument("--out", type=Path, default=Path("/workspace/audio_out/demo_reply.wav"))
+    ap.add_argument("--warmup", type=int, default=0,
+                    help="tours de chauffe avant le tour mesuré (JIT Triton + "
+                         "autotuning CUDA graphs : le 1er tour à froid coûte ~1 s de plus)")
     ap.add_argument("--interactive", action="store_true",
                     help="boucle multi-tours ; tape du texte ou `@/chemin/audio.wav`")
     args = ap.parse_args()
@@ -295,6 +298,11 @@ def main() -> None:
     if not args.interactive:
         if args.text is None and args.audio_in is None:
             ap.error("--text et/ou --audio-in requis (ou --interactive)")
+        for i in range(args.warmup):
+            t0 = time.time()
+            backend.reply(text=args.text, audio_path=args.audio_in)
+            backend.reset()
+            print(f"[warmup {i+1}/{args.warmup}] {time.time()-t0:.2f}s")
         run_turn(backend, args.text, args.audio_in, args.out)
         return
 
