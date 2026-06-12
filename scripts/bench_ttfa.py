@@ -26,10 +26,12 @@ from pathlib import Path
 import numpy as np
 import torch
 
+# Anglais : le checkpoint de base est EN (le FR viendra du fine-tuné) — on
+# maximise la probabilité d'une réponse parlée pour mesurer le TTFA.
 PROMPTS = [
-    "Bonjour, qui es-tu ?",
-    "Quelle heure est-il à Paris ?",
-    "Raconte-moi une courte histoire.",
+    "Hello, who are you?",
+    "What time is it in Paris?",
+    "Tell me a short story.",
 ]
 
 
@@ -95,7 +97,11 @@ def _wave(x) -> np.ndarray | None:
 def bench_once(omni, prompt_ids: list[int], max_tokens: int) -> dict:
     from vllm import SamplingParams
     from vllm.sampling_params import RequestOutputKind
-    from vllm_omni_lfm2_audio.constants import IM_END_TOKEN_ID
+    from vllm_omni_lfm2_audio.constants import (
+        AUDIO_EOA_PLACEHOLDER_ID,
+        AUDIO_FRAME_PLACEHOLDER_ID,
+        IM_END_TOKEN_ID,
+    )
 
     # stage 0 FINAL_ONLY (texte complet à la fin), stage 1 DELTA (chunks audio
     # au fil de l'eau — clé "audio" du multimodal_output)
@@ -106,11 +112,16 @@ def bench_once(omni, prompt_ids: list[int], max_tokens: int) -> dict:
     ]
     t0 = time.time()
     ttfa = None
-    n_chunks, samples = 0, 0
+    n_chunks, samples, frames, text = 0, 0, 0, ""
     for out in omni.generate({"prompt_token_ids": prompt_ids}, sp, py_generator=True, use_tqdm=False):
         now = time.time()
-        if out.final_output_type == "audio":
-            ro = out.request_output
+        ro = out.request_output
+        if out.final_output_type == "text" and ro and ro.outputs:
+            text = (ro.outputs[0].text or text).strip()
+            toks = list(ro.outputs[0].token_ids or [])
+            # frames émises par le stage 0 : la vérité terrain sur l'audio généré
+            frames = sum(1 for t in toks if t in (AUDIO_FRAME_PLACEHOLDER_ID, AUDIO_EOA_PLACEHOLDER_ID))
+        elif out.final_output_type == "audio":
             w = _wave(getattr(out, "multimodal_output", None) or getattr(ro, "multimodal_output", None))
             if w is not None and w.size:
                 if ttfa is None:
@@ -119,8 +130,8 @@ def bench_once(omni, prompt_ids: list[int], max_tokens: int) -> dict:
                 samples += int(w.size)
     total = time.time() - t0
     audio_s = samples / 24_000
-    return {"ttfa": ttfa, "total": total, "audio_s": audio_s,
-            "chunks": n_chunks, "rtf": total / audio_s if audio_s else float("inf")}
+    return {"ttfa": ttfa, "total": total, "audio_s": audio_s, "chunks": n_chunks,
+            "frames": frames, "text": text, "rtf": total / audio_s if audio_s else float("inf")}
 
 
 def _fmt_ms(v: float | None) -> str:
@@ -135,8 +146,16 @@ def main() -> int:
     ap.add_argument("--runs", type=int, default=5, help="runs mesurés par prompt")
     ap.add_argument("--warmup", type=int, default=2)
     ap.add_argument("--max-tokens", type=int, default=192)
-    ap.add_argument("--system", default="You are a helpful assistant. Respond with interleaved text and audio.")
+    # même prompt que les démos validées (s2s_demo) : c'est lui qui déclenche
+    # l'émission de <|text_end|> → bascule en mode audio
+    ap.add_argument("--system", default="Respond with interleaved text and audio.")
+    ap.add_argument("--debug-chunk", action="store_true",
+                    help="trace l'accumulateur de chunks dans les logs du stage 0")
     args = ap.parse_args()
+
+    if args.debug_chunk:
+        import os
+        os.environ["LFM2_DEBUG_CHUNK"] = "1"  # hérité par les process des stages (spawn)
 
     omni = _load_engine(args.checkpoint, None if args.no_deploy_config else args.deploy_config)
 
@@ -150,7 +169,8 @@ def main() -> int:
 
     for i in range(args.warmup):
         r = bench_once(omni, render(PROMPTS[i % len(PROMPTS)]), args.max_tokens)
-        print(f"[warmup {i+1}] ttfa={_fmt_ms(r['ttfa'])} total={r['total']:.1f}s")
+        print(f"[warmup {i+1}] ttfa={_fmt_ms(r['ttfa'])} total={r['total']:.1f}s "
+              f"frames={r['frames']:3d} chunks={r['chunks']:3d}")
 
     rows = []
     for i in range(args.runs):
@@ -159,11 +179,19 @@ def main() -> int:
         rows.append(r)
         print(f"[run {i+1}] ttfa={_fmt_ms(r['ttfa'])} "
               f"total={r['total']:5.1f}s audio={r['audio_s']:5.1f}s "
-              f"chunks={r['chunks']:3d} rtf={r['rtf']:.2f}  « {prompt[:30]} »")
+              f"frames={r['frames']:3d} chunks={r['chunks']:3d} rtf={r['rtf']:.2f}")
+        print(f"        🤖 {r['text'][:90]!r}")
 
     ttfas = [r["ttfa"] for r in rows if r["ttfa"] is not None]
     if not ttfas:
-        print("\n❌ aucun chunk audio reçu — vérifier async_chunk / initial_codec_chunk_frames")
+        if all(r["frames"] == 0 for r in rows):
+            print("\n❌ le stage 0 n'émet AUCUNE frame audio (pas de <|text_end|> dans la "
+                  "génération) → problème de prompting/modèle, pas de plomberie. Vérifier "
+                  "le system prompt (--system) et le checkpoint.")
+        else:
+            print("\n❌ frames audio générées par le stage 0 mais aucun chunk reçu du stage 1 "
+                  "→ plomberie connector/stage 1. Relancer avec --debug-chunk pour tracer "
+                  "l'accumulateur ([chunk]/[chunk-send] dans les logs du stage 0).")
         omni._real_close()
         return 1
     p50 = statistics.median(ttfas)
