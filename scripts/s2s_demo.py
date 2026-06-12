@@ -195,33 +195,38 @@ class VllmBackend:
                            output_kind=RequestOutputKind.DELTA),
         ]
         self.history: list[tuple[str, str]] = []
+        self.system = SYSTEM  # surchargeable (ex. consigne « réponses courtes »)
         print(f"[{self.name}] prêt en {time.time()-t0:.0f}s")
 
     def reset(self) -> None:
         self.history.clear()
 
     def _render(self) -> list[int]:
-        s = f"<|startoftext|><|im_start|>system\n{SYSTEM}<|im_end|>\n"
+        s = f"<|startoftext|><|im_start|>system\n{self.system}<|im_end|>\n"
         for role, txt in self.history:
             s += f"<|im_start|>{role}\n{txt}<|im_end|>\n"
         return self.tok(s + "<|im_start|>assistant\n", add_special_tokens=False).input_ids
 
     def reply_stream(self, text: str | None = None, audio_path: Path | None = None,
+                     audio: tuple[np.ndarray, int] | None = None,
                      max_new_tokens: int = 400):
         """Générateur : yield les chunks audio (np.float32, 24 kHz) au fil de la
         génération. Texte final dans ``self.last_text``, métriques dans
-        ``self.last_metrics`` après épuisement."""
+        ``self.last_metrics`` après épuisement. ``audio`` = (wave float32 mono,
+        sample_rate) déjà en mémoire (alternative à ``audio_path``)."""
         multi_modal_data = None
-        if audio_path is not None:
-            # Audio-in NATIF : 1 token audio_in dans le tour user, remplacé par
-            # ceil(T_mel/8) placeholders par le processor mm ; les embeddings
-            # conformer sont mergés au prefill (cf. docs/audio_in_spec.md).
+        if audio_path is not None and audio is None:
             import soundfile as sf
 
             wave, sr = sf.read(str(audio_path), dtype="float32")
             if wave.ndim > 1:
                 wave = wave.mean(axis=1)
-            multi_modal_data = {"audio": [(wave, sr)]}
+            audio = (wave, sr)
+        if audio is not None:
+            # Audio-in NATIF : 1 token audio_in dans le tour user, remplacé par
+            # ceil(T_mel/8) placeholders par le processor mm ; les embeddings
+            # conformer sont mergés au prefill (cf. docs/audio_in_spec.md).
+            multi_modal_data = {"audio": [audio]}
             from vllm_omni_lfm2_audio.constants import AUDIO_FRAME_PLACEHOLDER_ID
 
             audio_tok = self.tok.decode([AUDIO_FRAME_PLACEHOLDER_ID])
@@ -259,8 +264,9 @@ class VllmBackend:
         self.last_metrics = {"ttfa_s": ttfa, "total_s": time.time() - t0, "frames": frames}
 
     def reply(self, text: str | None = None, audio_path: Path | None = None,
+              audio: tuple[np.ndarray, int] | None = None,
               max_new_tokens: int = 400) -> tuple[str, np.ndarray | None, dict]:
-        chunks = list(self.reply_stream(text=text, audio_path=audio_path,
+        chunks = list(self.reply_stream(text=text, audio_path=audio_path, audio=audio,
                                         max_new_tokens=max_new_tokens))
         wav = np.concatenate(chunks) if chunks else None
         return self.last_text, wav, self.last_metrics
