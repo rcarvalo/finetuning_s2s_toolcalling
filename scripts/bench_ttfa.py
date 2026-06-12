@@ -157,8 +157,19 @@ def main() -> int:
         import os
         os.environ["LFM2_DEBUG_CHUNK"] = "1"  # hérité par les process des stages (spawn)
 
-    omni = _load_engine(args.checkpoint, None if args.no_deploy_config else args.deploy_config)
+    if not args.no_deploy_config:
+        # Empreinte de la config EFFECTIVE avant les ~2-4 min d'init engine :
+        # un YAML périmé (copie d'avant un git pull) se voit ici immédiatement.
+        import re
 
+        text = args.deploy_config.read_text()
+        keys = "enforce_eager|cudagraph_mode|enable_prefix_caching|async_scheduling|initial_codec_chunk_frames|codec_chunk_frames"
+        print(f"[config] {args.deploy_config} :")
+        for line in text.splitlines():
+            if re.search(keys, line) and not line.strip().startswith("#"):
+                print(f"[config]   {line.strip()}")
+
+    omni = _load_engine(args.checkpoint, None if args.no_deploy_config else args.deploy_config)
     from transformers import AutoTokenizer
     tok = AutoTokenizer.from_pretrained(str(args.checkpoint))
 
