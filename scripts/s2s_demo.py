@@ -132,7 +132,7 @@ class VllmBackend:
 
     name = "vllm-omni"
 
-    def __init__(self, checkpoint: str) -> None:
+    def __init__(self, checkpoint: str, deploy_config: Path | None = None) -> None:
         sys.path.insert(0, str(REPO / "src"))
         import vllm_omni.plugins as _p
         _p.omni_plugins_loaded = False
@@ -145,20 +145,25 @@ class VllmBackend:
         from vllm_omni_lfm2_audio.constants import IM_END_TOKEN_ID
 
         t0 = time.time()
-        self.omni = Omni(
-            model=checkpoint,
-            enforce_eager=True,
-            gpu_memory_utilization=0.42,
-            dtype="bfloat16",
-            async_scheduling=False,
-            # APC actif par défaut (vLLM 0.22) → omni_prefix_cache du runner
-            # PERD l'export sparse codes.audio → texte OK mais ZÉRO chunk vers
-            # le stage 1 (mesuré 12/06, cf. configs/vllm_omni_lfm2_audio.yaml).
-            enable_prefix_caching=False,
-            async_chunk=True,
-            stage_init_timeout=1200,
-            init_timeout=1800,
-        )
+        kwargs: dict = dict(model=checkpoint, async_chunk=True,
+                            stage_init_timeout=1200, init_timeout=1800)
+        if deploy_config:
+            # chemin OPTIMISÉ (même recette que bench_ttfa) : CUDA graphs
+            # PIECEWISE stage 0 + initial_codec_chunk_frames=2 → TTFA visé
+            # 250-350 ms (cf. docs/optimization_audit.md) ; eager ≈ 750 ms.
+            kwargs["deploy_config"] = str(deploy_config)
+        else:
+            kwargs.update(
+                enforce_eager=True,
+                gpu_memory_utilization=0.42,
+                dtype="bfloat16",
+                async_scheduling=False,
+                # APC actif par défaut (vLLM 0.22) → omni_prefix_cache du runner
+                # PERD l'export sparse codes.audio → texte OK mais ZÉRO chunk
+                # vers le stage 1 (mesuré 12/06, cf. le YAML).
+                enable_prefix_caching=False,
+            )
+        self.omni = Omni(**kwargs)
         # Streaming in-process — recette VALIDÉE (bench_ttfa / s2s_webrtc) :
         # Omni.generate force FINAL_ONLY sur les stages LLM → aucun chunk audio
         # ne sort (ni en cours ni en fin de génération sur ce chemin) ; on
@@ -267,6 +272,11 @@ def main() -> None:
     ap.add_argument("--checkpoint", default=None,
                     help="défaut : /workspace/models/LFM2.5-Audio-1.5B (liquid) ou "
                          "/workspace/models/lfm25_audio_omni (vllm)")
+    ap.add_argument("--deploy-config", type=Path,
+                    default=REPO / "configs/vllm_omni_lfm2_audio.yaml",
+                    help="YAML de déploiement vLLM-Omni (CUDA graphs + chunks TTFA)")
+    ap.add_argument("--no-deploy-config", action="store_true",
+                    help="kwargs legacy (tout eager) au lieu du YAML")
     ap.add_argument("--audio-in", type=Path, default=None, help="WAV d'entrée (speech)")
     ap.add_argument("--text", default=None, help="texte d'entrée (alternative ou complément)")
     ap.add_argument("--out", type=Path, default=Path("/workspace/audio_out/demo_reply.wav"))
@@ -279,7 +289,8 @@ def main() -> None:
         backend = LiquidBackend(ckpt)
     else:
         ckpt = args.checkpoint or "/workspace/models/lfm25_audio_omni"
-        backend = VllmBackend(ckpt)
+        deploy = None if args.no_deploy_config else args.deploy_config
+        backend = VllmBackend(ckpt, deploy_config=deploy)
 
     if not args.interactive:
         if args.text is None and args.audio_in is None:
