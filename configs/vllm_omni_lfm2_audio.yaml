@@ -43,7 +43,16 @@ stages:
     # (écart 5) → désactivé tant que la compensation n'est pas implémentée
     # (action 6 de docs/optimization_audit.md).
     async_scheduling: false
-    enable_prefix_caching: true      # LE gain : tours + tool rounds sans re-prefill
+    # APC DÉSACTIVÉ (mesuré le 12/06 sur Colab, vllm-omni 0.22.0) :
+    # le chemin omni_prefix_cache du runner (get_merged_multimodal_states)
+    # refait le payload par requête en découpant par tokens schedulés et
+    # PERD notre export sparse codes.audio → payload_keys=['hidden'] à
+    # chaque step, zéro chunk vers le stage 1 ; il corrompt aussi la
+    # génération sur hit de cache (réponse tronquée à 2 frames).
+    # De toute façon l'APC hybride (ShortConv) est expérimental et sans
+    # effet sous ~528 tokens de préfixe — cf. docs/optimization_audit.md §2.
+    # À réessayer quand vllm#26201 / le merge mm sparse seront corrigés.
+    enable_prefix_caching: false
     max_num_batched_tokens: 8192
     max_model_len: 32768
     devices: "0"

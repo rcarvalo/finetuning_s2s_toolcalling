@@ -74,7 +74,14 @@ Le constat « vLLM pas plus rapide » a trois causes de natures différentes :
 
 ## 2. Limitations upstream réelles (à tracer, pas de notre fait)
 
-1. **Prefix caching hybride (ShortConv/Mamba)** : support « expérimental »
+0. **omni_prefix_cache × export audio sparse** (MESURÉ 12/06, Colab,
+   vllm-omni 0.22.0) : quand `enable_prefix_caching: true` sur le stage 0,
+   `prefix_cache.get_merged_multimodal_states` reconstruit le payload par
+   requête en tranchant par tokens schedulés — notre export sparse
+   `codes.audio` (liste par requête) est PERDU (`payload_keys=['hidden']`
+   à chaque step, zéro chunk vers le stage 1) et un hit de cache corrompt
+   la génération (réponse tronquée à 2 frames). APC désactivé dans le YAML
+   jusqu'à correction upstream ; issue à ouvrir chez vllm-omni.
    (V1, unified allocator) avec **granularité de bloc ~528 tokens** — hit = 0
    sous cette taille (issue vllm#40696) ; bug ouvert sur les requêtes
    multimodales incrémentales multi-tours (vllm#43587 — exactement notre
