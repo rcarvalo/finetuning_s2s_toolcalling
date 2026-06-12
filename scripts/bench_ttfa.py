@@ -39,8 +39,11 @@ def _load_engine(checkpoint: Path, deploy_config: Path | None):
     except ImportError:
         raise SystemExit(
             "vllm n'est pas installé — vllm-omni ne le déclare pas en dépendance "
-            "(versions appariées major.minor) :\n"
-            '    pip install "vllm==0.22.*" "vllm-omni==0.22.0"'
+            "(versions appariées major.minor). Sur CUDA 12 (Colab), le build PyPI "
+            "(CUDA 13) ne marche pas, utiliser le wheel +cu129 du release :\n"
+            "    pip install 'vllm @ https://github.com/vllm-project/vllm/releases/"
+            "download/v0.22.1/vllm-0.22.1+cu129-cp38-abi3-manylinux_2_28_x86_64.whl' "
+            "--extra-index-url https://download.pytorch.org/whl/cu129"
         ) from None
 
     import vllm_omni.plugins as _p
