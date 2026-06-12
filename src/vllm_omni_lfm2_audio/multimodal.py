@@ -102,12 +102,15 @@ class Lfm2AudioProcessingInfo(BaseProcessingInfo):
 class Lfm2AudioDummyInputsBuilder(BaseDummyInputsBuilder[Lfm2AudioProcessingInfo]):
     DUMMY_AUDIO_SECONDS = 5
 
-    def get_dummy_text(self, mm_counts: Mapping[str, int]) -> str:
+    # vLLM 0.22 passe ``mm_options`` en positionnel (profiling du budget mm).
+    def get_dummy_text(self, mm_counts: Mapping[str, int], mm_options: Any = None, **kwargs: Any) -> str:
         tok = self.info.get_tokenizer()
         token = tok.decode([audio_in_token_id(self.info.get_hf_config())])
         return token * mm_counts.get("audio", 0)
 
-    def get_dummy_mm_data(self, seq_len: int, mm_counts: Mapping[str, int]):
+    def get_dummy_mm_data(
+        self, seq_len: int, mm_counts: Mapping[str, int], mm_options: Any = None, **kwargs: Any
+    ):
         num_audios = mm_counts.get("audio", 0)
         return {
             "audio": self._get_dummy_audios(
