@@ -101,13 +101,18 @@ class LiquidBackend:
         self.chat.new_turn("assistant")
 
         text_ids, frames = [], []
-        t0, ttfa = time.time(), None
+        t0, first_frame = time.time(), None
         with torch.no_grad():
-            for t in self.model.generate_interleaved(**self.chat, max_new_tokens=max_new_tokens):
+            # audio_temperature/audio_top_k : valeurs de l'exemple officiel
+            # LFM2.5-Audio (parité avec le sampling audio du plugin vLLM)
+            for t in self.model.generate_interleaved(
+                **self.chat, max_new_tokens=max_new_tokens,
+                audio_temperature=1.0, audio_top_k=4,
+            ):
                 if t.numel() == 1:
                     text_ids.append(t.detach().cpu())
                 else:
-                    ttfa = ttfa or (time.time() - t0)
+                    first_frame = first_frame or (time.time() - t0)
                     frames.append(t.detach().cpu())
         txt = self.proc.text.decode([int(x) for x in text_ids]).replace("<|text_end|>", "").strip()
         # réinjecte le texte de la réponse dans l'historique pour le tour
@@ -121,7 +126,11 @@ class LiquidBackend:
                 w = self.proc.decode(torch.stack(keep, dim=1).cuda().unsqueeze(0))
             wav = w.float().cpu().numpy().reshape(-1)
         total = time.time() - t0
-        return txt, wav, {"ttfa_s": ttfa, "total_s": total}
+        # TTFA = premier audio AUDIBLE (convention bench_ttfa) : liquid décode
+        # Mimi en bloc à la fin → rien n'est jouable avant `total`. Le premier
+        # token audio (non audible) est reporté à part (first_frame_s).
+        return txt, wav, {"ttfa_s": total if wav is not None else None,
+                          "first_frame_s": first_frame, "total_s": total}
 
 
 # ───────────────────────────── backend vLLM-Omni ─────────────────────────────
@@ -254,7 +263,8 @@ def run_turn(backend, text, audio_in, out_path: Path) -> None:
         save_wav(wav, out_path)
         dur = wav.size / SR_OUT
         ttfa = f"TTFA={m['ttfa_s']:.2f}s  " if m.get("ttfa_s") else ""
-        print(f"🔊 {out_path}  ({dur:.1f}s d'audio — {ttfa}total={m['total_s']:.2f}s, "
+        ff = f"1re frame={m['first_frame_s']:.2f}s  " if m.get("first_frame_s") else ""
+        print(f"🔊 {out_path}  ({dur:.1f}s d'audio — {ttfa}{ff}total={m['total_s']:.2f}s, "
               f"RTF={m['total_s']/dur:.2f})")
     elif m.get("frames"):
         print(f"⚠️  {m['frames']} frames audio émises par le stage 0 mais aucun wav reçu "
