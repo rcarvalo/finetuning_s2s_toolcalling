@@ -92,8 +92,9 @@ class Lfm2AudioProcessingInfo(BaseProcessingInfo):
     def get_supported_mm_limits(self) -> Mapping[str, int | None]:
         return {"audio": None}
 
-    def build_data_parser(self) -> MultiModalDataParser:
-        # vLLM 0.22 construit le parser côté Info (cf. MimoAudioProcessingInfo) :
+    def get_data_parser(self) -> MultiModalDataParser:
+        # Hook vLLM 0.22.1 : BaseProcessingInfo.get_data_parser, consommé par
+        # le renderer (info.parse_mm_data) ET le processor (cf. Qwen2Audio).
         # resample systématique vers 16 kHz (contrat ChatState.add_audio).
         return MultiModalDataParser(target_sr=AUDIO_IN_SAMPLE_RATE)
 
@@ -125,9 +126,8 @@ class Lfm2AudioDummyInputsBuilder(BaseDummyInputsBuilder[Lfm2AudioProcessingInfo
 
 
 class Lfm2AudioMultiModalProcessor(BaseMultiModalProcessor[Lfm2AudioProcessingInfo]):
-    def _get_data_parser(self) -> MultiModalDataParser:
-        # resample systématique vers 16 kHz (contrat ChatState.add_audio)
-        return MultiModalDataParser(target_sr=AUDIO_IN_SAMPLE_RATE)
+    # data parser : hérité de info.get_data_parser() (vLLM 0.22.1,
+    # BaseMultiModalProcessor.__init__ → self.data_parser = info.get_data_parser())
 
     def _call_hf_processor(
         self,

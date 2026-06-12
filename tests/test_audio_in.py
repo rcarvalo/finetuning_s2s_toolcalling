@@ -64,3 +64,26 @@ def test_extract_mel_too_short_raises():
     })
     with pytest.raises(ValueError, match="trop court"):
         extract_mel(cfg, torch.randn(MIN_MEL_LEN * 40))  # << 9 frames mel
+
+
+def test_data_parser_hook_resamples_to_16k():
+    """Le hook surchargé doit être celui que vLLM consulte réellement.
+
+    vLLM 0.22.1 construit le parser via ``BaseProcessingInfo.get_data_parser``
+    (renderer ``info.parse_mm_data`` + ``BaseMultiModalProcessor.__init__``) ;
+    un mauvais nom de hook → parser par défaut sans ``target_sr`` →
+    RuntimeError « Audio resampling is not supported » au premier audio.
+    """
+    from vllm.multimodal.processing import BaseProcessingInfo
+
+    from vllm_omni_lfm2_audio.multimodal import (
+        AUDIO_IN_SAMPLE_RATE,
+        Lfm2AudioProcessingInfo,
+    )
+
+    assert hasattr(BaseProcessingInfo, "get_data_parser")
+    assert "get_data_parser" in Lfm2AudioProcessingInfo.__dict__
+
+    info = object.__new__(Lfm2AudioProcessingInfo)  # le hook n'utilise pas ctx
+    parser = info.get_data_parser()
+    assert parser.audio_resampler.target_sr == AUDIO_IN_SAMPLE_RATE
