@@ -34,6 +34,15 @@ PROMPTS = [
 
 
 def _load_engine(checkpoint: Path, deploy_config: Path | None):
+    try:
+        import vllm  # noqa: F401
+    except ImportError:
+        raise SystemExit(
+            "vllm n'est pas installé — vllm-omni ne le déclare pas en dépendance "
+            "(versions appariées major.minor) :\n"
+            '    pip install "vllm==0.22.*" "vllm-omni==0.22.0"'
+        ) from None
+
     import vllm_omni.plugins as _p
 
     _p.omni_plugins_loaded = False
