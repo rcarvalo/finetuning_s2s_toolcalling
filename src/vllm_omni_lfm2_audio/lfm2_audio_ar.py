@@ -128,6 +128,19 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         self.audio_temperature: float | None = getattr(config, "audio_temperature", None)
         self.audio_top_k: int | None = getattr(config, "audio_top_k", None)
 
+        # --- wrapper CUDA graph du rollout depthformer (action 5 audit) --- #
+        # capture lazy par bucket au 1er step audio (absorbée par le warmup) ;
+        # kill-switch : LFM2_DEPTHFORMER_EAGER=1 (diagnostic / parité eager)
+        self._depthformer_graph = None
+        if not os.environ.get("LFM2_DEPTHFORMER_EAGER"):
+            from vllm_omni_lfm2_audio.depthformer_graph import CudaGraphDepthformer
+
+            self._depthformer_graph = CudaGraphDepthformer(
+                self.audio_head,
+                temperature=self.audio_temperature,
+                top_k=self.audio_top_k,
+            )
+
         # --- état par step (fixé par preprocess_batch/preprocess) --- #
         self._step_req_ids: list[str] = []
         self._step_sampling_reqs: list[str] = []
@@ -395,11 +408,15 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
     def _sample_audio_rows(self, rows: list[int], request_ids: list[str]) -> list[int]:
         """Rollout depthformer batché sur les lignes audio du step ; émet les placeholders."""
         assert self._pending_hidden is not None, "compute_logits must run before sample"
-        frames = self.audio_head.sample_frames(
-            self._pending_hidden[rows],
-            temperature=self.audio_temperature,
-            top_k=self.audio_top_k,
-        )  # (B, codebooks)
+        hidden_rows = self._pending_hidden[rows]
+        if self._depthformer_graph is not None:
+            frames = self._depthformer_graph.sample_frames(hidden_rows)  # (B, codebooks)
+        else:
+            frames = self.audio_head.sample_frames(
+                hidden_rows,
+                temperature=self.audio_temperature,
+                top_k=self.audio_top_k,
+            )  # (B, codebooks)
         is_eoa = frames[:, 0] == 2048
         if bool(is_eoa.any()):
             frames[is_eoa] = 2048  # frame EOA pleine (rejouable par replay)

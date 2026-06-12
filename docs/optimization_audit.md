@@ -118,9 +118,9 @@ CUDA graphs stage 0 ≈ 250-350 ms. Vérification : `scripts/bench_ttfa.py`
 |---|---|---|---|
 | 1 | ✅ `initial_codec_chunk_frames: 2` (implémenté dans `ar2code2wav_async_chunk` + YAML, tests `test_chunk_streaming.py`) | S | TTFA −450-550 ms |
 | 2 | ✅ `enforce_eager: false` stage 0 dans le YAML (CUDA graphs décode hybride) — à valider au 1er run GPU | S (test) | décode ×1,5-3 |
-| 3 | Câbler l'audio-in vLLM (processor mm, pattern MiMo) | M | −~1 s/tour |
+| 3 | ✅ Câbler l'audio-in vLLM (processor mm, pattern MiMo) — validé E2E 12/06 (TTFA 330 ms speech→speech) | M | −~1 s/tour |
 | 4 | Détokeniseur fp16/bf16 + CUDA graph aux tailles de chunk | M | stage 1 ×2-4 |
-| 5 | Wrapper CUDA graph du depthformer (pattern MiMo) | M | −5-15 ms/frame |
+| 5 | ✅ Wrapper CUDA graph du depthformer (`depthformer_graph.py`, capture lazy par bucket, kill-switch `LFM2_DEPTHFORMER_EAGER=1`, tests `test_depthformer_graph.py`) — à valider au 1er run GPU | M | −5-15 ms/frame |
 | 6 | Async scheduling avec compensation in-flight | M | −5-15 ms/step |
 | 7 | État de modalité incrémental (O(1)/step) | S | longs tours |
 | 8 | Bench A/B honnête (froid/chaud/concurrence/historique complet) | S | décision |
