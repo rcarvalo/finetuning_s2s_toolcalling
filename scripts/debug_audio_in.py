@@ -39,14 +39,24 @@ def main() -> None:
     deploy = None if args.no_deploy_config else REPO / "configs/vllm_omni_lfm2_audio.yaml"
     backend = VllmBackend(args.checkpoint, deploy_config=deploy)
 
-    # 1) l'architecture est-elle reconnue comme multimodale ?
+    # 1) la classe a-t-elle bien enregistré son processor multimodal ? NB : cette
+    # introspection est PROCESS-LOCAL. Le modèle tourne dans un sous-process
+    # (StageEngineCoreProc) ; un False ICI ne prouve RIEN. Le signal qui FAIT FOI
+    # est la ligne « [MM] embed_multimodal … » émise par ce sous-process (= le
+    # conformer a bien été appelé sur l'audio). On l'imprime juste pour mémoire.
     try:
         from vllm.multimodal import MULTIMODAL_REGISTRY
         from vllm_omni_lfm2_audio.lfm2_audio import Lfm2AudioOmniForConditionalGeneration
 
         klass = Lfm2AudioOmniForConditionalGeneration
-        in_mm_registry = klass in getattr(MULTIMODAL_REGISTRY, "_processor_factories", {})
-        print(f"\n[CHECK] classe dans MULTIMODAL_REGISTRY : {in_mm_registry}", flush=True)
+        reg = MULTIMODAL_REGISTRY
+        in_mm_registry = any(
+            klass in getattr(reg, attr, {})
+            for attr in ("_processor_factories", "_processing_info", "_processors")
+        )
+        print(f"\n[CHECK] processor enregistré (process courant) : {in_mm_registry} "
+              "— NON décisif ; voir les lignes « [MM] embed_multimodal » du "
+              "sous-process engine (= encodeur audio réellement appelé).", flush=True)
     except Exception as e:  # noqa: BLE001
         print(f"[CHECK] introspection registre impossible : {e}", flush=True)
 
