@@ -18,6 +18,7 @@ ensuite par ``scripts/synthesize_user_audio.py`` (TTS).
 from __future__ import annotations
 
 import json
+import re
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Literal
@@ -36,6 +37,9 @@ TOOL_TARGETS: list[tuple[ToolTarget, float]] = [
 ]
 PHRASING_STYLES = ["direct command", "polite question", "indirect request", "with disfluency"]
 INFERENCE_DEPTHS = ["explicit arguments", "requires inference"]
+
+# Réponses négatives « à trous » (ex. « It's [current time]. ») = mauvaise cible.
+_PLACEHOLDER = re.compile(r"\[[^\]]+\]")
 
 
 @dataclass(slots=True)
@@ -146,6 +150,10 @@ def verify_case(case: SynthCase, registry: ToolRegistry) -> str | None:
             return "negative case must not carry tool arguments"
         if not (case.answer or "").strip():
             return "negative case needs a non-empty answer"
+        # Rejette les réponses à trous (« It's [current time]. ») : ce sont des
+        # questions temps-réel sans outil dédié → mauvaise cible d'entraînement.
+        if _PLACEHOLDER.search(case.answer or ""):
+            return "negative answer contains a [placeholder]"
         return None
 
     if case.target not in registry:

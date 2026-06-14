@@ -34,6 +34,13 @@ def test_negative_without_answer_rejected():
     assert "answer" in sd.verify_case(case, REGISTRY)
 
 
+def test_negative_with_placeholder_answer_rejected():
+    case = _case("none", utterance="what time is it", answer="It's [current time].")
+    assert "placeholder" in sd.verify_case(case, REGISTRY)
+    ok = _case("none", utterance="thanks", answer="You're welcome!")
+    assert sd.verify_case(ok, REGISTRY) is None
+
+
 def test_missing_required_argument_rejected():
     case = _case("web_search", utterance="search something", arguments={})
     assert "missing required" in sd.verify_case(case, REGISTRY)
