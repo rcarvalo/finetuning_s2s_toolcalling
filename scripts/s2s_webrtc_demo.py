@@ -168,6 +168,8 @@ def main() -> None:
                     help="seuil de détection de parole silero (↑ = moins sensible au bruit)")
     ap.add_argument("--no-interrupt", action="store_true",
                     help="désactive le barge-in (par défaut tu peux couper l'assistant)")
+    ap.add_argument("--transcribe", action="store_true",
+                    help="sonde ASR : affiche en texte ce que le modèle ENTEND (au lieu de répondre)")
     args = ap.parse_args()
 
     turn = args.turn
@@ -184,7 +186,16 @@ def main() -> None:
         args.checkpoint,
         deploy_config=None if args.no_deploy_config else args.deploy_config,
     )
-    backend.system += " Keep your spoken answers short and conversational."
+    if args.transcribe:
+        # mode SONDE ASR : le modèle restitue en TEXTE ce qu'il entend (au lieu
+        # de répondre) → la « conversation » affiche la transcription. Si elle
+        # est correcte, l'audio-in marche ; sinon, l'encodage audio est en cause.
+        backend.system = ("Transcribe the user's speech verbatim. "
+                          "Respond with the transcription only, as text.")
+        print("[MODE] transcription (sonde ASR) — le texte affiché = ce que le modèle entend",
+              flush=True)
+    else:
+        backend.system += " Keep your spoken answers short and conversational."
     # chauffe : JIT Triton + captures CUDA graph avant le 1er utilisateur
     for i in range(2):
         t0 = time.time()
