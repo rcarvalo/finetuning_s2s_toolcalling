@@ -22,9 +22,11 @@ aucun chunk audio), chunks concaténés en un WAV final.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 import wave
+from itertools import count
 from pathlib import Path
 
 import numpy as np
@@ -34,6 +36,7 @@ REPO = Path(__file__).resolve().parent.parent
 SR_OUT = 24_000
 SYSTEM = "Respond with interleaved text and audio."
 END_OF_AUDIO_CODE = 2048
+_DUMP_COUNTER = count()
 
 
 def _wave(x) -> np.ndarray | None:
@@ -238,6 +241,15 @@ class VllmBackend:
                 ).numpy()
                 sr_a = 16_000
             audio = (wave_a, sr_a)
+            # DIAG (LFM2_DUMP_INPUT=1) : sauve le wav 16 kHz EXACT envoyé à
+            # l'encodeur → on l'écoute pour trancher « plomberie OK mais audio
+            # inintelligible » (resampling/gain) vs « modèle ». Avec son RMS.
+            if os.environ.get("LFM2_DUMP_INPUT"):
+                rms = float(np.sqrt(np.mean(wave_a**2))) if wave_a.size else 0.0
+                dump = Path(os.environ.get("LFM2_DUMP_DIR", "/tmp/lfm2_input"))
+                dst = dump / f"in_{next(_DUMP_COUNTER):03d}.wav"
+                save_wav(wave_a, dst, rate=16_000)
+                print(f"[DUMP] {dst} · {wave_a.size/16_000:.2f}s · RMS {rms:.3f}", flush=True)
             # Audio-in NATIF : 1 token audio_in dans le tour user, remplacé par
             # ceil(T_mel/8) placeholders par le processor mm ; les embeddings
             # conformer sont mergés au prefill (cf. docs/audio_in_spec.md).
