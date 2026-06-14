@@ -248,7 +248,14 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         audio_enc, enc_lens = self.conformer(padded, lens)  # (B, D, T_out)
         len_mask = torch.arange(audio_enc.shape[-1], device=device).unsqueeze(0) < enc_lens.unsqueeze(1)
         flat = self.audio_adapter(audio_enc.mT[len_mask])  # (sum n_i, hidden)
-        return tuple(flat.split([int(n) for n in enc_lens.tolist()]))
+        out = tuple(flat.split([int(n) for n in enc_lens.tolist()]))
+        if os.environ.get("LFM2_DEBUG_MM"):
+            logger.warning(
+                "[MM] embed_multimodal: mel_lens=%s → enc_lens=%s → embeds=%s (norme moy %.3f)",
+                lens.tolist(), enc_lens.tolist(), [tuple(t.shape) for t in out],
+                float(flat.float().norm(dim=-1).mean()) if flat.numel() else 0.0,
+            )
+        return out
 
     def depthformer_device(self) -> torch.device:
         return self.audio_head.depth_linear.weight.device
@@ -264,12 +271,23 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         **kwargs: Any,
     ) -> torch.Tensor:
         embeds = self.language_model.model.embed_tokens(input_ids)
+        scattered = 0
         if multimodal_embeddings is not None and is_multimodal is not None:
             if isinstance(multimodal_embeddings, (list, tuple)):
                 if not multimodal_embeddings:
-                    return embeds
-                multimodal_embeddings = torch.cat(list(multimodal_embeddings))
-            embeds[is_multimodal] = multimodal_embeddings.to(dtype=embeds.dtype, device=embeds.device)
+                    multimodal_embeddings = None
+                else:
+                    multimodal_embeddings = torch.cat(list(multimodal_embeddings))
+            if multimodal_embeddings is not None:
+                embeds[is_multimodal] = multimodal_embeddings.to(dtype=embeds.dtype, device=embeds.device)
+                scattered = int(is_multimodal.sum())
+        if os.environ.get("LFM2_DEBUG_MM"):
+            n_au = int((input_ids == self.modality_cfg.frame_placeholder_id).sum())
+            logger.warning(
+                "[MM] embed_input_ids: tokens=%d · placeholders(128)=%d · is_mm.sum=%s · scatté=%d",
+                int(input_ids.numel()), n_au,
+                (int(is_multimodal.sum()) if is_multimodal is not None else None), scattered,
+            )
         return embeds
 
     # ------------------------------------------------------------------ #
