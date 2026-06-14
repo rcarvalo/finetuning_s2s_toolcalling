@@ -48,13 +48,25 @@ from s2s_demo import REPO, SR_OUT, VllmBackend  # noqa: E402
 LOCK = threading.Lock()  # un seul tour à la fois : historique global
 
 
-def build_stream(backend: VllmBackend, turn: str):
+def build_stream(backend: VllmBackend, turn: str, *,
+                 silence_ms: int = 700, speech_pad_ms: int = 300,
+                 vad_threshold: float = 0.5, can_interrupt: bool = True):
     import gradio as gr
     from fastrtc import AdditionalOutputs, ReplyOnPause, Stream
 
     def handler(audio: tuple[int, np.ndarray]):
         sr, pcm = audio
-        wave = np.asarray(pcm, dtype=np.float32).reshape(-1) / 32_768.0
+        pcm = np.asarray(pcm)
+        # fastrtc donne du int16 (souvent) ou du float ; normalise sans écraser
+        if np.issubdtype(pcm.dtype, np.integer):
+            wave = pcm.astype(np.float32).reshape(-1) / 32_768.0
+        else:
+            wave = pcm.astype(np.float32).reshape(-1)
+        rms = float(np.sqrt(np.mean(wave**2))) if wave.size else 0.0
+        # diagnostic d'ENTRÉE : durée trop courte = VAD qui coupe ; RMS trop bas
+        # = micro/gain (le modèle « n'entend » rien → réponses génériques)
+        print(f"👤 entrée {wave.size/sr:.1f}s @ {sr}Hz · niveau RMS {rms:.3f}"
+              + ("  ⚠️ très faible (gain micro ?)" if rms < 0.01 else ""), flush=True)
         with LOCK:
             t0, first, samples = time.time(), None, 0
             try:
@@ -99,8 +111,32 @@ def build_stream(backend: VllmBackend, turn: str):
             server_conf = get_cloudflare_turn_credentials(ttl=360_000)
             print("[TURN] endpoint HF (HF_TOKEN) — peut échouer sur Colab", flush=True)
 
+    # VAD assoupli : le défaut fastrtc (min_silence_duration_ms=100) coupe au
+    # moindre micro-silence → le modèle ne reçoit qu'un fragment. On laisse une
+    # vraie pause (silence_ms) avant de clore le tour, + du padding pour ne pas
+    # rogner les bords de la parole. Construit défensivement (les champs varient
+    # selon la version de fastrtc).
+    reply_kwargs: dict = {"can_interrupt": can_interrupt, "output_sample_rate": SR_OUT}
+    try:
+        from fastrtc import AlgoOptions, SileroVadOptions
+
+        reply_kwargs["algo_options"] = AlgoOptions(
+            audio_chunk_duration=0.6,
+            started_talking_threshold=0.2,
+            speech_threshold=0.1,
+        )
+        reply_kwargs["model_options"] = SileroVadOptions(
+            threshold=vad_threshold,
+            min_silence_duration_ms=silence_ms,  # ← laisse finir la phrase
+            speech_pad_ms=speech_pad_ms,         # ← ne rogne pas les bords
+        )
+        print(f"[VAD] silence_fin_de_tour={silence_ms}ms · pad={speech_pad_ms}ms · "
+              f"seuil={vad_threshold} · barge-in={can_interrupt}", flush=True)
+    except (ImportError, TypeError) as e:
+        print(f"[VAD] options par défaut (réglage fin indisponible : {e})", flush=True)
+
     return Stream(
-        handler=ReplyOnPause(handler, can_interrupt=False, output_sample_rate=SR_OUT),
+        handler=ReplyOnPause(handler, **reply_kwargs),
         modality="audio",
         mode="send-receive",
         rtc_configuration=rtc_conf,
@@ -123,6 +159,15 @@ def main() -> None:
     ap.add_argument("--share", action="store_true",
                     help="tunnel public gradio.live (requis sur Colab : HTTPS → micro)")
     ap.add_argument("--port", type=int, default=7860)
+    # réglage du turn-taking (anti « elle me coupe »)
+    ap.add_argument("--vad-silence-ms", type=int, default=700,
+                    help="silence (ms) avant de clore ton tour ; ↑ si elle te coupe")
+    ap.add_argument("--speech-pad-ms", type=int, default=300,
+                    help="padding gardé autour de la parole (évite de rogner les bords)")
+    ap.add_argument("--vad-threshold", type=float, default=0.5,
+                    help="seuil de détection de parole silero (↑ = moins sensible au bruit)")
+    ap.add_argument("--no-interrupt", action="store_true",
+                    help="désactive le barge-in (par défaut tu peux couper l'assistant)")
     args = ap.parse_args()
 
     turn = args.turn
@@ -147,7 +192,13 @@ def main() -> None:
         backend.reset()
         print(f"[warmup {i+1}/2] {time.time()-t0:.1f}s", flush=True)
 
-    stream = build_stream(backend, turn)
+    stream = build_stream(
+        backend, turn,
+        silence_ms=args.vad_silence_ms,
+        speech_pad_ms=args.speech_pad_ms,
+        vad_threshold=args.vad_threshold,
+        can_interrupt=not args.no_interrupt,
+    )
     print(f"\n▶ démo WebRTC mains-libres prête (TURN: {turn})", flush=True)
     stream.ui.launch(server_port=args.port, share=args.share, quiet=True)
 
