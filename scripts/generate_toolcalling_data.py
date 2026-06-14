@@ -2,14 +2,15 @@
 """Génère le dataset texte tool-calling EN (web_search + db_query) par synthèse LLM.
 
 Parcourt la taxonomie (outil cible × style × profondeur), demande des cas à un
-LLM (Anthropic par défaut), VÉRIFIE chaque cas (parser + registre EXISTANTS),
-filtre la contamination vs un benchmark held-out, déduplique, et écrit un JSONL
-au ``dialogue_schema`` (single-turn, utterances en TEXTE). L'audio est ajouté
-ensuite par ``scripts/synthesize_user_audio.py``.
+LLM (Gemini par défaut, Anthropic en option), VÉRIFIE chaque cas (parser +
+registre EXISTANTS), filtre la contamination vs un benchmark held-out,
+déduplique, et écrit un JSONL au ``dialogue_schema`` (single-turn, utterances en
+TEXTE). L'audio est ajouté ensuite par ``scripts/synthesize_user_audio.py``.
 
-    export ANTHROPIC_API_KEY=...
+    export GEMINI_API_KEY=...
     python scripts/generate_toolcalling_data.py --output data/tc_en_train.jsonl \
-        --n-total 3000 --held-out benchmark/toolcalling_en/cases.jsonl
+        --provider gemini --n-total 3000 \
+        --held-out benchmark/toolcalling_en/cases.sample.jsonl
 
 La logique pure (prompt, parse, verify, contamination) est dans
 ``s2s_toolcalling.data.synth_dialogues`` et testée sans réseau.
@@ -32,13 +33,27 @@ from s2s_toolcalling.tools.schemas import (
 )
 from s2s_toolcalling.tools.toolcalling_en import build_toolcalling_en_registry
 
-# IDs modèles Anthropic (cf. system prompt) : sonnet = bon ratio qualité/coût
-# pour la génération en volume ; --model pour surcharger (ex. claude-opus-4-8).
-DEFAULT_MODEL = "claude-sonnet-4-6"
+# Modèle par défaut par fournisseur. Gemini Flash = très bon marché pour la
+# génération en volume (cf. estimation de coût en tête de notebook).
+DEFAULT_MODELS = {"gemini": "gemini-2.5-flash", "anthropic": "claude-sonnet-4-6"}
+API_KEY_ENV = {"gemini": ("GEMINI_API_KEY", "GOOGLE_API_KEY"), "anthropic": ("ANTHROPIC_API_KEY",)}
+
+
+def _gemini_generate_fn(model: str) -> Callable[[str], str]:
+    """``generate_fn(prompt) -> str`` via le SDK Google GenAI (paresseux)."""
+    from google import genai
+
+    client = genai.Client()  # lit GEMINI_API_KEY / GOOGLE_API_KEY
+
+    def generate(prompt: str) -> str:
+        resp = client.models.generate_content(model=model, contents=prompt)
+        return resp.text or ""
+
+    return generate
 
 
 def _anthropic_generate_fn(model: str) -> Callable[[str], str]:
-    """Construit un ``generate_fn(prompt) -> str`` via le SDK Anthropic (paresseux)."""
+    """``generate_fn(prompt) -> str`` via le SDK Anthropic (paresseux)."""
     import anthropic
 
     client = anthropic.Anthropic()  # lit ANTHROPIC_API_KEY
@@ -52,6 +67,12 @@ def _anthropic_generate_fn(model: str) -> Callable[[str], str]:
         return "".join(block.text for block in resp.content if block.type == "text")
 
     return generate
+
+
+def _build_generate_fn(provider: str, model: str) -> Callable[[str], str]:
+    if provider == "gemini":
+        return _gemini_generate_fn(model)
+    return _anthropic_generate_fn(model)
 
 
 def _load_held_out(path: Path | None) -> list[str]:
@@ -79,15 +100,17 @@ def main() -> None:
     ap.add_argument("--output", required=True, type=Path)
     ap.add_argument("--n-total", type=int, default=3000, help="cas VÉRIFIÉS visés")
     ap.add_argument("--per-cell", type=int, default=12, help="cas demandés par appel LLM")
-    ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--provider", choices=["gemini", "anthropic"], default="gemini")
+    ap.add_argument("--model", default=None, help="défaut : selon --provider")
     ap.add_argument("--held-out", type=Path, default=None, help="benchmark JSONL à éviter (contamination)")
     ap.add_argument("--contamination-threshold", type=float, default=0.5)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--max-cells", type=int, default=10_000, help="garde-fou (coût)")
     args = ap.parse_args()
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("ERREUR : ANTHROPIC_API_KEY non défini.", file=sys.stderr)
+    model = args.model or DEFAULT_MODELS[args.provider]
+    if not any(os.environ.get(k) for k in API_KEY_ENV[args.provider]):
+        print(f"ERREUR : clé API absente ({' ou '.join(API_KEY_ENV[args.provider])}).", file=sys.stderr)
         raise SystemExit(1)
 
     rng = random.Random(args.seed)
@@ -95,7 +118,7 @@ def main() -> None:
     contamination = sd.ContaminationFilter(
         held_out=_load_held_out(args.held_out), threshold=args.contamination_threshold
     )
-    generate_fn = _anthropic_generate_fn(args.model)
+    generate_fn = _build_generate_fn(args.provider, model)
 
     targets = [t for t, _ in sd.TOOL_TARGETS]
     weights = [w for _, w in sd.TOOL_TARGETS]

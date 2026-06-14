@@ -119,19 +119,33 @@ utilisateur → émission du tool call dans le flux **texte**
 parser, éval) ; `db_query` prend une **question en langage naturel** (NL→SQL côté
 backend, hors chemin du modèle).
 
+**Construction du dataset (Gemini + Voxtral TTS → HF)** : le notebook
+[`notebooks/build_toolcalling_dataset.ipynb`](notebooks/build_toolcalling_dataset.ipynb)
+enchaîne génération → TTS → push HF sur une L4 (génère et sauvegarde le dataset
+audio sur ton Hub). Détail des étapes :
+
 ```bash
 pip install -e ".[train,tooldata]"
 
 # 1) Données synthétiques vérifiées (taxonomie + parser/registre + anti-contamination)
-export ANTHROPIC_API_KEY=...
-python scripts/generate_toolcalling_data.py --output data/tc_en_train.jsonl \
+#    Gemini par défaut (~$1 pour 3k ex.) ; --provider anthropic en option.
+export GEMINI_API_KEY=...
+python scripts/generate_toolcalling_data.py --provider gemini --output data/tc_en_train.jsonl \
     --n-total 3000 --held-out benchmark/toolcalling_en/cases.sample.jsonl
 
-# 2) TTS des tours user (Kokoro multi-voix, 16 kHz ; voix held-out pour le test)
-python scripts/synthesize_user_audio.py --dialogues data/tc_en_train.jsonl \
-    --audio-root data/audio_tc_en --out data/tc_en_train.audio.jsonl --split train
-python scripts/synthesize_user_audio.py --dialogues benchmark/toolcalling_en/cases.sample.jsonl \
-    --audio-root data/audio_tc_en --out data/tc_en_bench.audio.jsonl --split test
+# 2) TTS des tours user — Voxtral TTS via vLLM-Omni (qualité ≫ Kokoro ; L4) ;
+#    voix held-out pour le test. Serveur : vllm serve mistralai/Voxtral-4B-TTS-2603 --omni
+python scripts/synthesize_user_audio.py --engine voxtral --voices casual_male,... \
+    --dialogues data/tc_en_train.jsonl --audio-root data/audio_tc_en \
+    --out data/tc_en_train.audio.jsonl --split train
+python scripts/synthesize_user_audio.py --engine voxtral --voices <held-out> --split test \
+    --dialogues benchmark/toolcalling_en/cases.sample.jsonl \
+    --audio-root data/audio_tc_en --out data/tc_en_bench.audio.jsonl
+
+# 2b) Pousser le dataset audio sur le Hub (privé ; licence cc-by-nc-4.0, carte neutre)
+python scripts/build_hf_dataset.py --repo-id <user>/tc-en-audio \
+    --train data/tc_en_train.audio.jsonl --test data/tc_en_bench.audio.jsonl \
+    --audio-root data/audio_tc_en --private
 
 # 3) Packer (set d'outils EN) puis entraîner (LoRA backbone, encodeur + têtes audio gelés)
 python -c "import json,s2s_toolcalling.tools.schemas as s; open('tools_en.json','w').write(json.dumps(s.TOOLCALLING_EN_TOOL_DEFINITIONS))"
