@@ -14,13 +14,21 @@ Pod GPU :
     # accès : ssh -L 7860:localhost:7860 → http://localhost:7860
 
 Colab — WebRTC exige un serveur TURN pour traverser le NAT de la VM (le
-tunnel gradio.live ne porte que la page, pas le flux média). fastrtc fournit
-des credentials TURN Cloudflare GRATUITS via un token Hugging Face :
-    import os; os.environ["HF_TOKEN"] = "hf_..."   # ou secret Colab 🔑
-    !pip install -q fastrtc
-    !python scripts/s2s_webrtc_demo.py --share \\
-        --checkpoint /content/lfm25_audio_omni
-    # → ouvrir le lien *.gradio.live, autoriser le micro, parler.
+tunnel gradio.live ne porte que la page, pas le flux média). Sur Colab,
+l'endpoint TURN par HF_TOKEN (CLOUDFLARE_FASTRTC_TURN_URL) ne résout souvent
+PAS → utiliser des **clés Cloudflare Realtime DIRECTES** (gratuites) :
+    1. https://dash.cloudflare.com → Calls → TURN → créer une clé
+       → récupérer Turn Token ID + API Token.
+    2. Colab :
+        import os
+        os.environ["CLOUDFLARE_TURN_KEY_ID"] = "..."
+        os.environ["CLOUDFLARE_TURN_KEY_API_TOKEN"] = "..."
+        os.environ.pop("HF_TOKEN", None)   # sinon il prend le pas (endpoint HF)
+        !{sys.executable} -m pip install -q fastrtc
+        !{sys.executable} scripts/s2s_webrtc_demo.py --share --turn cloudflare \\
+            --checkpoint /content/lfm25_audio_omni
+    # logs attendus : « [TURN] Cloudflare clés directes » → ouvrir le lien
+    # *.gradio.live, autoriser le micro, parler.
 """
 
 from __future__ import annotations
@@ -71,8 +79,25 @@ def build_stream(backend: VllmBackend, turn: str):
             get_cloudflare_turn_credentials_async,
         )
 
-        rtc_conf = get_cloudflare_turn_credentials_async  # côté navigateur
-        server_conf = get_cloudflare_turn_credentials(ttl=360_000)  # côté VM
+        key_id = os.environ.get("CLOUDFLARE_TURN_KEY_ID")
+        key_token = os.environ.get("CLOUDFLARE_TURN_KEY_API_TOKEN")
+        if key_id and key_token:
+            # Clés Cloudflare Realtime DIRECTES → rtc.live.cloudflare.com
+            # (contourne CLOUDFLARE_FASTRTC_TURN_URL, l'endpoint HF que la VM
+            # Colab ne résout pas). On récupère les ICE servers une fois (ttl
+            # 24 h = max Cloudflare) et on sert le MÊME dict au navigateur et à
+            # la VM — pas de dépendance à la variante async côté client.
+            creds = get_cloudflare_turn_credentials(
+                turn_key_id=key_id, turn_key_api_token=key_token, ttl=86_400
+            )
+            rtc_conf = creds  # navigateur
+            server_conf = creds  # VM
+            print("[TURN] Cloudflare clés directes (rtc.live.cloudflare.com)", flush=True)
+        else:
+            # repli : endpoint HF via HF_TOKEN (peut ne pas résoudre sur Colab)
+            rtc_conf = get_cloudflare_turn_credentials_async
+            server_conf = get_cloudflare_turn_credentials(ttl=360_000)
+            print("[TURN] endpoint HF (HF_TOKEN) — peut échouer sur Colab", flush=True)
 
     return Stream(
         handler=ReplyOnPause(handler, can_interrupt=False, output_sample_rate=SR_OUT),
@@ -102,10 +127,13 @@ def main() -> None:
 
     turn = args.turn
     if turn == "auto":
-        turn = "cloudflare" if os.environ.get("HF_TOKEN") else "none"
+        has_cf_keys = bool(os.environ.get("CLOUDFLARE_TURN_KEY_ID")
+                           and os.environ.get("CLOUDFLARE_TURN_KEY_API_TOKEN"))
+        turn = "cloudflare" if (has_cf_keys or os.environ.get("HF_TOKEN")) else "none"
     if args.share and turn == "none":
         print("⚠️  --share sans TURN : sur Colab le flux WebRTC ne passera "
-              "probablement pas le NAT — définir HF_TOKEN (TURN Cloudflare gratuit).")
+              "probablement pas le NAT — définir CLOUDFLARE_TURN_KEY_ID + "
+              "CLOUDFLARE_TURN_KEY_API_TOKEN (clés Realtime gratuites).")
 
     backend = VllmBackend(
         args.checkpoint,
