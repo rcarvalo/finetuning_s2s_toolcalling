@@ -223,6 +223,21 @@ class VllmBackend:
                 wave = wave.mean(axis=1)
             audio = (wave, sr)
         if audio is not None:
+            # Resampling vers 16 kHz EN AMONT : le mel du conformer est calibré
+            # 16 kHz (cf. preprocessor.sample_rate). Le micro WebRTC/navigateur
+            # arrive en 44,1/48 kHz ; si le data-parser vLLM ne resample pas, le
+            # mel est faux → le modèle « entend » du charabia → réponses
+            # génériques. No-op si déjà 16 kHz.
+            wave_a, sr_a = audio
+            wave_a = np.asarray(wave_a, dtype=np.float32).reshape(-1)
+            if sr_a != 16_000:
+                import torchaudio
+
+                wave_a = torchaudio.functional.resample(
+                    torch.from_numpy(wave_a), sr_a, 16_000
+                ).numpy()
+                sr_a = 16_000
+            audio = (wave_a, sr_a)
             # Audio-in NATIF : 1 token audio_in dans le tour user, remplacé par
             # ceil(T_mel/8) placeholders par le processor mm ; les embeddings
             # conformer sont mergés au prefill (cf. docs/audio_in_spec.md).
