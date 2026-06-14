@@ -23,6 +23,7 @@ import json
 import os
 import random
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Callable
 
@@ -99,7 +100,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--output", required=True, type=Path)
     ap.add_argument("--n-total", type=int, default=3000, help="cas VÉRIFIÉS visés")
-    ap.add_argument("--per-cell", type=int, default=12, help="cas demandés par appel LLM")
+    ap.add_argument("--per-cell", type=int, default=20, help="cas demandés par appel LLM (↑ = moins d'appels)")
+    ap.add_argument("--concurrency", type=int, default=8, help="appels LLM en parallèle (↓ si rate-limit 429)")
     ap.add_argument("--provider", choices=["gemini", "anthropic"], default="gemini")
     ap.add_argument("--model", default=None, help="défaut : selon --provider")
     ap.add_argument("--held-out", type=Path, default=None, help="benchmark JSONL à éviter (contamination)")
@@ -121,16 +123,22 @@ def main() -> None:
     generate_fn = _build_generate_fn(args.provider, model)
 
     targets = [t for t, _ in sd.TOOL_TARGETS]
-    weights = [w for _, w in sd.TOOL_TARGETS]
+    weights_by = dict(sd.TOOL_TARGETS)
 
-    accepted: list[sd.SynthCase] = []
     seen_norm: set[str] = set()
-    rejected = contaminated = cells = 0
+    written = pos = rejected = contaminated = cells = 0
+    alloc = {t: 0.0 for t in targets}  # état du round-robin pondéré (balance globale)
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    while len(accepted) < args.n_total and cells < args.max_cells:
-        cells += 1
-        target = rng.choices(targets, weights=weights, k=1)[0]
+    def _next_target() -> str:
+        """Round-robin pondéré : la cible la plus EN RETARD sur son poids cible.
+        Garantit le mix ~35/35/30 quelle que soit la taille (≠ tirage aléatoire
+        qui se déséquilibre sur les petits runs)."""
+        t = min(targets, key=lambda t: (alloc[t] + 1) / weights_by[t])
+        alloc[t] += 1
+        return t
+
+    def _make_cell(target: str) -> tuple[str, str, str, str]:
+        """Construit une cellule (style/profondeur aléatoires pour la diversité)."""
         style = rng.choice(sd.PHRASING_STYLES)
         depth = rng.choice(sd.INFERENCE_DEPTHS)
         prompt = sd.build_generation_prompt(
@@ -138,38 +146,51 @@ def main() -> None:
             tool_definitions=TOOLCALLING_EN_TOOL_DEFINITIONS,
             blocklist=rng.sample(contamination.held_out, min(8, len(contamination.held_out))),
         )
+        return target, style, depth, prompt
+
+    def _safe_gen(prompt: str):
         try:
-            raw = generate_fn(prompt)
-        except Exception as e:  # noqa: BLE001 — un appel raté ne doit pas tout arrêter
-            print(f"[cell {cells}] appel LLM échoué : {e}", file=sys.stderr)
-            continue
+            return generate_fn(prompt)
+        except Exception as e:  # noqa: BLE001 — un appel raté ne stoppe pas le batch
+            return e
 
-        for case in sd.parse_generation_response(raw, target=target, style=style, depth=depth):
-            reason = sd.verify_case(case, registry)
-            if reason:
-                rejected += 1
-                continue
-            key = sd._normalize(case.utterance)
-            if key in seen_norm:
-                continue
-            if contamination.is_contaminated(case.utterance):
-                contaminated += 1
-                continue
-            seen_norm.add(key)
-            accepted.append(case)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    # Écriture AU FUR ET À MESURE : chaque cas accepté est flushé sur disque tout
+    # de suite → on peut arrêter (Ctrl-C) à tout moment sans rien perdre, et
+    # suivre l'avancement. Appels LLM EN PARALLÈLE par vagues de `concurrency`
+    # (goulot = latence réseau). Parsing/verif/dedup séquentiel (rapide).
+    with args.output.open("w", encoding="utf-8") as out, ThreadPoolExecutor(max_workers=args.concurrency) as pool:
+        while written < args.n_total and cells < args.max_cells:
+            batch = [_make_cell(_next_target()) for _ in range(args.concurrency)]
+            cells += len(batch)
+            for (target, style, depth, _), raw in zip(batch, pool.map(_safe_gen, [c[3] for c in batch])):
+                if isinstance(raw, Exception):
+                    print(f"[appel échoué] {raw}", file=sys.stderr)
+                    continue
+                for case in sd.parse_generation_response(raw, target=target, style=style, depth=depth):
+                    if written >= args.n_total:
+                        break
+                    if sd.verify_case(case, registry):
+                        rejected += 1
+                        continue
+                    key = sd._normalize(case.utterance)
+                    if key in seen_norm:
+                        continue
+                    if contamination.is_contaminated(case.utterance):
+                        contaminated += 1
+                        continue
+                    seen_norm.add(key)
+                    dialogue = sd.case_to_dialogue(case, written, tools=TOOLCALLING_EN_TOOL_NAMES)
+                    out.write(json.dumps(dialogue, ensure_ascii=False) + "\n")
+                    written += 1
+                    pos += case.target != "none"
+            out.flush()
+            print(f"[{cells} appels] écrits={written}/{args.n_total} "
+                  f"(pos={pos} neg={written - pos}) rejetés={rejected} contaminés={contaminated}", flush=True)
 
-        if cells % 10 == 0:
-            print(f"[cell {cells}] acceptés={len(accepted)} rejetés={rejected} contaminés={contaminated}", flush=True)
-
-    with args.output.open("w", encoding="utf-8") as f:
-        for i, case in enumerate(accepted):
-            dialogue = sd.case_to_dialogue(case, i, tools=TOOLCALLING_EN_TOOL_NAMES)
-            f.write(json.dumps(dialogue, ensure_ascii=False) + "\n")
-
-    pos = sum(1 for c in accepted if c.target != "none")
-    print(f"\nécrit {args.output} : {len(accepted)} cas "
-          f"({pos} positifs / {len(accepted) - pos} négatifs) — "
-          f"rejetés={rejected}, contaminés={contaminated}, cellules={cells}")
+    print(f"\nécrit {args.output} : {written} cas "
+          f"({pos} positifs / {written - pos} négatifs) — "
+          f"rejetés={rejected}, contaminés={contaminated}, appels={cells}")
     print("TTS ensuite : python scripts/synthesize_user_audio.py "
           f"--dialogues {args.output} --audio-root data/audio_tc_en")
 
