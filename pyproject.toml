@@ -38,6 +38,16 @@ rag = [
     "chromadb>=0.5",
     "sentence-transformers>=3.0",
 ]
+# Génération + TTS du dataset tool-calling EN (offline, hors chemin d'inférence) :
+# synthèse LLM (anthropic), TTS multi-voix (kokoro). sentence-transformers (extra
+# rag) sert au scorer d'arguments sémantique de l'éval.
+tooldata = [
+    "anthropic>=0.40",
+    "kokoro>=0.9",
+    "soundfile>=0.12",
+    "torchaudio>=2.4",
+    "ddgs>=6.0",
+]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",

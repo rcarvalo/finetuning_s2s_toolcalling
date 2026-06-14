@@ -108,6 +108,51 @@ de l'adaptateur (`outputs/.../final_adapter/`).
 python -m s2s_toolcalling.evaluation.eval_toolcalling --predictions eval_fr.jsonl
 ```
 
+## Capacité tool calling vocal EN — `web_search` + `db_query` (Phase A, v1)
+
+Donne au **même** modèle LFM2.5-Audio (aucun second modèle) la capacité d'appeler
+deux outils **à partir de la parole**, en anglais. v1 = **single-turn** : audio
+utilisateur → émission du tool call dans le flux **texte**
+(`<|tool_call_start|>[…]<|tool_call_end|>`). Précédent : le cookbook Liquid
+`voice-assistant` (OHF-Voice) prouve audio→function-call sur ce modèle
+(99 % name / 90 % arg). Réutilise toute la plomberie existante (format, LoRA,
+parser, éval) ; `db_query` prend une **question en langage naturel** (NL→SQL côté
+backend, hors chemin du modèle).
+
+```bash
+pip install -e ".[train,tooldata]"
+
+# 1) Données synthétiques vérifiées (taxonomie + parser/registre + anti-contamination)
+export ANTHROPIC_API_KEY=...
+python scripts/generate_toolcalling_data.py --output data/tc_en_train.jsonl \
+    --n-total 3000 --held-out benchmark/toolcalling_en/cases.sample.jsonl
+
+# 2) TTS des tours user (Kokoro multi-voix, 16 kHz ; voix held-out pour le test)
+python scripts/synthesize_user_audio.py --dialogues data/tc_en_train.jsonl \
+    --audio-root data/audio_tc_en --out data/tc_en_train.audio.jsonl --split train
+python scripts/synthesize_user_audio.py --dialogues benchmark/toolcalling_en/cases.sample.jsonl \
+    --audio-root data/audio_tc_en --out data/tc_en_bench.audio.jsonl --split test
+
+# 3) Packer (set d'outils EN) puis entraîner (LoRA backbone, encodeur + têtes audio gelés)
+python -c "import json,s2s_toolcalling.tools.schemas as s; open('tools_en.json','w').write(json.dumps(s.TOOLCALLING_EN_TOOL_DEFINITIONS))"
+python -m s2s_toolcalling.data.preprocess_sft --dialogues data/tc_en_train.audio.jsonl \
+    --audio-root data/audio_tc_en --output datasets/tc_en_train \
+    --tool-definitions tools_en.json --assistant-audio-mode sequential
+accelerate launch -m s2s_toolcalling.training.train_sft --config configs/phase_en_toolcalling.yaml
+
+# 4) Éval AUDIO → tool-call (harnais : audio → modèle → predicted_text → scoring)
+python scripts/eval_audio_toolcalling.py --backend vllm --checkpoint exports/lfm25_tc_en \
+    --cases data/tc_en_bench.audio.jsonl --audio-root data/audio_tc_en \
+    --out eval_tc_en.jsonl --arg-match token_f1
+```
+
+Métriques (BFCL-style + arg tolérant pour le texte libre) : `parse_rate`,
+`relevance_accuracy` (appeler / s'abstenir), `name_accuracy`, `call_accuracy`.
+Seuils v1 : name > 90 %, relevance > 85 %, arg tolérant > 75 %, parse > 98 %.
+**Phase B** (itération) : boucle complète (résultat d'outil réinjecté → réponse
+**parlée**) via l'orchestrateur existant + backends live (`ddgs`, NL→SQL sur
+`sql/schema_en.sql`).
+
 ## Phase 3 — Orchestrateur tools + RAG
 
 Démo du round-trip complet **sans GPU** (parser → registre → réinjection) :

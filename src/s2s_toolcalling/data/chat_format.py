@@ -45,6 +45,18 @@ DEFAULT_SYSTEM_INSTRUCTIONS = (
     "la réceptionniste avec notify_receptionist."
 )
 
+# Consigne anglaise pour la capacité tool calling vocal (web_search + db_query).
+# Insiste sur le routage des outils (interne vs web) et l'abstention (négatifs) :
+# c'est exactement ce que mesure relevance_accuracy dans eval_toolcalling.
+TOOLCALLING_EN_SYSTEM_INSTRUCTIONS = (
+    "You are a voice assistant that can call tools to help the user. Use db_query "
+    "for questions about internal company data (customers, orders, products, "
+    "employees, meetings), and web_search for public or current information. Call a "
+    "tool only when it is needed to answer; for greetings, chit-chat, or questions "
+    "you can answer directly, reply normally without calling any tool. Emit at most "
+    "one tool call when needed."
+)
+
 
 def render_python_literal(value: Any) -> str:
     """Rend une valeur en littéral pythonic (style LFM2 : strings JSON double-quotées,

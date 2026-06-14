@@ -106,3 +106,53 @@ RECEPTION_TOOL_DEFINITIONS: list[dict] = [
 ]
 
 RECEPTION_TOOL_NAMES = [t["name"] for t in RECEPTION_TOOL_DEFINITIONS]
+
+
+# --------------------------------------------------------------------------- #
+# Outils anglais — capacité tool calling vocal v1 (web_search + db_query).
+# Descriptions EN, injectées telles quelles dans <|tool_list_start|>. db_query
+# prend une QUESTION en langage naturel (NL→SQL fait côté backend, hors chemin
+# du modèle assistant) — distinct de QUERY_DATABASE(sql) ci-dessus.
+# --------------------------------------------------------------------------- #
+
+WEB_SEARCH = {
+    "name": "web_search",
+    "description": (
+        "Search the public web for current or general information and return the most "
+        "relevant results. Use for news, prices, facts, definitions, or anything that is "
+        "not stored in the internal company database."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The search query, phrased as concise keywords or a short question.",
+            },
+        },
+        "required": ["query"],
+    },
+}
+
+DB_QUERY = {
+    "name": "db_query",
+    "description": (
+        "Answer a question from the internal company database (customers, orders, products, "
+        "employees, meetings) by asking it in plain English. Use for internal or business "
+        "data, never for public information."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "question": {
+                "type": "string",
+                "description": "The question to answer from the database, in natural language.",
+            },
+        },
+        "required": ["question"],
+    },
+}
+
+TOOLCALLING_EN_TOOL_DEFINITIONS: list[dict] = [WEB_SEARCH, DB_QUERY]
+
+TOOLCALLING_EN_TOOL_NAMES = [t["name"] for t in TOOLCALLING_EN_TOOL_DEFINITIONS]

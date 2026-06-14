@@ -50,12 +50,70 @@ def _norm_value(v: Any) -> Any:
     return v
 
 
-def calls_match(predicted: dict[str, Any], expected: dict[str, Any]) -> bool:
+ArgMatch = str  # "exact" | "token_f1" | "semantic"
+
+
+def _token_set(s: str) -> set[str]:
+    norm = _norm_value(s)
+    return set(norm.split()) if isinstance(norm, str) else set()
+
+
+def token_f1(a: str, b: str) -> float:
+    """F1 symétrique des tokens normalisés — tolérant à l'ordre/paraphrase légère."""
+    ta, tb = _token_set(a), _token_set(b)
+    if not ta and not tb:
+        return 1.0
+    if not ta or not tb:
+        return 0.0
+    inter = len(ta & tb)
+    if inter == 0:
+        return 0.0
+    precision, recall = inter / len(tb), inter / len(ta)
+    return 2 * precision * recall / (precision + recall)
+
+
+_ST_MODEL = None
+
+
+def _semantic_sim(a: str, b: str) -> float:
+    """Similarité cosinus d'embeddings (sentence-transformers, paresseux)."""
+    global _ST_MODEL
+    if _ST_MODEL is None:
+        from sentence_transformers import SentenceTransformer
+
+        _ST_MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    emb = _ST_MODEL.encode([a, b], normalize_embeddings=True)
+    return float(emb[0] @ emb[1])
+
+
+def _args_match(
+    pred_args: dict[str, Any], exp_args: dict[str, Any], *, arg_match: ArgMatch, threshold: float
+) -> bool:
+    if set(pred_args) != set(exp_args):
+        return False
+    for key, exp_v in exp_args.items():
+        pred_v = pred_args[key]
+        if arg_match != "exact" and isinstance(pred_v, str) and isinstance(exp_v, str):
+            sim = token_f1(pred_v, exp_v) if arg_match == "token_f1" else _semantic_sim(pred_v, exp_v)
+            if sim < threshold:
+                return False
+        elif _norm_value(pred_v) != _norm_value(exp_v):
+            return False
+    return True
+
+
+def calls_match(
+    predicted: dict[str, Any],
+    expected: dict[str, Any],
+    *,
+    arg_match: ArgMatch = "exact",
+    threshold: float = 0.7,
+) -> bool:
     if predicted["name"] != expected["name"]:
         return False
-    pred_args = {k: _norm_value(v) for k, v in predicted.get("arguments", {}).items()}
-    exp_args = {k: _norm_value(v) for k, v in expected.get("arguments", {}).items()}
-    return pred_args == exp_args
+    return _args_match(
+        predicted.get("arguments", {}), expected.get("arguments", {}), arg_match=arg_match, threshold=threshold
+    )
 
 
 @dataclass(slots=True)
@@ -91,7 +149,14 @@ class Report:
         }
 
 
-def score_case(case_id: str, predicted_text: str, expected_calls: list[dict[str, Any]]) -> CaseResult:
+def score_case(
+    case_id: str,
+    predicted_text: str,
+    expected_calls: list[dict[str, Any]],
+    *,
+    arg_match: ArgMatch = "exact",
+    threshold: float = 0.7,
+) -> CaseResult:
     parser = StreamingToolCallParser()
     predicted = [{"name": c.name, "arguments": c.arguments} for c in parser.feed(predicted_text)]
     parse_failed = bool(parser.errors)
@@ -110,7 +175,7 @@ def score_case(case_id: str, predicted_text: str, expected_calls: list[dict[str,
         matched = 0
         for p in predicted:
             for e in remaining:
-                if calls_match(p, e):
+                if calls_match(p, e, arg_match=arg_match, threshold=threshold):
                     remaining.remove(e)
                     matched += 1
                     break
@@ -126,7 +191,7 @@ def score_case(case_id: str, predicted_text: str, expected_calls: list[dict[str,
     )
 
 
-def evaluate_file(path: str | Path) -> Report:
+def evaluate_file(path: str | Path, *, arg_match: ArgMatch = "exact", threshold: float = 0.7) -> Report:
     report = Report()
     with Path(path).open(encoding="utf-8") as f:
         for line in f:
@@ -134,7 +199,12 @@ def evaluate_file(path: str | Path) -> Report:
             if not line:
                 continue
             case = json.loads(line)
-            report.add(score_case(str(case["id"]), case["predicted_text"], case.get("expected_calls", [])))
+            report.add(
+                score_case(
+                    str(case["id"]), case["predicted_text"], case.get("expected_calls", []),
+                    arg_match=arg_match, threshold=threshold,
+                )
+            )
     return report
 
 
@@ -143,9 +213,14 @@ def main() -> None:
     parser.add_argument("--predictions", required=True, help="JSONL avec expected_calls + predicted_text")
     parser.add_argument("--output", default=None, help="JSON de sortie (défaut : stdout)")
     parser.add_argument("--per-case", action="store_true", help="Inclure le détail par cas")
+    parser.add_argument("--arg-match", choices=["exact", "token_f1", "semantic"], default="exact",
+                        help="comparaison des arguments string (texte libre db_query/web_search) ; "
+                             "token_f1/semantic = tolérant")
+    parser.add_argument("--arg-threshold", type=float, default=0.7,
+                        help="seuil de similarité par argument (token_f1/semantic)")
     args = parser.parse_args()
 
-    report = evaluate_file(args.predictions)
+    report = evaluate_file(args.predictions, arg_match=args.arg_match, threshold=args.arg_threshold)
     out: dict[str, Any] = {"summary": report.summary()}
     if args.per_case:
         out["cases"] = [vars(r) for r in report.results]
