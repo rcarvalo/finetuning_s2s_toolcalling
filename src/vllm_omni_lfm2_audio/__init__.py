@@ -31,6 +31,15 @@ def register() -> None:
     from vllm_omni_lfm2_audio.configuration import register_config
     from vllm_omni_lfm2_audio.pipeline import LFM2_AUDIO_PIPELINE
 
+    # IMPORT EAGER de la classe d'archi → exécute son décorateur
+    # @MULTIMODAL_REGISTRY.register_processor DÈS le chargement du plugin (dans
+    # tous les process). Sinon l'enregistrement (paresseux, par chaîne) arrive
+    # potentiellement APRÈS la construction du ModelConfig qui décide
+    # is_multimodal_model → supports_mm_inputs=False → l'encodeur audio (mel/
+    # conformer) n'est JAMAIS appelé → l'audio d'entrée est ignoré (réponses
+    # génériques). Les imports lourds (liquid_audio) restent paresseux (méthodes).
+    import vllm_omni_lfm2_audio.lfm2_audio  # noqa: F401
+
     arch = "Lfm2AudioOmniModel"
     target = "vllm_omni_lfm2_audio.lfm2_audio:Lfm2AudioOmniForConditionalGeneration"
 
