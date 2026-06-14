@@ -204,10 +204,12 @@ class VllmBackend:
     def reset(self) -> None:
         self.history.clear()
 
-    def _render(self) -> list[int]:
+    def _render(self, current_user: str | None = None) -> list[int]:
         s = f"<|startoftext|><|im_start|>system\n{self.system}<|im_end|>\n"
         for role, txt in self.history:
             s += f"<|im_start|>{role}\n{txt}<|im_end|>\n"
+        if current_user is not None:
+            s += f"<|im_start|>user\n{current_user}<|im_end|>\n"
         return self.tok(s + "<|im_start|>assistant\n", add_special_tokens=False).input_ids
 
     def reply_stream(self, text: str | None = None, audio_path: Path | None = None,
@@ -257,13 +259,22 @@ class VllmBackend:
             from vllm_omni_lfm2_audio.constants import AUDIO_FRAME_PLACEHOLDER_ID
 
             audio_tok = self.tok.decode([AUDIO_FRAME_PLACEHOLDER_ID])
-            text = f"{audio_tok}{text or ''}"
-        if not text:
+            # Le placeholder audio n'appartient QU'AU TOUR COURANT : multi_modal_data
+            # ne porte que l'audio courant, donc le prompt ne doit contenir qu'UN
+            # placeholder (1 PH = 1 audio = chemin prouvé au tour 1). Les tours
+            # audio PASSÉS sont stockés SANS placeholder (leur audio n'existe plus) :
+            # sinon N placeholders pour 1 audio → vLLM scatte l'audio courant sur
+            # la position périmée du 1ᵉʳ tour et le modèle « n'entend » plus rien
+            # au-delà du tour 1 (bug multi-tours observé).
+            render_text = f"{audio_tok}{text or ''}"
+            hist_text = text or "(voice message)"
+        else:
+            render_text = hist_text = text
+        if not render_text:
             raise ValueError("--text et/ou --audio-in requis avec le backend vllm")
-        self.history.append(("user", text))
 
         t0 = time.time()
-        prompt: dict = {"prompt_token_ids": self._render()}
+        prompt: dict = {"prompt_token_ids": self._render(current_user=render_text)}
         if multi_modal_data is not None:
             prompt["multi_modal_data"] = multi_modal_data
 
@@ -286,6 +297,8 @@ class VllmBackend:
                 if w is not None and w.size:
                     ttfa = ttfa or (time.time() - t0)
                     yield w
+        # tour user stocké SANS placeholder audio (cf. render_text/hist_text)
+        self.history.append(("user", hist_text))
         self.history.append(("assistant", txt))
         self.last_text = txt
         self.last_metrics = {"ttfa_s": ttfa, "total_s": time.time() - t0, "frames": frames}
