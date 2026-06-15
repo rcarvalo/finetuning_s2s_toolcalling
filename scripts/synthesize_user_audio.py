@@ -28,6 +28,8 @@ import argparse
 import io
 import json
 import random
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -132,6 +134,8 @@ def main() -> None:
     ap.add_argument("--split", choices=["train", "test"], default="train",
                     help="train = voix d'entraînement ; test = voix held-out (inconnues)")
     ap.add_argument("--base-url", default="http://localhost:8000/v1", help="serveur Voxtral (vLLM)")
+    ap.add_argument("--concurrency", type=int, default=8,
+                    help="requêtes TTS en parallèle (voxtral ; vLLM les batch). Kokoro forcé à 1.")
     ap.add_argument("--augment-prob", type=float, default=0.3)
     ap.add_argument("--lang", default="a", help="Kokoro lang_code (a=US, b=UK)")
     ap.add_argument("--seed", type=int, default=0)
@@ -141,28 +145,55 @@ def main() -> None:
     voices = _resolve_voices(args)
     tts = _build_engine(args)
 
-    n_utt = 0
-    with args.dialogues.open(encoding="utf-8") as fin, args.out.open("w", encoding="utf-8") as fout:
-        for line in fin:
-            line = line.strip()
-            if not line:
-                continue
-            dlg = json.loads(line)
-            for i, turn in enumerate(dlg.get("turns", [])):
-                if turn.get("role") != "user" or not turn.get("text") or turn.get("audio"):
-                    continue
-                voice = rng.choice(voices)
-                wav = tts.synth(turn["text"], voice)
-                if rng.random() < args.augment_prob:
-                    wav = _augment(wav, rng)
-                rel = f"{dlg['id']}_u{i}.wav"
-                _save_wav(wav, args.audio_root / rel)
-                turn["audio"] = rel
-                turn["voice"] = voice
-                n_utt += 1
-            fout.write(json.dumps(dlg, ensure_ascii=False) + "\n")
+    dialogues = [json.loads(s) for s in (l.strip() for l in args.dialogues.open(encoding="utf-8")) if s]
 
-    print(f"synthétisé {n_utt} utterances ({args.engine}, {args.split}, voix={voices}) → {args.out}")
+    # 1) construit les jobs (voix + décision d'aug tirées DANS le thread principal
+    #    → déterministe), puis synthétise EN PARALLÈLE (le serveur vLLM batch).
+    jobs = []  # (di, ti, text, voice, augment, rel)
+    for di, dlg in enumerate(dialogues):
+        for ti, turn in enumerate(dlg.get("turns", [])):
+            if turn.get("role") == "user" and turn.get("text") and not turn.get("audio"):
+                jobs.append((di, ti, turn["text"], rng.choice(voices),
+                             rng.random() < args.augment_prob, f"{dlg['id']}_u{ti}.wav"))
+
+    def _do(job):
+        di, ti, text, voice, aug, rel = job
+        try:
+            wav = tts.synth(text, voice)
+        except Exception as e:  # noqa: BLE001 — un échec ne stoppe pas le batch
+            return job, None, str(e)
+        if aug:
+            wav = _augment(wav, random.Random(di * 1000 + ti))
+        _save_wav(wav, args.audio_root / rel)
+        return job, rel, None
+
+    workers = args.concurrency if args.engine == "voxtral" else 1
+    print(f"TTS {len(jobs)} utterances · {args.engine} · {workers} en parallèle · voix={voices}", flush=True)
+    t0, failed, ok_di = time.time(), 0, set(range(len(dialogues)))
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        for k, (job, rel, err) in enumerate(ex.map(_do, jobs), 1):
+            di, ti, _, voice, _, _ = job
+            if err:
+                failed += 1
+                ok_di.discard(di)
+                print(f"[échec TTS] {job[2][:40]!r}: {err}", flush=True)
+            else:
+                dialogues[di]["turns"][ti]["audio"] = rel
+                dialogues[di]["turns"][ti]["voice"] = voice
+            if k % 50 == 0 or k == len(jobs):
+                rate = k / (time.time() - t0)
+                eta = (len(jobs) - k) / rate / 60
+                print(f"  {k}/{len(jobs)} · {rate:.1f}/s · ETA {eta:.1f} min · échecs {failed}", flush=True)
+
+    # 2) écrit les dialogues dont l'audio a réussi
+    written = 0
+    with args.out.open("w", encoding="utf-8") as fout:
+        for di, dlg in enumerate(dialogues):
+            if di in ok_di:
+                fout.write(json.dumps(dlg, ensure_ascii=False) + "\n")
+                written += 1
+    print(f"\nsynthétisé {len(jobs) - failed} utterances → {written} dialogues écrits dans {args.out} "
+          f"({failed} échecs) en {(time.time()-t0)/60:.1f} min", flush=True)
 
 
 if __name__ == "__main__":
