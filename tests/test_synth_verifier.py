@@ -106,6 +106,62 @@ def test_case_to_dialogue_is_valid_schema_negative():
     assert not parsed.turns[1].tool_calls
 
 
+def test_loop_verify_valid_positive():
+    case = _case("db_query", utterance="how many open orders", arguments={"question": "how many open orders"},
+                 answer="There are 4 open orders right now.")
+    case.tool_result = {"count": 4}
+    assert sd.verify_case(case, REGISTRY, mode="loop") is None
+
+
+def test_loop_positive_needs_tool_result():
+    case = _case("web_search", utterance="latest news", arguments={"query": "latest news"}, answer="Here's the latest.")
+    assert "tool_result" in sd.verify_case(case, REGISTRY, mode="loop")
+
+
+def test_loop_positive_needs_spoken_answer():
+    case = _case("web_search", utterance="latest news", arguments={"query": "latest news"})
+    case.tool_result = {"results": []}
+    assert "spoken answer" in sd.verify_case(case, REGISTRY, mode="loop")
+
+
+def test_loop_positive_rejects_placeholder_answer():
+    case = _case("web_search", utterance="time in Tokyo", arguments={"query": "time in Tokyo"},
+                 answer="It is [current time] in Tokyo.")
+    case.tool_result = {"time": "10:30"}
+    assert "placeholder" in sd.verify_case(case, REGISTRY, mode="loop")
+
+
+def test_loop_case_to_dialogue_positive_is_four_turns():
+    from s2s_toolcalling.data.dialogue_schema import parse_dialogue
+
+    case = _case("db_query", utterance="how many orders", arguments={"question": "how many orders"},
+                 answer="You have 4 open orders.")
+    case.tool_result = {"count": 4}
+    dlg = sd.case_to_dialogue(case, 0, tools=["web_search", "db_query"], mode="loop")
+    roles = [t["role"] for t in dlg["turns"]]
+    assert roles == ["user", "assistant", "tool", "assistant"]
+    assert dlg["turns"][2]["content"] == {"count": 4}
+    assert dlg["turns"][3]["text"] == "You have 4 open orders."
+    parse_dialogue(dlg)  # ne doit pas lever
+
+
+def test_loop_case_to_dialogue_negative_is_two_turns():
+    case = _case("none", utterance="thanks", answer="You're welcome!")
+    dlg = sd.case_to_dialogue(case, 1, tools=["web_search", "db_query"], mode="loop")
+    assert [t["role"] for t in dlg["turns"]] == ["user", "assistant"]
+
+
+def test_loop_parse_generation_response():
+    text = ('[{"utterance": "how many open orders", "tool": "db_query", '
+            '"arguments": {"question": "how many open orders"}, '
+            '"tool_result": {"count": 4}, "answer": "There are 4 open orders."}]')
+    cases = sd.parse_generation_response(text, target="db_query", style="direct command",
+                                         depth="explicit arguments", mode="loop")
+    assert len(cases) == 1
+    assert cases[0].tool_result == {"count": 4}
+    assert cases[0].answer == "There are 4 open orders."
+
+
 def test_dedup_cases():
     cases = [
         _case("web_search", utterance="Search for cats", arguments={"query": "cats"}),

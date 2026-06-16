@@ -48,8 +48,7 @@ def main(argv: list[str] | None = None) -> None:
     from liquid_audio.data.preprocess import preprocess_dataset
 
     from s2s_toolcalling.data.chat_format import verify_special_tokens
-    from s2s_toolcalling.data.dialogue_schema import load_dialogues
-    from s2s_toolcalling.data.liquid_adapter import dialogues_to_chat_messages
+    from s2s_toolcalling.data.liquid_adapter import DialogueChatMessages
 
     if args.tool_definitions:
         tool_definitions = json.loads(Path(args.tool_definitions).read_text(encoding="utf-8"))
@@ -74,8 +73,10 @@ def main(argv: list[str] | None = None) -> None:
         interleaved_audio_tokens=args.interleaved_audio_tokens,
     )
 
-    data = dialogues_to_chat_messages(
-        load_dialogues(args.dialogues),
+    # Itérable picklable (≠ générateur) : preprocess_dataset pickle la closure
+    # pour le fingerprint datasets — un générateur lèverait « cannot pickle ».
+    data = DialogueChatMessages(
+        args.dialogues,
         audio_root=args.audio_root,
         tool_definitions=tool_definitions,
         assistant_audio_mode=args.assistant_audio_mode,

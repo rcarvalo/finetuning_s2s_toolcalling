@@ -44,12 +44,18 @@ _PLACEHOLDER = re.compile(r"\[[^\]]+\]")
 
 @dataclass(slots=True)
 class SynthCase:
-    """Un cas vérifié : utterance + cible (tool call OU réponse sans appel)."""
+    """Un cas vérifié.
+
+    - **single** (Phase A) : utterance → tool call (positif) OU réponse texte (négatif).
+    - **loop** (Phase B, S2S) : positif = tool call + ``tool_result`` (réinjecté) +
+      ``answer`` parlée ancrée dans le résultat ; négatif = ``answer`` parlée.
+    """
 
     utterance: str
     target: ToolTarget
     arguments: dict[str, Any] = field(default_factory=dict)  # si target != "none"
-    answer: str | None = None  # réponse normale si target == "none"
+    answer: str | None = None  # réponse parlée (négatif single ; réponse finale loop)
+    tool_result: dict[str, Any] | None = None  # loop : résultat d'outil réinjecté
     style: str = ""
     depth: str = ""
 
@@ -67,8 +73,14 @@ def build_generation_prompt(
     n: int,
     tool_definitions: list[dict],
     blocklist: Iterable[str] = (),
+    mode: str = "single",
 ) -> str:
-    """Prompt demandant ``n`` cas pour une cellule de taxonomie (sortie JSON strict)."""
+    """Prompt demandant ``n`` cas pour une cellule de taxonomie (sortie JSON strict).
+
+    ``mode="loop"`` (Phase B, S2S) : pour un positif, on demande EN PLUS un
+    ``tool_result`` plausible et une ``answer`` parlée courte ancrée dans ce
+    résultat (le modèle apprend à PARLER la réponse après l'outil).
+    """
     tools_json = json.dumps(tool_definitions, ensure_ascii=False, indent=2)
     block = "\n".join(f"- {u}" for u in blocklist)
     if target == "none":
@@ -78,6 +90,14 @@ def build_generation_prompt(
             'a short natural spoken "answer". Set "tool" to "none".'
         )
         shape = '{"utterance": "...", "tool": "none", "answer": "short spoken reply"}'
+    elif mode == "loop":
+        target_spec = (
+            f'Generate cases where the correct action is to call "{target}". For each, give '
+            f'the exact "arguments", a plausible "tool_result" (a JSON object the tool would '
+            'return), and a short spoken "answer" that conveys that result naturally.'
+        )
+        shape = (f'{{"utterance": "...", "tool": "{target}", "arguments": {{...}}, '
+                 '"tool_result": {...}, "answer": "short spoken answer grounded in tool_result"}')
     else:
         target_spec = (
             f'Generate cases where the correct action is to call "{target}". For each, '
@@ -97,7 +117,8 @@ def build_generation_prompt(
     )
 
 
-def parse_generation_response(text: str, *, target: ToolTarget, style: str, depth: str) -> list[SynthCase]:
+def parse_generation_response(text: str, *, target: ToolTarget, style: str, depth: str,
+                              mode: str = "single") -> list[SynthCase]:
     """Parse la réponse JSON du LLM en ``SynthCase`` (tolère un éventuel fence ```)."""
     payload = _extract_json_array(text)
     cases: list[SynthCase] = []
@@ -109,6 +130,11 @@ def parse_generation_response(text: str, *, target: ToolTarget, style: str, dept
         if tool == "none":
             cases.append(SynthCase(utterance=utt, target="none", answer=str(item.get("answer", "")).strip(),
                                    style=style, depth=depth))
+        elif mode == "loop":
+            tr = item.get("tool_result")
+            cases.append(SynthCase(utterance=utt, target=tool, arguments=dict(item.get("arguments", {})),
+                                   tool_result=tr if isinstance(tr, dict) else None,
+                                   answer=str(item.get("answer", "")).strip(), style=style, depth=depth))
         else:
             cases.append(SynthCase(utterance=utt, target=tool, arguments=dict(item.get("arguments", {})),
                                    style=style, depth=depth))
@@ -135,12 +161,14 @@ def _extract_json_array(text: str) -> list[dict]:
 # --------------------------------------------------------------------------- #
 
 
-def verify_case(case: SynthCase, registry: ToolRegistry) -> str | None:
+def verify_case(case: SynthCase, registry: ToolRegistry, *, mode: str = "single") -> str | None:
     """Retourne un motif de rejet, ou None si le cas est valide.
 
     Pour un positif : le call doit (1) se rendre en pythonic puis re-parser à
     l'identique, et (2) passer ``registry.validate`` (nom/required/args connus).
-    Pour un négatif : il faut une réponse non vide et aucun argument d'outil.
+    En ``mode="loop"`` (S2S), un positif exige EN PLUS un ``tool_result`` (dict)
+    et une ``answer`` parlée non vide sans placeholder. Pour un négatif : réponse
+    non vide, pas d'arguments, pas de placeholder.
     """
     if not case.utterance.strip():
         return "empty utterance"
@@ -167,8 +195,18 @@ def verify_case(case: SynthCase, registry: ToolRegistry) -> str | None:
         return f"tool call does not round-trip: {parser.errors or parsed}"
     if parsed[0].name != case.target or parsed[0].arguments != case.arguments:
         return "round-trip mismatch (name/args)"
+    invalid = registry.validate(case.target, case.arguments)
+    if invalid:
+        return invalid
 
-    return registry.validate(case.target, case.arguments)
+    if mode == "loop":
+        if not isinstance(case.tool_result, dict) or not case.tool_result:
+            return "loop positive needs a non-empty tool_result"
+        if not (case.answer or "").strip():
+            return "loop positive needs a spoken answer"
+        if _PLACEHOLDER.search(case.answer or ""):
+            return "spoken answer contains a [placeholder]"
+    return None
 
 
 # --------------------------------------------------------------------------- #
@@ -221,20 +259,30 @@ class ContaminationFilter:
 # --------------------------------------------------------------------------- #
 
 
-def case_to_dialogue(case: SynthCase, idx: int, *, tools: list[str]) -> dict[str, Any]:
-    """Dialogue single-turn : user (texte, audio ajouté ensuite) → assistant."""
+def case_to_dialogue(case: SynthCase, idx: int, *, tools: list[str], mode: str = "single") -> dict[str, Any]:
+    """Cas → dialogue ``dialogue_schema`` (audio ajouté ensuite par le TTS).
+
+    - **single** : user → assistant (tool call OU réponse texte).
+    - **loop** (S2S) : positif = user → assistant(tool call) → tool(result) →
+      assistant(réponse parlée) ; négatif = user → assistant(réponse parlée).
+    """
+    user = {"role": "user", "text": case.utterance}
     if case.target == "none":
-        assistant = {"role": "assistant", "text": case.answer}
+        turns = [user, {"role": "assistant", "text": case.answer}]
+    elif mode == "loop":
+        turns = [
+            user,
+            {"role": "assistant", "tool_calls": [{"name": case.target, "arguments": case.arguments}]},
+            {"role": "tool", "content": case.tool_result},
+            {"role": "assistant", "text": case.answer},
+        ]
     else:
-        assistant = {"role": "assistant", "tool_calls": [{"name": case.target, "arguments": case.arguments}]}
+        turns = [user, {"role": "assistant", "tool_calls": [{"name": case.target, "arguments": case.arguments}]}]
     return {
         "id": f"tc_{idx:06d}_{case.target}",
         "tools": tools,
         "meta": {"style": case.style, "depth": case.depth, "target": case.target},
-        "turns": [
-            {"role": "user", "text": case.utterance},
-            assistant,
-        ],
+        "turns": turns,
     }
 
 

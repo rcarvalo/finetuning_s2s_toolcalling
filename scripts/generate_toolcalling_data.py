@@ -102,6 +102,9 @@ def main() -> None:
     ap.add_argument("--n-total", type=int, default=3000, help="cas VÉRIFIÉS visés")
     ap.add_argument("--per-cell", type=int, default=20, help="cas demandés par appel LLM (↑ = moins d'appels)")
     ap.add_argument("--concurrency", type=int, default=8, help="appels LLM en parallèle (↓ si rate-limit 429)")
+    ap.add_argument("--mode", choices=["single", "loop"], default="single",
+                    help="single = Phase A (audio→tool call) ; loop = Phase B S2S "
+                         "(+ tool_result + réponse parlée ancrée)")
     ap.add_argument("--provider", choices=["gemini", "anthropic"], default="gemini")
     ap.add_argument("--model", default=None, help="défaut : selon --provider")
     ap.add_argument("--held-out", type=Path, default=None, help="benchmark JSONL à éviter (contamination)")
@@ -145,6 +148,7 @@ def main() -> None:
             target=target, style=style, depth=depth, n=args.per_cell,
             tool_definitions=TOOLCALLING_EN_TOOL_DEFINITIONS,
             blocklist=rng.sample(contamination.held_out, min(8, len(contamination.held_out))),
+            mode=args.mode,
         )
         return target, style, depth, prompt
 
@@ -167,10 +171,11 @@ def main() -> None:
                 if isinstance(raw, Exception):
                     print(f"[appel échoué] {raw}", file=sys.stderr)
                     continue
-                for case in sd.parse_generation_response(raw, target=target, style=style, depth=depth):
+                for case in sd.parse_generation_response(raw, target=target, style=style, depth=depth,
+                                                         mode=args.mode):
                     if written >= args.n_total:
                         break
-                    if sd.verify_case(case, registry):
+                    if sd.verify_case(case, registry, mode=args.mode):
                         rejected += 1
                         continue
                     key = sd._normalize(case.utterance)
@@ -180,7 +185,7 @@ def main() -> None:
                         contaminated += 1
                         continue
                     seen_norm.add(key)
-                    dialogue = sd.case_to_dialogue(case, written, tools=TOOLCALLING_EN_TOOL_NAMES)
+                    dialogue = sd.case_to_dialogue(case, written, tools=TOOLCALLING_EN_TOOL_NAMES, mode=args.mode)
                     out.write(json.dumps(dialogue, ensure_ascii=False) + "\n")
                     written += 1
                     pos += case.target != "none"

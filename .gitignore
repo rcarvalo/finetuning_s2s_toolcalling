@@ -17,3 +17,5 @@ datasets_cache/
 chroma_db/
 
 .env
+
+.DS_Store

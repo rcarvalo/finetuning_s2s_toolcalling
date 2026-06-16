@@ -130,7 +130,10 @@ def main() -> None:
     ap.add_argument("--audio-root", required=True, type=Path)
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--engine", choices=["voxtral", "kokoro"], default="voxtral")
-    ap.add_argument("--voices", default="", help="voix séparées par des virgules (requis pour voxtral)")
+    ap.add_argument("--voices", default="", help="voix UTILISATEUR, séparées par des virgules (requis voxtral)")
+    ap.add_argument("--assistant-voice", default="",
+                    help="Phase B (S2S) : voix FIXE de l'assistant pour ses réponses parlées. "
+                         "Vide = pas de synthèse des tours assistant (Phase A single-turn).")
     ap.add_argument("--split", choices=["train", "test"], default="train",
                     help="train = voix d'entraînement ; test = voix held-out (inconnues)")
     ap.add_argument("--base-url", default="http://localhost:8000/v1", help="serveur Voxtral (vLLM)")
@@ -149,12 +152,23 @@ def main() -> None:
 
     # 1) construit les jobs (voix + décision d'aug tirées DANS le thread principal
     #    → déterministe), puis synthétise EN PARALLÈLE (le serveur vLLM batch).
+    # Tours USER → voix utilisateur (variées, augmentées). Tours ASSISTANT parlés
+    # (texte, pas de tool_calls) → voix assistant FIXE, sans aug (persona stable) ;
+    # uniquement si --assistant-voice est fourni (Phase B S2S). Les tours tool-call
+    # et tool (résultat) restent texte seul (pas d'audio).
     jobs = []  # (di, ti, text, voice, augment, rel)
     for di, dlg in enumerate(dialogues):
         for ti, turn in enumerate(dlg.get("turns", [])):
-            if turn.get("role") == "user" and turn.get("text") and not turn.get("audio"):
-                jobs.append((di, ti, turn["text"], rng.choice(voices),
-                             rng.random() < args.augment_prob, f"{dlg['id']}_u{ti}.wav"))
+            if turn.get("audio") or not turn.get("text"):
+                continue
+            role = turn.get("role")
+            if role == "user":
+                voice, aug, tag = rng.choice(voices), rng.random() < args.augment_prob, "u"
+            elif role == "assistant" and not turn.get("tool_calls") and args.assistant_voice:
+                voice, aug, tag = args.assistant_voice, False, "a"
+            else:
+                continue
+            jobs.append((di, ti, turn["text"], voice, aug, f"{dlg['id']}_{tag}{ti}.wav"))
 
     def _do(job):
         di, ti, text, voice, aug, rel = job

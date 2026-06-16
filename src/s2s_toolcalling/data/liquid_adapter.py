@@ -34,7 +34,12 @@ def dialogue_to_chat_messages(
     assistant_audio_mode: AssistantAudioMode = "interleaved",
     default_system: str = chat_format.DEFAULT_SYSTEM_INSTRUCTIONS,
 ) -> "list[ChatMessage]":
-    from liquid_audio.data.types import AudioSegment, ChatMessage, InterleavedSegment, TextSegment
+    from liquid_audio.data.types import (
+        AudioSegment,
+        ChatMessage,
+        InterleavedSegment,
+        TextSegment,
+    )
 
     audio_root = Path(audio_root)
 
@@ -107,4 +112,34 @@ def dialogues_to_chat_messages(
             audio_root=audio_root,
             tool_definitions=tool_definitions,
             assistant_audio_mode=assistant_audio_mode,
+        )
+
+
+class DialogueChatMessages:
+    """Itérable RE-ITÉRABLE et PICKLABLE des chats (≠ générateur one-shot).
+
+    ``liquid_audio.preprocess_dataset`` enveloppe l'entrée dans une closure passée
+    à ``datasets.Dataset.from_generator``, qui **pickle** ce callable (closure
+    incluse) pour le fingerprint du cache. Un générateur n'est pas picklable
+    (``TypeError: cannot pickle 'generator'``) ; cette classe ne stocke que des
+    chemins/listes et reconstruit l'itération (relecture JSONL + audio) à chaque
+    ``__iter__`` — donc picklable ET ré-itérable.
+    """
+
+    def __init__(self, dialogues_path: str | Path, *, audio_root: str | Path,
+                 tool_definitions: list[dict] | None = None,
+                 assistant_audio_mode: AssistantAudioMode = "interleaved") -> None:
+        self.dialogues_path = str(dialogues_path)
+        self.audio_root = str(audio_root)
+        self.tool_definitions = tool_definitions
+        self.assistant_audio_mode = assistant_audio_mode
+
+    def __iter__(self) -> "Iterator[list[ChatMessage]]":
+        from s2s_toolcalling.data.dialogue_schema import load_dialogues
+
+        return dialogues_to_chat_messages(
+            load_dialogues(self.dialogues_path),
+            audio_root=self.audio_root,
+            tool_definitions=self.tool_definitions,
+            assistant_audio_mode=self.assistant_audio_mode,
         )
