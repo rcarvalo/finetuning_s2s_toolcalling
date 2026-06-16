@@ -97,7 +97,7 @@ def _build_backend_predict_fn(args: argparse.Namespace) -> PredictFn:
         backend = VllmBackend(args.checkpoint, deploy_config=deploy)
         backend.system = system
     else:
-        backend = LiquidBackend(args.checkpoint)
+        backend = LiquidBackend(args.checkpoint, adapter=args.adapter)
         # LiquidBackend lit SYSTEM au reset ; on force la consigne EN + outils.
         from s2s_toolcalling.data import chat_format as _cf
         _cf.SYSTEM = system  # type: ignore[attr-defined]
@@ -121,6 +121,8 @@ def main() -> None:
     ap.add_argument("--out", required=True, help="JSONL prédictions (consommable par eval_toolcalling)")
     ap.add_argument("--backend", choices=["liquid", "vllm"], default="vllm")
     ap.add_argument("--checkpoint", required=True)
+    ap.add_argument("--adapter", default=None,
+                    help="dir d'adaptateur LoRA à fusionner (backend liquid) — éval d'un fine-tune")
     ap.add_argument("--no-deploy-config", action="store_true")
     ap.add_argument("--arg-match", choices=["exact", "token_f1", "semantic"], default="token_f1")
     ap.add_argument("--arg-threshold", type=float, default=0.7)

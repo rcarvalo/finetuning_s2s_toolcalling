@@ -33,6 +33,14 @@ max_steps: 1500
 warmup_steps: 150
 batch_size: 8
 dataloader_num_workers: 4
+logging_interval: 10
 save_interval: 500
-val_interval: 200
+val_interval: 100
 output_dir: outputs/phase_en_toolcalling
+
+# Instrumentation (InstrumentedTrainer) — métriques + checkpoints réguliers.
+grad_clip: 1.0
+wandb_project: lfm25-toolcalling-en      # null pour désactiver
+wandb_run_name: phase_en_v1
+hub_repo: Rcarvalo/lfm25-tc-en-adapter   # push de l'adaptateur LoRA (privé) ; null = jamais
+push_interval: 500                        # tous les N steps

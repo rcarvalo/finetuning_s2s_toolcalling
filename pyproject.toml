@@ -24,6 +24,7 @@ train = [
     "soundfile>=0.12",
     "torchaudio>=2.4",
     "transformers>=4.55",
+    "wandb>=0.18",
 ]
 # Orchestrateur temps réel (Phase 3)
 serve = [

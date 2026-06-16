@@ -77,12 +77,27 @@ class LiquidBackend:
 
     name = "liquid-audio"
 
-    def __init__(self, checkpoint: str) -> None:
-        from liquid_audio import LFM2AudioModel, LFM2AudioProcessor, ChatState
+    def __init__(self, checkpoint: str, adapter: str | None = None) -> None:
+        from liquid_audio import ChatState, LFM2AudioModel, LFM2AudioProcessor
         t0 = time.time()
         src = Path(checkpoint) if Path(checkpoint).exists() else checkpoint
         self.model = LFM2AudioModel.from_pretrained(src, device="cuda").eval()
         self.proc = LFM2AudioProcessor.from_pretrained(src, device="cuda")
+        if adapter:
+            # éval d'un fine-tune LoRA : injecte l'adaptateur dans le backbone puis
+            # le fusionne dans les poids de base (le processor reste celui de base).
+            from s2s_toolcalling.training.lora import (
+                inject_lora,
+                load_lora,
+                load_lora_settings,
+                merge_lora,
+            )
+
+            settings = load_lora_settings(adapter)
+            inject_lora(self.model, settings)
+            load_lora(self.model, str(Path(adapter) / "adapter_model.safetensors"))
+            merge_lora(self.model)
+            print(f"[{self.name}] adaptateur LoRA fusionné depuis {adapter}")
         # détokeniseur Mimi en mode streaming + warmup, comme la démo
         # officielle (liquid_audio.demo.model) : décode frame par frame
         # pendant la génération au lieu d'un decode en bloc à la fin.
@@ -155,9 +170,9 @@ class VllmBackend:
         import vllm_omni_lfm2_audio  # noqa: F401
         from vllm_omni.plugins import load_omni_general_plugins
         load_omni_general_plugins()
+        from transformers import AutoTokenizer
         from vllm import SamplingParams
         from vllm_omni import Omni
-        from transformers import AutoTokenizer
         from vllm_omni_lfm2_audio.constants import IM_END_TOKEN_ID
 
         t0 = time.time()

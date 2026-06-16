@@ -59,6 +59,13 @@ class TrainConfig:
     val_interval: int = 200
     output_dir: str = "outputs/sft"
 
+    # instrumentation (InstrumentedTrainer) — tout optionnel
+    grad_clip: float = 1.0
+    wandb_project: str | None = None
+    wandb_run_name: str | None = None
+    hub_repo: str | None = None          # ex. Rcarvalo/lfm25-tc-en-adapter
+    push_interval: int = 0               # push HF de l'adaptateur tous les N steps (0 = jamais)
+
     lora: LoraSettings = field(default_factory=LoraSettings)
     freeze: FreezePolicy = field(default_factory=FreezePolicy)
 
@@ -102,13 +109,23 @@ def _model_construction_hook(cfg: TrainConfig):
 
 def build_trainer(cfg: TrainConfig):
     from liquid_audio.data.dataloader import LFM2DataLoader
-    from liquid_audio.trainer import Trainer
+
+    from s2s_toolcalling.training.instrumented_trainer import InstrumentedTrainer
 
     train_data = LFM2DataLoader(cfg.train_dataset, context_length=cfg.context_length)
     val_data = LFM2DataLoader(cfg.val_dataset, context_length=cfg.context_length) if cfg.val_dataset else None
 
     with _model_construction_hook(cfg):
-        return Trainer(
+        return InstrumentedTrainer(
+            # instrumentation
+            wandb_project=cfg.wandb_project,
+            wandb_run_name=cfg.wandb_run_name,
+            wandb_config=asdict(cfg),
+            hub_repo=cfg.hub_repo,
+            push_interval=cfg.push_interval,
+            grad_clip=cfg.grad_clip,
+            lora_settings=cfg.lora if cfg.lora.enabled else None,
+            # hyperparams du Trainer officiel
             model_id=cfg.model_id,
             train_data=train_data,
             val_data=val_data,

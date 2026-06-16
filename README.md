@@ -163,6 +163,16 @@ python scripts/eval_audio_toolcalling.py --backend vllm --checkpoint exports/lfm
 Métriques (BFCL-style + arg tolérant pour le texte libre) : `parse_rate`,
 `relevance_accuracy` (appeler / s'abstenir), `name_accuracy`, `call_accuracy`.
 Seuils v1 : name > 90 %, relevance > 85 %, arg tolérant > 75 %, parse > 98 %.
+
+**Notebooks clé-en-main** (L4) : [`build_toolcalling_dataset.ipynb`](notebooks/build_toolcalling_dataset.ipynb)
+(génération Gemini → TTS Voxtral → push HF) puis
+[`finetune_toolcalling.ipynb`](notebooks/finetune_toolcalling.ipynb) (analyse →
+packing → entraînement → éval gold). **QA dataset** : `python scripts/analyze_dataset.py
+--dialogues … --audio-root …` (distribution, doublons, args, audio, **drapeaux**).
+**Suivi entraînement** (`InstrumentedTrainer`, wandb) : `train/text_ppl` = exp(text_loss)
+= signal direct du tool calling ; `grad_norm` (stabilité), `val/text_ppl`
+(surapprentissage) ; push HF de l'adaptateur tous les `push_interval` steps.
+
 **Phase B** (itération) : boucle complète (résultat d'outil réinjecté → réponse
 **parlée**) via l'orchestrateur existant + backends live (`ddgs`, NL→SQL sur
 `sql/schema_en.sql`).
