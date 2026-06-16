@@ -97,10 +97,11 @@ def _build_backend_predict_fn(args: argparse.Namespace) -> PredictFn:
         backend = VllmBackend(args.checkpoint, deploy_config=deploy)
         backend.system = system
     else:
+        # LiquidBackend.reset() lit le global SYSTEM du MODULE s2s_demo (≠ chat_format) ;
+        # on le fixe AVANT la construction (l'__init__ appelle reset).
+        import s2s_demo
+        s2s_demo.SYSTEM = system
         backend = LiquidBackend(args.checkpoint, adapter=args.adapter)
-        # LiquidBackend lit SYSTEM au reset ; on force la consigne EN + outils.
-        from s2s_toolcalling.data import chat_format as _cf
-        _cf.SYSTEM = system  # type: ignore[attr-defined]
 
     def predict(case: dict[str, Any]) -> str:
         wave, sr = sf.read(str(audio_root / case["audio"]), dtype="float32")

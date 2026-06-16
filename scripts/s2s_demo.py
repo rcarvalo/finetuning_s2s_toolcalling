@@ -115,9 +115,13 @@ class LiquidBackend:
         self.chat.new_turn("system"); self.chat.add_text(SYSTEM); self.chat.end_turn()
 
     def reply(self, text: str | None = None, audio_path: Path | None = None,
+              audio: tuple[np.ndarray, int] | None = None,
               max_new_tokens: int = 512) -> tuple[str, np.ndarray | None, dict]:
         self.chat.new_turn("user")
-        if audio_path is not None:
+        if audio is not None:  # (wave float32 mono, sample_rate) en mémoire — interface unifiée avec VllmBackend
+            wave, rate = audio
+            self.chat.add_audio(torch.as_tensor(wave, dtype=torch.float32).reshape(1, -1), rate)
+        elif audio_path is not None:
             wav_in, rate = load_audio(audio_path)
             self.chat.add_audio(wav_in, rate)
         if text:
