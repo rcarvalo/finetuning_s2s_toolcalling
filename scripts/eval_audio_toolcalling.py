@@ -103,13 +103,17 @@ def _build_backend_predict_fn(args: argparse.Namespace) -> PredictFn:
         s2s_demo.SYSTEM = system
         backend = LiquidBackend(args.checkpoint, adapter=args.adapter)
 
+    # tool call = texte pur → génération TEXTE SEULE (generate_sequential) côté
+    # liquid, pas d'interleave audio forcé qui corromprait le span.
+    reply_kwargs = {"text_only": True} if args.backend == "liquid" else {}
+
     def predict(case: dict[str, Any]) -> str:
         wave, sr = sf.read(str(audio_root / case["audio"]), dtype="float32")
         if wave.ndim > 1:
             wave = wave.mean(axis=1)
         if hasattr(backend, "reset"):
             backend.reset()
-        txt, _, _ = backend.reply(audio=(wave, sr))
+        txt, _, _ = backend.reply(audio=(wave, sr), **reply_kwargs)
         return txt or ""
 
     return predict

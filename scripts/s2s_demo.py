@@ -116,7 +116,7 @@ class LiquidBackend:
 
     def reply(self, text: str | None = None, audio_path: Path | None = None,
               audio: tuple[np.ndarray, int] | None = None,
-              max_new_tokens: int = 512) -> tuple[str, np.ndarray | None, dict]:
+              max_new_tokens: int = 512, text_only: bool = False) -> tuple[str, np.ndarray | None, dict]:
         self.chat.new_turn("user")
         if audio is not None:  # (wave float32 mono, sample_rate) en mémoire — interface unifiée avec VllmBackend
             wave, rate = audio
@@ -131,12 +131,14 @@ class LiquidBackend:
 
         text_ids, chunks = [], []
         t0, first_frame, ttfa = time.time(), None, None
-        # Décodage Mimi STREAMING frame par frame (80 ms audible dès la 1re
-        # frame), recette de la démo officielle (liquid_audio.demo.chat) —
-        # TTFA directement comparable au pipeline vLLM-Omni (chunks DELTA).
-        # audio_temperature/audio_top_k : valeurs de l'exemple officiel.
+        # text_only=True (tool calls / Phase A) : generate_SEQUENTIAL → texte
+        # greedy SANS interleave audio forcé (qui shredderait un span structuré
+        # `[fn(arg="…")]` et ferait bafouiller le texte). Sinon generate_interleaved
+        # (S2S : parle pendant la génération). Décodage Mimi STREAMING frame par
+        # frame (80 ms audible dès la 1re frame, recette liquid_audio.demo.chat).
+        gen_fn = self.model.generate_sequential if text_only else self.model.generate_interleaved
         with torch.no_grad(), self.mimi.streaming(1):
-            for t in self.model.generate_interleaved(
+            for t in gen_fn(
                 **self.chat, max_new_tokens=max_new_tokens,
                 audio_temperature=1.0, audio_top_k=4,
             ):
