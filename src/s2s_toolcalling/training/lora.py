@@ -84,11 +84,21 @@ def save_lora(model, output_dir: str | Path, settings: LoraSettings | None = Non
 
 
 def load_lora_settings(adapter_dir: str | Path) -> LoraSettings:
-    """Relit la config d'adaptateur écrite par ``save_lora``."""
+    """Relit la config d'adaptateur écrite par ``save_lora``.
+
+    Repli sur les DÉFAUTS (r16/alpha32/dropout0.05/cibles standard) si
+    ``adapter_config.json`` est absent : les ``DEFAULT_TARGET_MODULES`` recréent
+    la même structure LoRA que ``save_lora`` par défaut, donc le ``.safetensors``
+    se recharge correctement même sans config.
+    """
     import json
 
-    cfg = json.loads((Path(adapter_dir) / "adapter_config.json").read_text(encoding="utf-8"))
-    return LoraSettings(enabled=True, **cfg)
+    cfg_path = Path(adapter_dir) / "adapter_config.json"
+    if not cfg_path.exists():
+        logger.warning("adapter_config.json absent dans %s — défauts LoRA (r=16, alpha=32, cibles standard)",
+                       adapter_dir)
+        return LoraSettings(enabled=True)
+    return LoraSettings(enabled=True, **json.loads(cfg_path.read_text(encoding="utf-8")))
 
 
 def load_lora(model, adapter_path: str | Path) -> None:
