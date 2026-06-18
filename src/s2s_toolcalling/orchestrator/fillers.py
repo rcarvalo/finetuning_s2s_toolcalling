@@ -42,6 +42,14 @@ DEFAULT_PHRASES: dict[str, list[str]] = {
     ],
 }
 
+# Fillers ANGLAIS (démo tool calling EN) : courts, joués pendant le round-trip
+# pour garder la latence PERÇUE de l'interleaved S2S (~200 ms au 1er son).
+EN_FILLER_PHRASES: dict[str, list[str]] = {
+    "web_search": ["Let me look that up.", "One sec, searching the web."],
+    "db_query": ["Let me check our records.", "One moment, checking the database."],
+    "_default": ["One moment.", "Let me check that."],
+}
+
 
 @dataclass(slots=True)
 class Filler:

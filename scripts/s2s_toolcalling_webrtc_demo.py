@@ -42,11 +42,48 @@ def _resolve_adapter(adapter: str | None) -> str | None:
     return snapshot_download(adapter)
 
 
+def _tts(model, proc, text: str) -> "np.ndarray | None":
+    """TTS d'une phrase avec le modèle (mode 'Perform TTS') → waveform 24 kHz."""
+    import torch
+    from liquid_audio import ChatState
+
+    chat = ChatState(proc)
+    chat.new_turn("system"); chat.add_text("Perform TTS."); chat.end_turn()
+    chat.new_turn("user"); chat.add_text(text); chat.end_turn()
+    chat.new_turn("assistant")
+    mimi = proc.mimi.eval()
+    chunks: list[np.ndarray] = []
+    with torch.no_grad(), mimi.streaming(1):
+        for t in model.generate_interleaved(**chat, max_new_tokens=400, audio_temperature=0.6, audio_top_k=4):
+            if t.numel() == 8 and not bool((t == 2048).any()):
+                chunks.append(mimi.decode(t[None, :, None])[0].float().cpu().numpy().reshape(-1))
+    return np.concatenate(chunks) if chunks else None
+
+
+def _render_fillers(model, proc, bank, out_dir: Path) -> None:
+    """Pré-rend les wavs de filler (une fois) → joués INSTANTANÉMENT pendant le
+    round-trip outil pour garder la latence perçue de l'interleaved S2S."""
+    import soundfile as sf
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for tool, phrases in bank.phrases.items():
+        name = "default" if tool == "_default" else tool
+        for i, phrase in enumerate(phrases):
+            try:
+                wav = _tts(model, proc, phrase)
+                if wav is not None and wav.size:
+                    sf.write(str(out_dir / f"{name}_{i}.wav"), wav, SR_OUT, subtype="PCM_16")
+            except Exception as e:  # noqa: BLE001 — un filler raté n'empêche pas la démo
+                print(f"[filler] échec rendu '{phrase}': {e}", flush=True)
+    print(f"[filler] wavs pré-rendus dans {out_dir}", flush=True)
+
+
 def build_agent(checkpoint: str, adapter: str | None):
     import torch  # noqa: F401
     from s2s_demo import LiquidBackend
     from s2s_toolcalling.data.chat_format import TOOLCALLING_EN_SYSTEM_INSTRUCTIONS
     from s2s_toolcalling.orchestrator.agent import AgentConfig, ReceptionAgent
+    from s2s_toolcalling.orchestrator.fillers import EN_FILLER_PHRASES, FillerBank
     from s2s_toolcalling.tools.fake_db import FakeDbBackend
     from s2s_toolcalling.tools.toolcalling_en import build_toolcalling_en_registry
     from s2s_toolcalling.tools.web_search import DuckDuckGoBackend
@@ -58,7 +95,11 @@ def build_agent(checkpoint: str, adapter: str | None):
         # hybrid=True par défaut : tool call en sequential (texte propre) PUIS
         # réponse en interleaved (parole S2S basse latence).
     )
-    return ReceptionAgent(lb.model, lb.proc, registry, config=config)
+    # Fillers EN pré-rendus (voix du modèle) → joués pendant le round-trip outil.
+    filler_dir = Path("/tmp/fillers_en")
+    bank = FillerBank(filler_dir=filler_dir, phrases=dict(EN_FILLER_PHRASES))
+    _render_fillers(lb.model, lb.proc, bank, filler_dir)
+    return ReceptionAgent(lb.model, lb.proc, registry, config=config, fillers=bank)
 
 
 def build_stream(agent, turn: str):
@@ -93,6 +134,12 @@ def build_stream(agent, turn: str):
                     yield AdditionalOutputs(f"   ↳ {str(ev.payload)[:120]}")
                 elif isinstance(ev, FillerSpeech):
                     yield AdditionalOutputs(f"💬 {ev.phrase}")
+                    if ev.wav_path:  # joué pendant le round-trip → masque la latence outil
+                        import soundfile as sf
+
+                        fwav, _ = sf.read(ev.wav_path, dtype="float32")
+                        pcm16 = (np.clip(fwav.reshape(-1), -1.0, 1.0) * 32_767).astype(np.int16)
+                        yield (SR_OUT, pcm16.reshape(1, -1))
                 elif isinstance(ev, AudioChunk):
                     pcm16 = (np.clip(ev.samples.numpy().reshape(-1), -1.0, 1.0) * 32_767).astype(np.int16)
                     yield (SR_OUT, pcm16.reshape(1, -1))
