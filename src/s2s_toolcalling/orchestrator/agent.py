@@ -61,6 +61,12 @@ class AgentConfig:
     audio_top_k: int | None = 4
     decode_audio: bool = True
     system_instructions: str = chat_format.DEFAULT_SYSTEM_INSTRUCTIONS
+    # HYBRIDE (défaut) : tour tool-call en generate_SEQUENTIAL (texte greedy
+    # propre, pas d'interleave forcé qui shredderait le span) PUIS, après le
+    # résultat d'outil, tour réponse en generate_INTERLEAVED (parole S2S basse
+    # latence). hybrid=False → interleaved partout (parole instantanée mais tool
+    # calls corrompus, cf. éval).
+    hybrid: bool = True
 
 
 class ReceptionAgent:
@@ -123,10 +129,14 @@ class ReceptionAgent:
 
         full_text: list[str] = []
         total_audio_frames = 0
+        tool_ran = False  # après un tool, le tour suivant = la réponse → on PARLE (interleaved)
 
         for round_idx in range(self.config.max_tool_rounds + 1):
+            # HYBRIDE : tour tool-call (tool_ran=False) en sequential (texte propre) ;
+            # tour réponse (après un outil) en interleaved (parole basse latence).
+            speaking = tool_ran or not self.config.hybrid
             pending_calls, visible_delta_text, audio_frames, interrupted = yield from self._generate_round(
-                chat, should_stop=should_stop
+                chat, should_stop=should_stop, speaking=speaking
             )
             full_text.append(visible_delta_text)
             total_audio_frames += audio_frames
@@ -169,15 +179,19 @@ class ReceptionAgent:
             chat.add_text(chat_format.render_tool_response(payloads[0] if len(payloads) == 1 else payloads))
             chat.end_turn()
             chat.new_turn("assistant")
+            tool_ran = True  # le prochain tour est la réponse → on parle (interleaved)
 
         yield TurnComplete(text="".join(full_text).strip(), tool_rounds=self.config.max_tool_rounds, audio_frames=total_audio_frames)
 
     # ------------------------------------------------------------------ #
 
-    def _generate_round(self, chat: "ChatState", *, should_stop: Callable[[], bool] | None):
+    def _generate_round(self, chat: "ChatState", *, should_stop: Callable[[], bool] | None,
+                        speaking: bool = False):
         """Une passe de génération ; s'arrête sur tool call complet, im_end ou barge-in.
 
-        Yield les événements ; retourne (pending_calls, visible_text, audio_frames, interrupted).
+        ``speaking`` : tour réponse → generate_interleaved (parole S2S) ; sinon
+        tour tool-call → generate_sequential (texte propre). Yield les événements ;
+        retourne (pending_calls, visible_text, audio_frames, interrupted).
         """
         import torch
         from liquid_audio import LFMModality
@@ -195,8 +209,9 @@ class ReceptionAgent:
         import contextlib
 
         stream_ctx = self.mimi.streaming(1) if self.mimi is not None else contextlib.nullcontext()
+        gen_fn = self.model.generate_interleaved if speaking else self.model.generate_sequential
         with torch.no_grad(), stream_ctx:
-            for t in self.model.generate_interleaved(
+            for t in gen_fn(
                 **chat,
                 max_new_tokens=cfg.max_new_tokens,
                 text_temperature=cfg.text_temperature,

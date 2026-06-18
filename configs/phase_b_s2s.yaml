@@ -6,9 +6,11 @@
 #   python -m s2s_toolcalling.data.preprocess_sft --assistant-audio-mode INTERLEAVED \
 #       --interleaved-text-tokens 6 --interleaved-audio-tokens 12 --tool-definitions tools_en.json ...
 #
-# Le tour final assistant porte du TEXTE + AUDIO (InterleavedSegment) : le modèle
-# apprend à PARLER la réponse ancrée dans le résultat d'outil. Le tour tool-call
-# reste texte seul (« penser en texte, parler en audio »).
+# Le tour TOOL-CALL est TEXTE SEUL ; le tour RÉPONSE est INTERLEAVED (parole S2S
+# basse latence). À l'inférence l'orchestrateur est HYBRIDE : generate_sequential
+# pour le tour tool-call (texte propre, pas d'interleave forcé qui le
+# shredderait) puis generate_interleaved pour parler la réponse ancrée.
+# « Penser en texte, parler en audio ». Démo : scripts/s2s_toolcalling_webrtc_demo.py.
 
 model_id: LiquidAI/LFM2.5-Audio-1.5B   # ou l'adaptateur Phase A mergé (export_checkpoint)
 train_dataset: datasets/tc_en_s2s_train
