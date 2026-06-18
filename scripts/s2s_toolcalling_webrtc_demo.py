@@ -24,6 +24,11 @@ import sys
 import threading
 from pathlib import Path
 
+# Le décodage audio mimi (streaming) déclenche une capture CUDA-graph inductor
+# qui plante (« Cannot copy CPU<->CUDA during CUDA graph capture »). On force
+# l'eager (avant tout import torch) : un peu plus lent mais robuste pour la démo.
+os.environ.setdefault("TORCHDYNAMO_DISABLE", "1")
+
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
