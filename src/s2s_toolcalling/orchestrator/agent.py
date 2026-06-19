@@ -248,7 +248,7 @@ class ReceptionAgent:
                     audio_frames += 1
                     if self.mimi is not None and not bool((t == 2048).any()):
                         wav_chunk = self.mimi.decode(t[None, :, None])[0]
-                        yield AudioChunk(samples=wav_chunk.float().cpu(), sample_rate=24_000)
+                        yield AudioChunk(samples=wav_chunk.detach().float().cpu(), sample_rate=24_000)
                 else:
                     raise RuntimeError(f"unexpected token shape from generate_interleaved: {tuple(t.shape)}")
 

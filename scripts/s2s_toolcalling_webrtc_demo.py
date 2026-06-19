@@ -146,7 +146,7 @@ def build_stream(agent, turn: str):
                         pcm16 = (np.clip(fwav.reshape(-1), -1.0, 1.0) * 32_767).astype(np.int16)
                         yield (SR_OUT, pcm16.reshape(1, -1))
                 elif isinstance(ev, AudioChunk):
-                    pcm16 = (np.clip(ev.samples.numpy().reshape(-1), -1.0, 1.0) * 32_767).astype(np.int16)
+                    pcm16 = (np.clip(ev.samples.detach().numpy().reshape(-1), -1.0, 1.0) * 32_767).astype(np.int16)
                     yield (SR_OUT, pcm16.reshape(1, -1))
                 elif isinstance(ev, TurnComplete):
                     transcript.append(ev.text)
