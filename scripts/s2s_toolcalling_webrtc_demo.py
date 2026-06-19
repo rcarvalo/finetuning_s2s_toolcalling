@@ -136,7 +136,8 @@ def build_stream(agent, turn: str):
                     print(line, flush=True)
                     yield AdditionalOutputs(line)
                 elif isinstance(ev, ToolCallResult):
-                    yield AdditionalOutputs(f"   ↳ {str(ev.payload)[:120]}")
+                    print(f"   ↳ outil ok={ev.ok} ({ev.elapsed_ms:.0f}ms) → {str(ev.payload)[:300]}", flush=True)
+                    yield AdditionalOutputs(f"   ↳ {str(ev.payload)[:140]}")
                 elif isinstance(ev, FillerSpeech):
                     yield AdditionalOutputs(f"💬 {ev.phrase}")
                     if ev.wav_path:  # joué pendant le round-trip → masque la latence outil
