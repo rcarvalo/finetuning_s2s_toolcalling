@@ -52,6 +52,7 @@ tooldata = [
     "soundfile>=0.12",
     "torchaudio>=2.4",
     "ddgs>=6.0",
+    "tavily-python>=0.5",
     "datasets>=3.0",
     "huggingface-hub>=0.25",
     "kokoro>=0.9",

@@ -91,10 +91,13 @@ def build_agent(checkpoint: str, adapter: str | None):
     from s2s_toolcalling.orchestrator.fillers import EN_FILLER_PHRASES, FillerBank
     from s2s_toolcalling.tools.fake_db import FakeDbBackend
     from s2s_toolcalling.tools.toolcalling_en import build_toolcalling_en_registry
-    from s2s_toolcalling.tools.web_search import DuckDuckGoBackend
+    from s2s_toolcalling.tools.web_search import DuckDuckGoBackend, TavilyBackend
 
     lb = LiquidBackend(checkpoint, adapter=_resolve_adapter(adapter))  # charge modèle + proc (+ merge LoRA)
-    registry = build_toolcalling_en_registry(web_backend=DuckDuckGoBackend(max_results=4), db_backend=FakeDbBackend())
+    # Tavily (TAVILY_API_KEY) = résultats propres exploitables ; sinon repli ddgs.
+    web = TavilyBackend(max_results=4) if os.environ.get("TAVILY_API_KEY") else DuckDuckGoBackend(max_results=4)
+    print(f"[web] {'Tavily' if os.environ.get('TAVILY_API_KEY') else 'DuckDuckGo (repli)'}", flush=True)
+    registry = build_toolcalling_en_registry(web_backend=web, db_backend=FakeDbBackend())
     config = AgentConfig(
         system_instructions=(TOOLCALLING_EN_SYSTEM_INSTRUCTIONS + " Keep spoken answers short."),
         # hybrid=True par défaut : tool call en sequential (texte propre) PUIS

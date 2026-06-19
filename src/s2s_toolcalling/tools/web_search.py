@@ -42,8 +42,44 @@ class StubWebSearchBackend:
         ]
 
 
+class TavilyBackend:
+    """Recherche web optimisée LLM via Tavily (clé ``TAVILY_API_KEY``).
+
+    Contrairement à DuckDuckGo text (qui renvoie des pages génériques, médiocres
+    pour répondre à une question factuelle), Tavily renvoie du contenu propre et
+    pertinent + une réponse synthétique (``answer``), directement exploitable par
+    le modèle. Recommandé pour la démo « questionner le web ».
+    """
+
+    def __init__(self, *, max_results: int = 4, api_key: str | None = None, depth: str = "basic") -> None:
+        self.max_results = max_results
+        self.api_key = api_key
+        self.depth = depth
+
+    async def search(self, query: str, max_results: int | None = None) -> list[dict[str, Any]]:
+        import asyncio
+
+        return await asyncio.to_thread(self._search_sync, query, max_results or self.max_results)
+
+    def _search_sync(self, query: str, k: int) -> list[dict[str, Any]]:
+        import os
+
+        from tavily import TavilyClient
+
+        resp = TavilyClient(api_key=self.api_key or os.environ["TAVILY_API_KEY"]).search(
+            query, max_results=k, search_depth=self.depth, include_answer=True
+        )
+        out: list[dict[str, Any]] = []
+        if resp.get("answer"):  # réponse synthétique en 1ère position (le modèle la parle)
+            out.append({"title": "answer", "url": "", "snippet": resp["answer"]})
+        out += [{"title": r.get("title", ""), "url": r.get("url", ""), "snippet": r.get("content", "")}
+                for r in resp.get("results", [])]
+        return out
+
+
 class DuckDuckGoBackend:
-    """Recherche web réelle via ``ddgs`` (paresseux). Backend de production."""
+    """Recherche web réelle via ``ddgs`` (paresseux) — pages génériques (médiocre
+    pour répondre). Préférer ``TavilyBackend`` pour la démo."""
 
     def __init__(self, *, max_results: int = 5, region: str = "wt-wt", safesearch: str = "moderate") -> None:
         self.max_results = max_results
