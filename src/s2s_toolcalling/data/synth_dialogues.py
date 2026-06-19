@@ -23,7 +23,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Literal
 
-from s2s_toolcalling.data.chat_format import render_tool_calls
+from s2s_toolcalling.data.chat_format import TOOLCALLING_EN_SYSTEM_INSTRUCTIONS, render_tool_calls
 from s2s_toolcalling.orchestrator.tool_parser import StreamingToolCallParser
 from s2s_toolcalling.tools.registry import ToolRegistry
 
@@ -280,6 +280,9 @@ def case_to_dialogue(case: SynthCase, idx: int, *, tools: list[str], mode: str =
         turns = [user, {"role": "assistant", "tool_calls": [{"name": case.target, "arguments": case.arguments}]}]
     return {
         "id": f"tc_{idx:06d}_{case.target}",
+        # system EN explicite dans les données → train == inférence (corrige le
+        # défaut FR « accueil » que l'adapter mettait sinon → routage brouillé).
+        "system": TOOLCALLING_EN_SYSTEM_INSTRUCTIONS,
         "tools": tools,
         "meta": {"style": case.style, "depth": case.depth, "target": case.target},
         "turns": turns,
