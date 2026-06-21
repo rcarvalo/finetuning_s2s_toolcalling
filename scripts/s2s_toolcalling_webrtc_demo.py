@@ -35,13 +35,27 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 SR_OUT = 24_000
+# En-dessous : sortie du modèle reprise par le micro (écho) ou bruit de fond →
+# on n'y répond pas (la vraie parole est ~0.1+ ; l'écho observé ~0.01).
+MIN_INPUT_RMS = float(os.environ.get("MIN_INPUT_RMS", "0.03"))
 LOCK = threading.Lock()  # un seul tour à la fois (session globale)
 
 
 def _resolve_adapter(adapter: str | None) -> str | None:
-    """Chemin local tel quel, ou télécharge un repo HF d'adaptateur."""
+    """Chemin local tel quel, ou télécharge un repo HF d'adaptateur.
+
+    Un repo HF a la forme ``namespace/nom`` (un seul ``/``). Un chemin local
+    manquant (ex. ``outputs/phase_b_s2s/adapter``, deux ``/``) → erreur claire
+    plutôt que le ``HFValidationError`` obscur de ``snapshot_download``.
+    """
     if not adapter or os.path.isdir(adapter):
         return adapter
+    if adapter.count("/") != 1 or adapter.startswith((".", "/", "~")):
+        raise FileNotFoundError(
+            f"--adapter '{adapter}' : dossier local introuvable. Utilise le repo HF "
+            "'Rcarvalo/lfm25-tc-en-s2s-adapter' (adapter Phase B poussé), ou un chemin "
+            "de dossier existant."
+        )
     from huggingface_hub import snapshot_download
 
     return snapshot_download(adapter)
@@ -131,8 +145,26 @@ def build_stream(agent, turn: str):
             else pcm.astype(np.float32).reshape(-1)
         rms = float(np.sqrt(np.mean(wave**2))) if wave.size else 0.0
         print(f"👤 entrée {wave.size/sr:.1f}s @ {sr}Hz · RMS {rms:.3f}", flush=True)
+        # Gate écho : la sortie du modèle reprise par le micro (RMS très faible)
+        # déclenche le VAD → réponse fantôme. On ignore les entrées trop faibles.
+        if rms < MIN_INPUT_RMS:
+            print(f"   (ignoré : RMS {rms:.3f} < {MIN_INPUT_RMS} — écho/silence)", flush=True)
+            return
         with LOCK:
             transcript: list[str] = []
+            # liquid-audio génère < temps réel → streamer frame par frame underrun la
+            # piste WebRTC (« voix électrique »). On BUFFERISE la réponse parlée et on
+            # l'envoie d'un bloc (comme le filler, déjà généré → joué proprement).
+            answer_buf: list[np.ndarray] = []
+
+            def flush_answer():
+                if not answer_buf:
+                    return None
+                block = np.concatenate(answer_buf)
+                answer_buf.clear()
+                pcm16 = (np.clip(block, -1.0, 1.0) * 32_767).astype(np.int16)
+                return (SR_OUT, pcm16.reshape(1, -1))
+
             for ev in agent.respond(session, torch.from_numpy(wave).reshape(1, -1), sr):
                 if isinstance(ev, ToolCallBegin):
                     line = f"🔧 {ev.name}({ev.arguments})"
@@ -150,9 +182,11 @@ def build_stream(agent, turn: str):
                         pcm16 = (np.clip(fwav.reshape(-1), -1.0, 1.0) * 32_767).astype(np.int16)
                         yield (SR_OUT, pcm16.reshape(1, -1))
                 elif isinstance(ev, AudioChunk):
-                    pcm16 = (np.clip(ev.samples.detach().numpy().reshape(-1), -1.0, 1.0) * 32_767).astype(np.int16)
-                    yield (SR_OUT, pcm16.reshape(1, -1))
+                    answer_buf.append(ev.samples.detach().numpy().reshape(-1))
                 elif isinstance(ev, TurnComplete):
+                    block = flush_answer()  # réponse complète → un seul bloc propre
+                    if block is not None:
+                        yield block
                     transcript.append(ev.text)
                     print(f"🤖 {ev.text}  ({ev.tool_rounds} tool round(s))", flush=True)
                     yield AdditionalOutputs(f"🤖 {ev.text}")
@@ -167,7 +201,9 @@ def build_stream(agent, turn: str):
             rtc_conf = server_conf = creds
             print("[TURN] Cloudflare clés directes", flush=True)
 
-    reply_kwargs: dict = {"can_interrupt": True, "output_sample_rate": SR_OUT}
+    # can_interrupt=False : la réponse parlée (bufferisée, flush à la fin) ne doit
+    # PAS être tuée par un barge-in/écho — sinon le tour 1 ne joue jamais.
+    reply_kwargs: dict = {"can_interrupt": False, "output_sample_rate": SR_OUT}
     try:
         from fastrtc import AlgoOptions, SileroVadOptions
 
