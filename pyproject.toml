@@ -16,11 +16,11 @@ dependencies = [
 [project.optional-dependencies]
 # Fine-tuning (Phase 2) — liquid-audio impose Python >= 3.12
     "liquid-audio>=1.3.0",
-    # peft>=0.17 requis par diffusers (tiré par vllm-omni/Voxtral) ; peft>=0.15
-    # LÈVE une ImportError si torchao<0.16 → on monte torchao. (Le pin <0.15
-    # d'avant cassait le serveur Voxtral.)
-    "peft>=0.17",
-    "torchao>=0.16",
+    # <0.15 : peft>=0.15 exige torchao>=0.16, ININSTALLABLE avec le torch de
+    # l'env vllm 0.22 → on garde peft 0.14 pour l'ENTRAÎNEMENT. (Voxtral/vllm-omni
+    # veut peft>=0.17 via diffusers → incompatible : Phase B TTS via Kokoro à la
+    # place, pas de vllm-omni dans l'env d'entraînement.)
+    "peft>=0.13,<0.15",
     "accelerate>=1.0",
     "datasets>=3.0",
     "safetensors>=0.4",
