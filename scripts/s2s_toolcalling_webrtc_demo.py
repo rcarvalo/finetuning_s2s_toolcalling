@@ -113,7 +113,10 @@ def build_agent(checkpoint: str, adapter: str | None):
     print(f"[web] {'Tavily' if os.environ.get('TAVILY_API_KEY') else 'DuckDuckGo (repli)'}", flush=True)
     registry = build_toolcalling_en_registry(web_backend=web, db_backend=FakeDbBackend())
     config = AgentConfig(
-        system_instructions=(TOOLCALLING_EN_SYSTEM_INSTRUCTIONS + " Keep spoken answers short."),
+        # EXACTEMENT le system prompt d'entraînement (cf. case_to_dialogue) : tout
+        # ajout (« Keep answers short ») crée un mismatch train/inférence et fait
+        # dérailler la réponse parlée (charabia). Le modèle parle déjà court.
+        system_instructions=TOOLCALLING_EN_SYSTEM_INSTRUCTIONS,
         # hybrid=True par défaut : tool call en sequential (texte propre) PUIS
         # réponse en interleaved (parole S2S basse latence).
     )
