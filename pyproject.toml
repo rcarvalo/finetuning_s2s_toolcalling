@@ -15,11 +15,12 @@ dependencies = [
 
 [project.optional-dependencies]
 # Fine-tuning (Phase 2) — liquid-audio impose Python >= 3.12
-train = [
     "liquid-audio>=1.3.0",
-    # <0.15 : peft >=0.15 exige torchao>=0.16 et LÈVE une ImportError si l'env a
-    # un torchao plus vieux (0.10 figé par vllm/Colab) ; torchao est inutile au LoRA.
-    "peft>=0.13,<0.15",
+    # peft>=0.17 requis par diffusers (tiré par vllm-omni/Voxtral) ; peft>=0.15
+    # LÈVE une ImportError si torchao<0.16 → on monte torchao. (Le pin <0.15
+    # d'avant cassait le serveur Voxtral.)
+    "peft>=0.17",
+    "torchao>=0.16",
     "accelerate>=1.0",
     "datasets>=3.0",
     "safetensors>=0.4",
