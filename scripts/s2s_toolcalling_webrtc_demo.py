@@ -107,6 +107,16 @@ def build_agent(checkpoint: str, adapter: str | None):
     from s2s_toolcalling.tools.toolcalling_en import build_toolcalling_en_registry
     from s2s_toolcalling.tools.web_search import DuckDuckGoBackend, TavilyBackend
 
+    # Fillers EN pré-rendus AVANT le modèle de service : il faut le modèle de BASE
+    # (« Perform TTS. » est hors-distribution sur le modèle Phase B mergé → filler
+    # garbled). On rend les wavs sur la base, on libère, PUIS on charge le service →
+    # un seul modèle en mémoire à la fois (pas d'OOM sur L4).
+    # dossier dédié « _base » : les anciens runs ont écrit des wavs garbled (rendus
+    # sur le modèle mergé) dans /tmp/fillers_en — on repart propre.
+    filler_dir = Path("/tmp/fillers_en_base")
+    bank = FillerBank(filler_dir=filler_dir, phrases=dict(EN_FILLER_PHRASES))
+    _ensure_fillers(checkpoint, bank, filler_dir)
+
     lb = LiquidBackend(checkpoint, adapter=_resolve_adapter(adapter))  # charge modèle + proc (+ merge LoRA)
     # Tavily (TAVILY_API_KEY) = résultats propres exploitables ; sinon repli ddgs.
     web = TavilyBackend(max_results=4) if os.environ.get("TAVILY_API_KEY") else DuckDuckGoBackend(max_results=4)
@@ -120,11 +130,27 @@ def build_agent(checkpoint: str, adapter: str | None):
         # hybrid=True par défaut : tool call en sequential (texte propre) PUIS
         # réponse en interleaved (parole S2S basse latence).
     )
-    # Fillers EN pré-rendus (voix du modèle) → joués pendant le round-trip outil.
-    filler_dir = Path("/tmp/fillers_en")
-    bank = FillerBank(filler_dir=filler_dir, phrases=dict(EN_FILLER_PHRASES))
-    _render_fillers(lb.model, lb.proc, bank, filler_dir)
     return ReceptionAgent(lb.model, lb.proc, registry, config=config, fillers=bank)
+
+
+def _ensure_fillers(checkpoint: str, bank, filler_dir: Path) -> None:
+    """Rend les wavs de filler sur le modèle de BASE (TTS in-distribution), une
+    seule fois (skip si déjà sur disque), puis libère le modèle."""
+    expected = [filler_dir / f"{('default' if t == '_default' else t)}_{i}.wav"
+                for t, phrases in bank.phrases.items() for i in range(len(phrases))]
+    if expected and all(p.exists() for p in expected):
+        print(f"[filler] wavs déjà présents dans {filler_dir}", flush=True)
+        return
+    import gc
+
+    import torch
+    from s2s_demo import LiquidBackend
+
+    base = LiquidBackend(checkpoint, adapter=None)  # base pur → « Perform TTS. » propre
+    _render_fillers(base.model, base.proc, bank, filler_dir)
+    del base
+    gc.collect()
+    torch.cuda.empty_cache()
 
 
 def build_stream(agent, turn: str):

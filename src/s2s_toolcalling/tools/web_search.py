@@ -108,8 +108,8 @@ class DuckDuckGoBackend:
 # le pavé brut d'un backend web (paragraphe Tavily + `content` de pages entières)
 # crée un décalage de distribution → le modèle ne sait plus grounder (réponse vide
 # ou charabia). On BORNE donc le résultat réinjecté : peu de hits, snippets courts.
-_MAX_RESULTS = 3
-_MAX_SNIPPET = 280
+_MAX_RESULTS = 2
+_MAX_SNIPPET = 160
 
 
 def _trim(text: str, limit: int) -> str:
