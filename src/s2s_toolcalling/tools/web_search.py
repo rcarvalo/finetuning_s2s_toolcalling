@@ -104,7 +104,31 @@ class DuckDuckGoBackend:
         ]
 
 
+# Le tool_result d'ENTRAÎNEMENT (Phase B) était un petit dict compact. Réinjecter
+# le pavé brut d'un backend web (paragraphe Tavily + `content` de pages entières)
+# crée un décalage de distribution → le modèle ne sait plus grounder (réponse vide
+# ou charabia). On BORNE donc le résultat réinjecté : peu de hits, snippets courts.
+_MAX_RESULTS = 3
+_MAX_SNIPPET = 280
+
+
+def _trim(text: str, limit: int) -> str:
+    s = (text or "").strip()
+    if len(s) <= limit:
+        return s
+    return s[:limit].rsplit(" ", 1)[0] + "…"
+
+
 async def web_search_handler(backend: WebSearchBackend, query: str) -> dict[str, Any]:
-    """Point d'entrée de l'outil ``web_search`` (réinjecté en rôle ``tool``)."""
+    """Point d'entrée de l'outil ``web_search`` (réinjecté en rôle ``tool``).
+
+    Résultat BORNÉ (``_MAX_RESULTS`` hits, snippets ``_MAX_SNIPPET`` car.) pour
+    rester proche de la distribution d'entraînement et fiabiliser le grounding.
+    """
     results = await backend.search(query)
-    return {"query": query, "results": results}
+    trimmed = [
+        {"title": r.get("title", ""), "url": r.get("url", ""),
+         "snippet": _trim(r.get("snippet", ""), _MAX_SNIPPET)}
+        for r in results[:_MAX_RESULTS]
+    ]
+    return {"query": query, "results": trimmed}
