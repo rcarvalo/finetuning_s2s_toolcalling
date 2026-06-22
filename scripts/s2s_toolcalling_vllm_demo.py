@@ -46,6 +46,36 @@ MIN_INPUT_RMS = float(os.environ.get("MIN_INPUT_RMS", "0.03"))
 LOCK = threading.Lock()
 
 
+def _preload_cu13() -> None:
+    """vLLM 0.22 = wheel CUDA 13 → précharge ``libcudart.so.13`` (absent de Colab).
+
+    ctypes ``RTLD_GLOBAL`` pour CE process (le loader a déjà figé ``LD_LIBRARY_PATH``
+    au démarrage) + export ``LD_LIBRARY_PATH`` pour les stage workers (sous-process
+    vLLM-Omni, qui le lisent au démarrage). No-op si la lib est déjà résolvable.
+    """
+    import ctypes
+    import glob
+    import subprocess
+
+    pattern = "/usr/local/lib/python*/dist-packages/nvidia/**/libcudart.so.13"
+    libs = glob.glob(pattern, recursive=True)
+    if not libs:  # paquet cu13 pas installé → on l'ajoute (besoin connu vLLM 0.22)
+        subprocess.run([sys.executable, "-m", "pip", "install", "-q", "nvidia-cuda-runtime-cu13"], check=False)
+        libs = glob.glob(pattern, recursive=True)
+    if not libs:
+        print("[cu13] libcudart.so.13 introuvable — vLLM risque d'échouer à l'import", flush=True)
+        return
+    libdirs = sorted({os.path.dirname(p) for p in libs})
+    os.environ["LD_LIBRARY_PATH"] = ":".join(libdirs + [os.environ.get("LD_LIBRARY_PATH", "")])
+    for d in libdirs:
+        for so in sorted(glob.glob(d + "/lib*.so*")):
+            try:
+                ctypes.CDLL(so, mode=ctypes.RTLD_GLOBAL)
+            except OSError:
+                pass
+    print(f"[cu13] préchargé depuis {libdirs}", flush=True)
+
+
 # ───────────────────────── adaptateur backend vLLM-Omni ──────────────────────
 
 
@@ -130,6 +160,7 @@ def _build_tool_backend(checkpoint: str, deploy_config: Path | None):
 
 
 def build_agent(checkpoint: str, deploy_config: Path | None = None):
+    _preload_cu13()  # AVANT tout import vllm (dans _build_tool_backend)
     from s2s_toolcalling.orchestrator.fillers import EN_FILLER_PHRASES, FillerBank
     from s2s_toolcalling.orchestrator.vllm_tool_agent import VllmToolAgent
     from s2s_toolcalling.tools.fake_db import FakeDbBackend
