@@ -60,17 +60,28 @@ class ExportError(RuntimeError):
 # --------------------------------------------------------------------------- #
 
 
+def _unwrap_lora(key: str) -> str:
+    """Désencapsule le wrapper peft : ``....base_layer.weight`` → ``....weight``.
+
+    ``merge_lora`` (peft ``LoraLayer.merge``) fole le delta DANS ``base_layer.weight``
+    mais laisse le module wrappé → le state_dict garde l'infixe ``.base_layer.``.
+    Le serving (vLLM / from_pretrained) attend le nom nu : on le retire ici.
+    """
+    return key.replace(".base_layer.", ".")
+
+
 def remap_backbone_keys(keys: Iterable[str]) -> dict[str, str]:
     """``lfm.X`` → ``model.X`` (layout HF Lfm2ForCausalLM). Ignore les autres modules.
 
-    Refuse les clés LoRA résiduelles : l'export exige un état FUSIONNÉ.
+    Refuse les clés LoRA résiduelles : l'export exige un état FUSIONNÉ. Le wrapper
+    peft (``base_layer``) est désencapsulé côté destination.
     """
     mapping: dict[str, str] = {}
     for key in keys:
         if "lora_" in key:
             raise ExportError(f"unmerged LoRA key found: {key!r} — call merge_lora before exporting")
         if key.startswith(BACKBONE_PREFIX):
-            mapping[key] = "model." + key[len(BACKBONE_PREFIX) :]
+            mapping[key] = "model." + _unwrap_lora(key[len(BACKBONE_PREFIX) :])
     if not mapping:
         raise ExportError("no backbone keys found (expected keys prefixed with 'lfm.')")
     return mapping
@@ -79,6 +90,16 @@ def remap_backbone_keys(keys: Iterable[str]) -> dict[str, str]:
 def strip_lora_keys(keys: Iterable[str]) -> list[str]:
     """Clés à conserver dans l'export full : tout sauf les adaptateurs (déjà fusionnés)."""
     return [k for k in keys if "lora_" not in k]
+
+
+def merged_full_mapping(keys: Iterable[str]) -> dict[str, str]:
+    """``{nom_export: nom_source}`` pour l'export full mergé : retire les adaptateurs
+    (``lora_*``) et désencapsule le wrapper peft (``.base_layer.`` → ``.``).
+
+    Le nom d'export peut différer du nom source (``base_layer``) → on retourne le
+    mapping pour réindexer le state_dict à la sauvegarde.
+    """
+    return {_unwrap_lora(k): k for k in keys if "lora_" not in k}
 
 
 def build_backbone_config(liquid_config: dict[str, Any]) -> dict[str, Any]:
@@ -138,8 +159,11 @@ def export_full(base: str, adapter: str | None, output: Path, device: str, n_tex
 
     model = _load_merged_model(base, adapter, device)
     state = model.state_dict()
-    kept = strip_lora_keys(state.keys())
-    save_file({k: state[k].contiguous().cpu() for k in kept}, str(output / "model.safetensors"))
+    # {nom_export: nom_source} : retire lora_* ET désencapsule base_layer (sinon
+    # le serving cherche ...weight et ne trouve que ...base_layer.weight → KeyError).
+    mapping = merged_full_mapping(state.keys())
+    save_file({dst: state[src].contiguous().cpu() for dst, src in mapping.items()},
+              str(output / "model.safetensors"))
 
     cache = _base_cache_dir(base)
     liquid_config = json.loads((cache / "config.json").read_text(encoding="utf-8"))
@@ -155,7 +179,7 @@ def export_full(base: str, adapter: str | None, output: Path, device: str, n_tex
         if src.is_dir():
             shutil.copytree(src, output / name, dirs_exist_ok=True)
 
-    print(f"checkpoint complet exporté : {output} ({len(kept)} tenseurs)")
+    print(f"checkpoint complet exporté : {output} ({len(mapping)} tenseurs)")
     if n_text or n_audio:
         print(f"ratio interleaved écrit : {liquid_config.get('interleaved_n_text')}:{liquid_config.get('interleaved_n_audio')}")
 

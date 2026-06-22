@@ -3,6 +3,7 @@ import pytest
 from s2s_toolcalling.training.export_checkpoint import (
     ExportError,
     build_backbone_config,
+    merged_full_mapping,
     remap_backbone_keys,
     strip_lora_keys,
     update_interleaved_ratio,
@@ -45,6 +46,28 @@ def test_remap_requires_backbone():
 def test_strip_lora_keys():
     keys = ["lfm.a.weight", "lfm.a.lora_A.default.weight", "lfm.a.lora_B.default.weight"]
     assert strip_lora_keys(keys) == ["lfm.a.weight"]
+
+
+def test_merged_full_mapping_unwraps_base_layer():
+    # state_dict réel d'un merge peft : modules wrappés en .base_layer.weight + lora_*.
+    keys = [
+        "lfm.layers.0.short_conv.in_proj.base_layer.weight",
+        "lfm.layers.0.short_conv.in_proj.lora_A.default.weight",
+        "lfm.layers.0.short_conv.in_proj.lora_B.default.weight",
+        "lfm.embed_tokens.weight",  # module non wrappé → nom nu conservé
+    ]
+    mapping = merged_full_mapping(keys)
+    # nom d'export nu → nom source wrappé (pour réindexer le state_dict)
+    assert mapping["lfm.layers.0.short_conv.in_proj.weight"] == \
+        "lfm.layers.0.short_conv.in_proj.base_layer.weight"
+    assert mapping["lfm.embed_tokens.weight"] == "lfm.embed_tokens.weight"
+    assert not any("base_layer" in dst or "lora_" in dst for dst in mapping)
+
+
+def test_remap_backbone_unwraps_base_layer():
+    mapping = remap_backbone_keys(["lfm.layers.0.self_attn.q_proj.base_layer.weight"])
+    assert mapping["lfm.layers.0.self_attn.q_proj.base_layer.weight"] == \
+        "model.layers.0.self_attn.q_proj.weight"
 
 
 def test_build_backbone_config():
