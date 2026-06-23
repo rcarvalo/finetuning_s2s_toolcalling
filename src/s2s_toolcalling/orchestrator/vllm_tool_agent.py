@@ -24,6 +24,7 @@ Le backend est abstrait (``S2SStreamBackend``) → ce module est testable sans G
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterator, Protocol, Sequence
 
@@ -46,6 +47,10 @@ if TYPE_CHECKING:
 TOOL_CALL_START = chat_format.TOOL_CALL_START
 TOOL_CALL_END = chat_format.TOOL_CALL_END
 TEXT_END = "<|text_end|>"
+# Tous les marqueurs spéciaux <|…|> (audio_start, text_start/end, tool_call_*, …) :
+# à retirer du texte PARLABLE/historique, sinon les <|audio_start|> re-tokenisés en
+# placeholder audio (sans frame réelle) corrompent le contexte du tour suivant.
+_SPECIAL_TOKEN = re.compile(r"<\|[^|>]*\|>")
 
 
 @dataclass
@@ -173,7 +178,6 @@ class VllmToolAgent:
 
 
 def _visible(text: str) -> str:
-    """Texte « parlable » : sans les marqueurs d'outil ni ``<|text_end|>``."""
-    for tok in (TOOL_CALL_START, TOOL_CALL_END, TEXT_END):
-        text = text.replace(tok, "")
-    return text.strip()
+    """Texte « parlable » : TOUS les marqueurs ``<|…|>`` retirés (outil, audio,
+    text_start/end). La parole naturelle n'en contient pas → suppression sûre."""
+    return _SPECIAL_TOKEN.sub("", text).strip()

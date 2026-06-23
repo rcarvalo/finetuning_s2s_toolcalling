@@ -99,6 +99,20 @@ def test_positive_pass_b_drops_user_audio_and_has_tool_turn():
     assert chat_format.TOOL_RESPONSE_START in pass_b[-1].text
 
 
+def test_visible_strips_audio_placeholders_from_text_and_history():
+    # Le flux brut interleavé contient des <|audio_start|> : ils DOIVENT être retirés
+    # du texte parlable ET de l'historique (sinon re-tokenisés en placeholder audio
+    # sans frame → contexte corrompu au tour suivant, « I'm not able to help »).
+    raw = "On June 23, <|audio_start|><|audio_start|>2026, sunny.<|text_end|><|audio_start|><|text_start|>"
+    agent = _agent([(raw, 5)])
+
+    events = list(agent.respond(np.zeros(16_000, dtype=np.float32), 16_000))
+
+    done = events[-1]
+    assert done.text == "On June 23, 2026, sunny."
+    assert "<|" not in agent.turns[-1].text  # historique propre
+
+
 def test_stop_token_stripped_still_parses_call():
     # vLLM strippe le stop token <|tool_call_end|> : le span est ouvert sans fermeture.
     open_span = '<|tool_call_start|>[db_query(question="how many orders")]'
