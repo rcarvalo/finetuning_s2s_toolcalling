@@ -126,16 +126,20 @@ class VllmToolAgent:
                 audio_pending = False
 
             text = self.backend.last_text
+            # On stocke le texte PARLABLE (sans marqueurs ni placeholders audio) :
+            # sinon les <|audio_start|> du flux brut polluent le contexte du tour
+            # suivant → le modèle déraille en multi-tours (« I'm not able to help »).
+            spoken = _visible(text)
             call = self._parse_call(text)
 
             if call is None:  # négatif / réponse finale : pas de tool call
-                self.turns.append(Turn(role="assistant", text=text))
-                yield TurnComplete(text=_visible(text), tool_rounds=round_idx, audio_frames=frames)
+                self.turns.append(Turn(role="assistant", text=spoken))
+                yield TurnComplete(text=spoken, tool_rounds=round_idx, audio_frames=frames)
                 return
 
             if round_idx == self.config.max_tool_rounds:  # garde-fou anti-boucle
-                self.turns.append(Turn(role="assistant", text=text))
-                yield TurnComplete(text=_visible(text), tool_rounds=round_idx, audio_frames=frames)
+                self.turns.append(Turn(role="assistant", text=spoken))
+                yield TurnComplete(text=spoken, tool_rounds=round_idx, audio_frames=frames)
                 return
 
             # Tool call : on stocke le span canonique, exécute, réinjecte le résultat.

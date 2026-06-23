@@ -173,14 +173,44 @@ def build_agent(checkpoint: str, deploy_config: Path | None = None):
     from s2s_toolcalling.tools.web_search import DuckDuckGoBackend, TavilyBackend
 
     backend = _build_tool_backend(checkpoint, deploy_config)
-    web = TavilyBackend(max_results=4) if os.environ.get("TAVILY_API_KEY") else DuckDuckGoBackend(max_results=4)
+    # Tavily : 2 résultats suffisent (le handler borne à 2) et c'est plus rapide.
+    web = TavilyBackend(max_results=2) if os.environ.get("TAVILY_API_KEY") else DuckDuckGoBackend(max_results=4)
     print(f"[web] {'Tavily' if os.environ.get('TAVILY_API_KEY') else 'DuckDuckGo (repli)'}", flush=True)
     registry = build_toolcalling_en_registry(web_backend=web, db_backend=FakeDbBackend())
-    # Pas de wav de filler ici (vLLM est rapide ; round-trip outil court) : on
-    # n'émet que le TEXTE du filler dans l'UI. Filler vocal possible plus tard via
-    # un checkpoint de base (« Perform TTS. » est OOD sur le modèle tool-calling).
-    bank = FillerBank(phrases=dict(EN_FILLER_PHRASES))
+    # Filler vocal pré-rendu (modèle vLLM, mode TTS) → joué pendant le round-trip
+    # outil (~2-3 s de recherche web) pour masquer le TTFA. Désactivable : NO_FILLER=1.
+    filler_dir = Path("/tmp/fillers_vllm")
+    bank = FillerBank(filler_dir=filler_dir, phrases=dict(EN_FILLER_PHRASES))
+    if not os.environ.get("NO_FILLER"):
+        _render_fillers_vllm(backend, bank, filler_dir)
     return VllmToolAgent(backend, registry, fillers=bank)
+
+
+def _render_fillers_vllm(backend, bank, out_dir: Path) -> None:
+    """Pré-rend les wavs de filler via le modèle vLLM (mode TTS), une fois, pour
+    masquer la latence de recherche. « Perform TTS. » peut être OOD sur le modèle
+    tool-calling → si garbled, relancer avec NO_FILLER=1 (filler texte seul)."""
+    import soundfile as sf
+
+    from s2s_toolcalling.orchestrator.vllm_tool_agent import Turn
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    saved_system = backend.system
+    backend.system = "Perform TTS."
+    try:
+        for tool, phrases in bank.phrases.items():
+            name = "default" if tool == "_default" else tool
+            for i, phrase in enumerate(phrases):
+                try:
+                    chunks = list(backend.stream([Turn(role="user", text=phrase)],
+                                                 stop_token_ids=[backend.im_end_id]))
+                    if chunks:
+                        sf.write(str(out_dir / f"{name}_{i}.wav"), np.concatenate(chunks), SR_OUT, subtype="PCM_16")
+                except Exception as e:  # noqa: BLE001 — un filler raté n'empêche pas la démo
+                    print(f"[filler] échec '{phrase}': {e}", flush=True)
+    finally:
+        backend.system = saved_system
+    print(f"[filler] wavs vLLM pré-rendus dans {out_dir}", flush=True)
 
 
 def build_stream(agent, turn: str):
@@ -216,6 +246,12 @@ def build_stream(agent, turn: str):
                     yield AdditionalOutputs(f"   ↳ {str(ev.payload)[:140]}")
                 elif isinstance(ev, FillerSpeech):
                     yield AdditionalOutputs(f"💬 {ev.phrase}")
+                    if ev.wav_path:  # joué pendant le round-trip → masque le TTFA
+                        import soundfile as sf
+
+                        fwav, _ = sf.read(ev.wav_path, dtype="float32")
+                        pcm16 = (np.clip(fwav.reshape(-1), -1.0, 1.0) * 32_767).astype(np.int16)
+                        yield (SR_OUT, pcm16.reshape(1, -1))
                 elif isinstance(ev, AudioChunk):
                     # vLLM RTF<1 → on stream EN DIRECT (pas d'underrun, contrairement
                     # à liquid-audio) : c'est tout l'intérêt du port.
