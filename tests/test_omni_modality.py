@@ -121,6 +121,67 @@ def test_tool_call_turn_stays_text():
     assert next_step_modality(ids, cfg) is Modality.TEXT
 
 
+TOOL_START, TOOL_END = 396, 397  # ids de <|tool_call_start|>/<|tool_call_end|> (test)
+
+
+def _locked_cfg(n_text=6, n_audio=12):
+    return ModalityConfig(n_text=n_text, n_audio=n_audio,
+                          tool_call_start_id=TOOL_START, tool_call_end_id=TOOL_END)
+
+
+def test_tool_call_lock_suppresses_audio_switch():
+    # Sans verrou : 6 tokens texte → step 7 attendu AUDIO → un texte au step audio
+    # est incohérent (la machine lève). C'est exactement le bug observé : l'appel
+    # d'outil dépasse n_text et l'interleaving force des frames audio en plein span.
+    with pytest.raises(ValueError, match="AUDIO step"):
+        replay([TXT] * 6 + [TXT], ModalityConfig(n_text=6, n_audio=12))
+    # Avec le verrou armé par <|tool_call_start|> : le même run reste 100 % TEXTE.
+    state = replay([TOOL_START] + [TXT] * 12, _locked_cfg())
+    assert state.current is Modality.TEXT
+    assert state.in_tool_call is True
+
+
+def test_tool_call_lock_long_call_all_text():
+    # Forme réaliste d'un appel : <|tool_call_start|>[web_search(query="…")]…<|tool_call_end|>
+    # bien plus long que n_text=6 → toutes les positions sont TEXTE.
+    ids = [TOOL_START] + [TXT] * 18 + [TOOL_END]
+    assert all(m is Modality.TEXT for m in expected_modalities(ids, _locked_cfg()))
+
+
+def test_tool_call_lock_releases_on_end():
+    # Appel PILE à n_text (6 tokens) : à la fermeture, un budget texte frais est
+    # réarmé pour ne PAS basculer en audio sur le `left == 0` résiduel.
+    state = replay([TOOL_START] + [TXT] * 4 + [TOOL_END], _locked_cfg())
+    assert state.in_tool_call is False
+    assert state.current is Modality.TEXT
+    assert state.left == 6
+    # et une réponse parlée qui suivrait l'appel interleave normalement (6 → audio)
+    seq = [TOOL_START] + [TXT] * 4 + [TOOL_END] + [TXT] * 6
+    assert next_step_modality(seq, _locked_cfg()) is Modality.AUDIO
+
+
+def test_tool_call_lock_inert_without_start_token():
+    # Config avec ids d'outil MAIS flux sans token d'outil (réponse parlée) :
+    # comportement identique au défaut → aucune régression sur l'interleaving 6:12.
+    script = [TXT] * 6 + [AUDIO_FRAME_PLACEHOLDER_ID] * 12 + [TXT] * 3
+    base = ModalityConfig(n_text=6, n_audio=12)
+    assert expected_modalities(script, _locked_cfg()) == expected_modalities(script, base)
+    assert next_step_modality(script, _locked_cfg()) is next_step_modality(script, base)
+
+
+def test_tool_call_lock_replay_is_prefix_consistent():
+    # La pureté (rejouabilité après préemption / prefix cache) tient avec le verrou.
+    from vllm_omni_lfm2_audio.modality import advance
+
+    cfg = _locked_cfg()
+    ids = [TOOL_START] + [TXT] * 18 + [TOOL_END]
+    for cut in range(len(ids)):
+        state = replay(ids[:cut], cfg)
+        for tok in ids[cut:]:
+            state = advance(state, tok, cfg)
+        assert state == replay(ids, cfg)
+
+
 def test_inconsistent_stream_raises():
     cfg = ModalityConfig(n_text=6, n_audio=12)
     with pytest.raises(ValueError, match="TEXT step"):

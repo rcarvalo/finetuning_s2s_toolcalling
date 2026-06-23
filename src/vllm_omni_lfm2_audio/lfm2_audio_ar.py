@@ -85,11 +85,18 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
             )
 
         # --- machine à états (ratio lu DANS le checkpoint, source unique) --- #
+        # Verrou tool-call : un appel d'outil est TEXTE seul (contrat Phase B) ;
+        # sans verrou, l'interleaving 6:12 hache le span `[fn(arg="…")]`. Les ids
+        # de `<|tool_call_start|>`/`<|tool_call_end|>` sont résolus ici (config si
+        # baked, sinon tokenizer du checkpoint) — None → verrou inerte.
+        tc_start, tc_end = self._resolve_tool_call_ids(vllm_config, config)
         self.modality_cfg = ModalityConfig(
             n_text=getattr(config, "interleaved_n_text", 6),
             n_audio=getattr(config, "interleaved_n_audio", 12),
             frame_placeholder_id=getattr(config, "audio_frame_token_id", 128),
             eoa_placeholder_id=getattr(config, "audio_eoa_token_id", 129),
+            tool_call_start_id=tc_start,
+            tool_call_end_id=tc_end,
         )
 
         # --- backbone Lfm2 (implémentation vLLM core, KV/conv cache géré) --- #
@@ -157,6 +164,45 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         # compteurs de profiling du sampler (LFM2_DEBUG_TIMING)
         self._tim_n = self._tim_rows = 0
         self._tim_replay = self._tim_audio = self._tim_text = 0.0
+
+    @staticmethod
+    def _resolve_tool_call_ids(vllm_config, config) -> tuple[int | None, int | None]:
+        """Ids de ``<|tool_call_start|>``/``<|tool_call_end|>`` pour le verrou
+        texte-only du tour tool-call (cf. ``modality``).
+
+        Priorité au config (``tool_call_start_token_id``/``…_end_token_id`` —
+        baked au convert si présents), sinon résolution depuis le tokenizer
+        livré avec le checkpoint. Tout échec → ``(None, None)`` (verrou inerte :
+        un éventuel tool call interleavé resterait haché, mais le serving ne
+        crashe pas)."""
+        start = getattr(config, "tool_call_start_token_id", None)
+        end = getattr(config, "tool_call_end_token_id", None)
+        if start is not None and end is not None:
+            return int(start), int(end)
+        try:
+            from transformers import AutoTokenizer
+
+            mc = getattr(vllm_config, "model_config", None)
+            tok_path = getattr(mc, "tokenizer", None) or getattr(mc, "model", None)
+            tok = AutoTokenizer.from_pretrained(tok_path)
+
+            def _single(text: str) -> int | None:
+                ids = tok.encode(text, add_special_tokens=False)
+                return int(ids[0]) if len(ids) == 1 else None
+
+            start = int(start) if start is not None else _single("<|tool_call_start|>")
+            end = int(end) if end is not None else _single("<|tool_call_end|>")
+        except Exception as exc:  # tokenizer absent / token multi-pièces : on dégrade
+            logger.warning("tool-call lock disabled (could not resolve token ids: %s)", exc)
+            return None, None
+        if start is None or end is None:
+            logger.warning(
+                "tool-call lock disabled: <|tool_call_start|>/<|tool_call_end|> not single tokens "
+                "(start=%s end=%s)", start, end,
+            )
+            return None, None
+        logger.info("tool-call text-only lock active (start=%d, end=%d)", start, end)
+        return start, end
 
     # ------------------------------------------------------------------ #
     # Hooks runner : preprocess (identité de requête + embeddings)

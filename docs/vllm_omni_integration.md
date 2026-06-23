@@ -148,6 +148,23 @@ frame EOA bascule en TEXT **sans** réinitialiser le budget) :
              frame EOA → retour TEXT
 ```
 
+**Verrou tool-call (extension hors-amont, requis pour le port S2S+outils)** :
+l'orchestrateur 2-passes (`VllmToolAgent`) regénère depuis un prompt complet, et
+la Pass A (appel d'outil) DOIT être texte seul — comme le `generate_sequential`
+de liquid-audio — sinon l'interleaving 6:12 hache le span `[fn(arg="…")]`
+(token-salad `<|audio_start|>`×12 en plein appel, mesuré sur Colab le 23/06). Un
+`interleaved_n_text` global énorme corrige la Pass A mais casse la Pass B parlée
+(le modèle, entraîné interleavé, bafouille « uh, uh… » privé de ses frames). La
+solution est **basée sur le contenu** (pas de signal par-requête à plomber) : si
+`<|tool_call_start|>` est vu sans `<|tool_call_end|>` correspondant, la machine
+SUPPRIME la bascule audio périodique → l'appel reste 100 % texte ; à la
+fermeture, un budget texte frais est réarmé. Cela traite les 3 cas avec un seul
+réglage `6:12` : Pass A (texte), Pass B parlée (interleavé), et réponse directe
+sans outil (interleavé). Reste une fonction pure du flux d'ids (rejouable,
+prefix-cache safe). Les ids `<|tool_call_start|>`/`<|tool_call_end|>` sont
+résolus depuis le tokenizer du checkpoint au démarrage du stage 0 (`None` →
+verrou inerte, parité amont stricte).
+
 **L'état est une fonction pure des ids du tour assistant courant** → rejouable
 après préemption, compatible prefix caching. Vérifié par tests de propriété
 contre une transcription littérale de la boucle amont

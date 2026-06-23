@@ -18,6 +18,17 @@ Sémantique portée (y compris ses subtilités, vérifiées dans le source) :
   réinitialiser ``left``** (quirk du code amont : ``left`` devient négatif et
   seule ``<|text_end|>`` re-déclenchera l'audio) — reproduit à l'identique ;
 - ``<|im_end|>`` termine le tour (géré par les stop tokens du stage).
+
+Extension hors-amont — **verrou tool-call** : un appel d'outil
+(``<|tool_call_start|>``…``<|tool_call_end|>``) est TEXTE seul (contrat
+d'entraînement Phase B : le tour tool-call est généré en *sequential*, sans
+audio). Si ``tool_call_start_id`` est configuré, ce token arme un état qui
+SUPPRIME la bascule audio périodique (le ``left == 0``) jusqu'à
+``<|tool_call_end|>`` — sinon l'interleaving 6:12 hache le span structuré
+``[fn(arg="…")]`` (token-salad ``<|audio_start|>``×12 au milieu de l'appel,
+observé sur Colab). Inerte quand les ids d'outil valent ``None`` (parité amont
+stricte) ; comme le reste de la machine, c'est une fonction pure du flux d'ids
+(rejouable après préemption, compatible prefix caching).
 """
 
 from __future__ import annotations
@@ -49,6 +60,9 @@ class ModalityConfig:
     im_end_id: int = IM_END_TOKEN_ID
     frame_placeholder_id: int = AUDIO_FRAME_PLACEHOLDER_ID
     eoa_placeholder_id: int = AUDIO_EOA_PLACEHOLDER_ID
+    # Verrou tool-call (texte-only). ``None`` → inerte (parité amont stricte).
+    tool_call_start_id: int | None = None
+    tool_call_end_id: int | None = None
 
 
 @dataclass(slots=True)
@@ -63,6 +77,7 @@ class ModalityState:
     left: int = DEFAULT_INTERLEAVED_N_TEXT
     text_done: bool = False
     finished: bool = False
+    in_tool_call: bool = False  # texte-only forcé : appel d'outil non encore fermé
 
     def is_audio_placeholder(self, token_id: int, cfg: ModalityConfig) -> bool:
         return token_id in (cfg.frame_placeholder_id, cfg.eoa_placeholder_id)
@@ -80,17 +95,29 @@ def advance(state: ModalityState, token_id: int, cfg: ModalityConfig) -> Modalit
     if state.finished:
         return state
 
-    current, left, text_done = state.current, state.left, state.text_done
+    current, left, text_done, in_tool_call = state.current, state.left, state.text_done, state.in_tool_call
     left -= 1  # décrément en tête de boucle, comme amont
 
     if current is Modality.TEXT:
         if token_id == cfg.im_end_id:
-            return ModalityState(current=current, left=left, text_done=text_done, finished=True)
+            return ModalityState(current=current, left=left, text_done=text_done,
+                                 finished=True, in_tool_call=in_tool_call)
         if state.is_audio_placeholder(token_id, cfg):
             raise ValueError("audio placeholder encountered during a TEXT step — id stream is inconsistent")
         if token_id == cfg.text_end_id:
             text_done = True
-        if left == 0 or text_done:
+        # Verrou tool-call : `<|tool_call_start|>` arme le texte-only, `<|tool_call_end|>`
+        # le lève (un appel d'outil n'émet jamais `<|text_end|>` ni de frame audio).
+        # À la fermeture on réarme un budget texte frais : sinon un `left` résiduel
+        # à 0 (appel pile à n_text) ferait basculer en audio juste après l'appel.
+        if cfg.tool_call_start_id is not None and token_id == cfg.tool_call_start_id:
+            in_tool_call = True
+        elif cfg.tool_call_end_id is not None and token_id == cfg.tool_call_end_id:
+            in_tool_call = False
+            left = cfg.n_text
+        # Bascule audio supprimée tant qu'un appel d'outil est ouvert : le span
+        # structuré reste 100 % texte (sinon l'interleaving 6:12 le hache).
+        if (left == 0 or text_done) and not in_tool_call:
             current, left = Modality.AUDIO, cfg.n_audio
     else:  # AUDIO
         if not state.is_audio_placeholder(token_id, cfg):
@@ -101,7 +128,8 @@ def advance(state: ModalityState, token_id: int, cfg: ModalityConfig) -> Modalit
         if token_id == cfg.eoa_placeholder_id:
             current = Modality.TEXT  # quirk amont : left N'EST PAS réinitialisé
 
-    return ModalityState(current=current, left=left, text_done=text_done, finished=False)
+    return ModalityState(current=current, left=left, text_done=text_done,
+                         finished=False, in_tool_call=in_tool_call)
 
 
 def replay(turn_token_ids: Iterable[int], cfg: ModalityConfig) -> ModalityState:
