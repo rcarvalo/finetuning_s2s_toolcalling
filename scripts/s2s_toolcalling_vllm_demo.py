@@ -185,6 +185,30 @@ def build_agent(checkpoint: str, deploy_config: Path | None = None):
     return VllmToolAgent(backend, registry, fillers=bank)
 
 
+def _transcribe(backend, wave: "np.ndarray", sr: int) -> str:
+    """Sonde ASR : ce que le modèle ENTEND de l'audio (système « transcribe »).
+
+    Texte-only : stop sur ``<|text_end|>`` (130) + ``<|im_end|>`` → on n'atteint
+    jamais la phase audio → pas de désync de modalité (contrairement au TTS qui
+    émet de l'audio en step TEXT → tuait l'engine).
+    """
+    from vllm_omni_lfm2_audio.constants import TEXT_END_TOKEN_ID
+
+    from s2s_toolcalling.orchestrator.vllm_tool_agent import Turn, _visible
+
+    saved = backend.system
+    backend.system = "Transcribe the user's speech verbatim. Respond with the transcription only, as text."
+    try:
+        for _ in backend.stream([Turn(role="user", audio=(wave, sr))],
+                                stop_token_ids=[TEXT_END_TOKEN_ID, backend.im_end_id]):
+            pass  # on ignore l'audio éventuel ; seul le texte (last_text) compte
+        return _visible(backend.last_text)
+    except Exception as e:  # noqa: BLE001 — la sonde ne doit pas casser la démo
+        return f"<asr échec: {e}>"
+    finally:
+        backend.system = saved
+
+
 def build_stream(agent, turn: str):
     import gradio as gr
     from fastrtc import AdditionalOutputs, ReplyOnPause, Stream
@@ -208,6 +232,10 @@ def build_stream(agent, turn: str):
             print(f"   (ignoré : RMS {rms:.3f} < {MIN_INPUT_RMS} — écho/silence)", flush=True)
             return
         with LOCK:
+            if os.environ.get("SHOW_HEARD"):  # sonde ASR : ce que le modèle entend
+                heard = _transcribe(agent.backend, wave, sr)
+                print(f"👂 entendu: {heard!r}", flush=True)
+                yield AdditionalOutputs(f"👂 {heard}")
             for ev in agent.respond(wave, sr):
                 if isinstance(ev, ToolCallBegin):
                     line = f"🔧 {ev.name}({ev.arguments})"
