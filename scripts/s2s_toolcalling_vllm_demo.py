@@ -137,8 +137,10 @@ def _build_tool_backend(checkpoint: str, deploy_config: Path | None):
                 prompt["multi_modal_data"] = {"audio": [(wave, sr)]}
 
             sp_pair = [
+                # skip_special_tokens=False : sinon vLLM retire <|tool_call_start|>
+                # /<|tool_call_end|> du texte → l'agent ne détecte plus le tool call.
                 SamplingParams(temperature=0.0, max_tokens=400, stop_token_ids=list(stop_token_ids),
-                               output_kind=RequestOutputKind.FINAL_ONLY),
+                               skip_special_tokens=False, output_kind=RequestOutputKind.FINAL_ONLY),
                 SamplingParams(max_tokens=1, detokenize=False, output_kind=RequestOutputKind.DELTA),
             ]
             txt = ""
@@ -152,6 +154,9 @@ def _build_tool_backend(checkpoint: str, deploy_config: Path | None):
                     if w is not None and w.size:
                         yield w
             self.last_text = (txt or "").strip()
+            # DIAG : texte BRUT du stage 0 (marqueurs + placeholders audio éventuels
+            # interleavés) → confirme si l'interleaving shredde le tool call.
+            print(f"[stage0 raw] {self.last_text!r}", flush=True)
 
     return VllmToolBackend(checkpoint, deploy_config)
 
