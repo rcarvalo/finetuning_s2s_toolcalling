@@ -51,6 +51,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   metric direction read from the report, comparability warnings, exit code 1 on
   regression so a training loop can gate on it.
 
+### Results
+- EN baselines measured on Colab L4 (`docs/baseline_en.md`, reports in `reports/`):
+  audio WER 0.086 / DNSMOS OVRL 3.329 (NISQA unavailable, no weights);
+  tool calling 0.333 — the vanilla model emits **zero** tool calls on the
+  8 positive cases while abstaining correctly on all 4 negatives.
+
 ### Conventions (from 2026-08-22)
 - New and modified code comments are written in English.
 - Work branches are named `rd/pr_rca_{action}` (action ≤ 2 words).

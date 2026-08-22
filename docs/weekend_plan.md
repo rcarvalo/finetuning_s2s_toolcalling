@@ -6,8 +6,8 @@ push, pre-commit green on a clean test run.
 
 | # | Step | Tooling | Status |
 |---|---|---|---|
-| 1 | EN audio baseline: WER, DNSMOS, NISQA | `notebooks/colab_baseline_eval.ipynb` → `lfm2-evaluate`, `benchmark/baseline_en/questions.jsonl` (24 q) | ready to run on L4 |
-| 2 | EN tool-calling baseline | same notebook, `benchmark/toolcalling_en/cases.sample.jsonl` (12 cases), `tool_call` scorer | ready to run on L4 |
+| 1 | EN audio baseline: WER, DNSMOS, NISQA | `notebooks/colab_baseline_eval.ipynb` → `lfm2-evaluate`, `benchmark/baseline_en/questions.jsonl` (24 q) | **done** — WER 0.086, DNSMOS 3.329 (`docs/baseline_en.md`) |
+| 2 | EN tool-calling baseline | same notebook, `benchmark/toolcalling_en/cases.sample.jsonl` (12 cases), `tool_call` scorer | **done** — 0.333, zero calls emitted |
 | 3 | Inventory `Rcarvalo/*` private datasets | `lfm2-dataset-inventory` (notebook cell or any logged-in machine) → `docs/dataset_inventory.md` | CLI ready — needs HF login |
 | 4 | Curated dataset repo + enrichment pipeline | to design after step 3 results | pending |
 | 5 | Preprocessing + push CLI to the curated repo | builds on `lfm2-preprocess-sft` / `lfm2-build-dataset` | pending |
