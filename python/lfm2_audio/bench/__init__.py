@@ -9,6 +9,15 @@ tracking perception becomes visible.
 
 from lfm2_audio.bench.rating import AXES, SCALE_MAX, SCALE_MIN, Rating
 from lfm2_audio.bench.session import BenchSession
+from lfm2_audio.bench.source import AnswerSource
 from lfm2_audio.bench.store import RatingStore
 
-__all__ = ["AXES", "SCALE_MAX", "SCALE_MIN", "BenchSession", "Rating", "RatingStore"]
+__all__ = [
+    "AXES",
+    "SCALE_MAX",
+    "SCALE_MIN",
+    "AnswerSource",
+    "BenchSession",
+    "Rating",
+    "RatingStore",
+]

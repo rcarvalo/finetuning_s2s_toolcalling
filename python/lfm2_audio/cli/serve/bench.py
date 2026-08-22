@@ -1,5 +1,6 @@
 """Listening bench — talk to a model version, then rate it against a test set.
 
+    lfm2-bench-app --endpoint $RUNPOD_ENDPOINT_ID            # no local GPU needed
     lfm2-bench-app --checkpoint LiquidAI/LFM2.5-Audio-1.5B --backend liquid
     lfm2-bench-app --checkpoint exports/tc_en --backend vllm --share
 
@@ -9,10 +10,15 @@ Two tabs over one loaded model:
 - **Rate** — walk the test set, score each answer 1-5 on three axes, flag the
   clips that derail. Verdicts append to `reports/human_ratings.jsonl`.
 
-The backend is chosen at load time: `liquid` is the reference PyTorch path,
-`vllm` the low-latency one, `auto` takes whichever is installed. Judging the
-same checkpoint through both is a legitimate use — they are different code paths
-and can sound different.
+Answers come either from a checkpoint loaded here (`--checkpoint`, needs a GPU)
+or from a serverless endpoint (`--endpoint`, needs nothing but network). The
+local path also lets you pick the backend: `liquid` is the reference PyTorch
+one, `vllm` the low-latency one. Judging the same checkpoint through both is a
+legitimate use — they are different code paths and can sound different.
+
+A serverless worker is stateless, so the Talk tab is single-turn against an
+endpoint. That is fine for judging a voice and useless for judging a
+conversation; the UI says which one you are in rather than pretending.
 """
 
 from __future__ import annotations
@@ -24,11 +30,15 @@ from typing import Any
 import gradio as gr
 import numpy as np
 
+from lfm2_audio.bench.local_source import LocalModelSource
 from lfm2_audio.bench.rating import SCALE_MAX, SCALE_MIN
+from lfm2_audio.bench.remote_source import RemoteEndpointSource
 from lfm2_audio.bench.session import BenchSession
+from lfm2_audio.bench.source import AnswerSource
 from lfm2_audio.bench.store import DEFAULT_PATH, RatingStore
 from lfm2_audio.ds.audio import Waveform
 from lfm2_audio.evaluation.question_set import QuestionSet
+from lfm2_audio.remote.client import LiquidAudioClient
 from lfm2_audio.serving.model import LFM2Audio
 
 logger = logging.getLogger(__name__)
@@ -38,7 +48,9 @@ DEFAULT_QUESTIONS = "benchmark/baseline_en/questions.jsonl"
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--checkpoint", required=True, help="local path, HF repo, or adapter")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--checkpoint", help="local path, HF repo, or adapter (needs a GPU)")
+    source.add_argument("--endpoint", help="RunPod serverless endpoint id (no GPU needed)")
     parser.add_argument("--adapter", default=None)
     parser.add_argument("--backend", choices=["auto", "vllm", "liquid"], default="auto")
     parser.add_argument("--questions", default=DEFAULT_QUESTIONS)
@@ -68,6 +80,12 @@ def build_app(session: BenchSession, *, max_tokens: int) -> gr.Blocks:
     with gr.Blocks(title=f"Listening bench — {session.version}") as demo:
         gr.Markdown(f"### {session.version}\nRatings append to `{session.store.path}`.")
 
+        if not session.keeps_history:
+            gr.Markdown(
+                "⚠️ Stateless source: every turn starts fresh, so the Talk tab is "
+                "single-turn. Fine for judging the voice, not a conversation."
+            )
+
         with gr.Tab("Talk"):
             _build_talk_tab(session, max_tokens)
         with gr.Tab("Rate"):
@@ -95,7 +113,7 @@ def _build_talk_tab(session: BenchSession, max_tokens: int) -> None:
         if wave is None and not (text or "").strip():
             return None, "", "nothing to send"
 
-        reply = session._model.reply(text=None if wave is not None else text, audio=wave, max_tokens=max_tokens)
+        reply = session.talk(text=None if wave is not None else text, audio=wave, max_tokens=max_tokens)
         ttfa = reply.metrics.ttfa_s
         timing = f"total {reply.metrics.total_s:.1f}s"
         if ttfa is not None:
@@ -164,18 +182,27 @@ def _build_rate_tab(session: BenchSession, max_tokens: int) -> None:
     )
 
 
+def build_source(args: argparse.Namespace) -> AnswerSource:
+    """Local checkpoint or remote endpoint, per the mutually exclusive flags."""
+    if args.endpoint:
+        logger.info("using serverless endpoint %s", args.endpoint)
+        return RemoteEndpointSource(
+            LiquidAudioClient(args.endpoint),
+            label=args.version or f"endpoint:{args.endpoint}",
+        )
+
+    logger.info("loading %s on backend %s", args.checkpoint, args.backend)
+    model = LFM2Audio.from_pretrained(args.checkpoint, backend=args.backend, adapter=args.adapter)
+    return LocalModelSource(model, label=args.version or f"{args.checkpoint}@{model.backend_name}")
+
+
 def main() -> int:
     args = build_parser().parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
     questions = QuestionSet.from_jsonl(args.questions, audio_root=args.audio_root)
-    logger.info("loading %s on backend %s", args.checkpoint, args.backend)
-    model = LFM2Audio.from_pretrained(args.checkpoint, backend=args.backend, adapter=args.adapter)
-    version = args.version or f"{args.checkpoint}@{model.backend_name}"
-
-    session = BenchSession(model, questions, version=version, store=RatingStore(args.ratings))
-    with model:
-        build_app(session, max_tokens=args.max_tokens).launch(server_port=args.port, share=args.share, quiet=True)
+    session = BenchSession(build_source(args), questions, version=args.version, store=RatingStore(args.ratings))
+    build_app(session, max_tokens=args.max_tokens).launch(server_port=args.port, share=args.share, quiet=True)
     return 0
 
 

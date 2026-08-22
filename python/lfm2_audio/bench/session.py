@@ -1,8 +1,10 @@
-"""``BenchSession`` — a loaded model plus the test set being listened through.
+"""``BenchSession`` — an answer source plus the test set being listened through.
 
-Holds the one expensive thing (the model) so the UI can stay stateless, and
-names the version being judged. That name is what ties a verdict to a model:
-without it, ratings collected across two checkpoints are indistinguishable and
+Depends on :class:`AnswerSource`, not on a loaded model: the same session drives
+a local checkpoint on a GPU box and a serverless endpoint from a laptop.
+
+Names the version being judged, and that name is what ties a verdict to a model.
+Without it, ratings collected across two checkpoints are indistinguishable and
 the whole exercise is worthless.
 """
 
@@ -12,12 +14,12 @@ import logging
 from pathlib import Path
 
 from lfm2_audio.bench.rating import Rating
+from lfm2_audio.bench.source import AnswerSource
 from lfm2_audio.bench.store import RatingStore
 from lfm2_audio.ds.audio import Waveform
 from lfm2_audio.ds.reply import Reply
 from lfm2_audio.evaluation.question import Question
 from lfm2_audio.evaluation.question_set import QuestionSet
-from lfm2_audio.serving.model import LFM2Audio
 
 logger = logging.getLogger(__name__)
 
@@ -27,16 +29,16 @@ class BenchSession:
 
     def __init__(
         self,
-        model: LFM2Audio,
+        source: AnswerSource,
         questions: QuestionSet,
         *,
-        version: str,
+        version: str | None = None,
         store: RatingStore | None = None,
         audio_dir: str | Path = "reports/bench_audio",
     ) -> None:
-        self._model = model
+        self._source = source
         self._questions = questions
-        self._version = version
+        self._version = version or source.label
         self._store = store or RatingStore()
         self._audio_dir = Path(audio_dir)
 
@@ -74,10 +76,12 @@ class BenchSession:
         cannot be revisited, re-checked, or compared against a later version.
         """
         question = self.question(case_id)
-        self._model.reset()
+        # Each case is judged on its own: a leftover context would make the
+        # answer depend on which cases were rated before it.
+        self._source.reset()
 
         audio_in = Waveform.from_file(question.audio_path) if question.audio_path else None
-        reply = self._model.reply(
+        reply = self._source.answer(
             text=None if audio_in is not None else question.text,
             audio=audio_in,
             max_tokens=max_tokens,
@@ -99,13 +103,19 @@ class BenchSession:
         """One conversational turn, history preserved.
 
         Unlike :meth:`generate`, this does **not** reset between turns: the talk
-        tab is for holding a conversation, where the context is the point.
+        tab is for holding a conversation, where the context is the point — as
+        far as the source supports it (see :attr:`keeps_history`).
         """
-        return self._model.reply(text=text, audio=audio, max_tokens=max_tokens)
+        return self._source.answer(text=text, audio=audio, max_tokens=max_tokens)
 
     def reset_conversation(self) -> None:
-        """Drop the conversational history."""
-        self._model.reset()
+        """Drop the conversational history, where the source has one."""
+        self._source.reset()
+
+    @property
+    def keeps_history(self) -> bool:
+        """False against a stateless endpoint — the Talk tab is then single-turn."""
+        return self._source.keeps_history
 
     def record(
         self,
