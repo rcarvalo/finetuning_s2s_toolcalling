@@ -120,6 +120,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   already on the Hub with their contamination caveat, the data-flow diagram and
   what is still missing.
 
+### Fixed (evaluation measured the wrong thing)
+- `lfm2-evaluate` never declared the tools. It built the model with
+  DEFAULT_SYSTEM ("Respond with interleaved text and audio"), which names no
+  tool, while training embeds the definitions in the system prompt. Every
+  tool-calling campaign therefore asked the model to call tools it had never
+  been told about — base model and fine-tune alike scored zero emissions. New
+  `--tool-definitions` flag (`en` shortcut or a JSON path) renders the exact
+  prompt training used; the choice is recorded in the report context, since two
+  campaigns that declared different tools are not comparable. 4 tests.
+
 ### Conventions (from 2026-08-22)
 - New and modified code comments are written in English.
 - Work branches are named `rd/pr_rca_{action}` (action ≤ 2 words).

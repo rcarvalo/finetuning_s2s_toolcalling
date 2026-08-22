@@ -15,10 +15,14 @@ ce module ne porte que la CLI.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
+from pathlib import Path
 
+from lfm2_audio.core.chat_format import build_system_prompt
 from lfm2_audio.core.errors import Lfm2AudioError
+from lfm2_audio.core.prompt import DEFAULT_SYSTEM
 from lfm2_audio.ds.scoring_config import ScorerConfig, ScoringConfig
 from lfm2_audio.evaluation.model_generator import ModelResponseGenerator
 from lfm2_audio.evaluation.pipeline import EvaluationPipeline
@@ -50,6 +54,15 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="échouer si un scorer demandé est indisponible, au lieu de dégrader le rapport",
     )
+    parser.add_argument(
+        "--tool-definitions",
+        default=None,
+        help=(
+            "JSON des outils à DÉCLARER dans le system prompt (comme à l'entraînement). "
+            "Sans lui le modèle ignore que des outils existent et ne peut pas les appeler. "
+            "Raccourci : 'en' pour le set web_search + db_query."
+        ),
+    )
     parser.add_argument("--list-scorers", action="store_true", help="lister les métriques et sortir")
     return parser
 
@@ -78,6 +91,26 @@ def build_scoring_config(args: argparse.Namespace) -> ScoringConfig:
     )
 
 
+def build_system(args: argparse.Namespace) -> str:
+    """System prompt of the campaign — with the tool list when one is requested.
+
+    Training embeds the tool definitions in the system prompt
+    (`preprocess_sft --tool-definitions`). Evaluating without them asks the model
+    to call tools it was never told about: it answers in plain language and every
+    tool-calling metric reads zero, for the base model and a fine-tune alike.
+    """
+    if args.tool_definitions is None:
+        return DEFAULT_SYSTEM
+
+    if args.tool_definitions == "en":
+        from lfm2_audio.tools.schemas import TOOLCALLING_EN_TOOL_DEFINITIONS
+
+        definitions = TOOLCALLING_EN_TOOL_DEFINITIONS
+    else:
+        definitions = json.loads(Path(args.tool_definitions).read_text(encoding="utf-8"))
+    return build_system_prompt(tool_definitions=definitions)
+
+
 def main() -> int:
     args = build_parser().parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -94,7 +127,9 @@ def main() -> int:
 
     try:
         scorers = ScorerFactory(build_scoring_config(args)).build_all()
-        model = LFM2Audio.from_pretrained(args.checkpoint, backend=args.backend, adapter=args.adapter)
+        model = LFM2Audio.from_pretrained(
+            args.checkpoint, backend=args.backend, adapter=args.adapter, system=build_system(args)
+        )
     except Lfm2AudioError as error:
         print(f"❌ {error}", file=sys.stderr)
         return 1
@@ -103,7 +138,13 @@ def main() -> int:
         report = EvaluationPipeline(scorers).run(
             questions,
             ModelResponseGenerator(model, max_tokens=args.max_tokens),
-            context={"checkpoint": args.checkpoint, "backend": model.backend_name},
+            context={
+                "checkpoint": args.checkpoint,
+                "backend": model.backend_name,
+                "adapter": args.adapter,
+                # Two campaigns that declared different tools are not comparable.
+                "tool_definitions": args.tool_definitions,
+            },
         )
 
     print()
