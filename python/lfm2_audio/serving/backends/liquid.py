@@ -25,12 +25,6 @@ from lfm2_audio.ds.generation_config import GenerationConfig
 from lfm2_audio.ds.inference_config import EngineConfig
 from lfm2_audio.ds.reply import Reply
 from lfm2_audio.serving.model import LFM2Audio
-from lfm2_audio.training.lora import (
-    inject_lora,
-    load_lora,
-    load_lora_settings,
-    merge_lora,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +65,11 @@ class LiquidAudioBackend(LFM2Audio):
         generation: GenerationConfig | None,
     ) -> Self:
 
-        source = str(checkpoint.path)
+        # liquid-audio overloads this argument by TYPE: a `str` is treated as a
+        # Hub repo id and goes through snapshot_download, while a `Path` is read
+        # as a local directory. The resolver already materialized the checkpoint
+        # on disk, so str(...) made it try to download a local path.
+        source = Path(checkpoint.path)
         started = time.time()
         model = LFM2AudioModel.from_pretrained(source, device="cuda", dtype=torch.bfloat16).eval()
         processor = LFM2AudioProcessor.from_pretrained(source, device="cuda")
@@ -84,7 +82,13 @@ class LiquidAudioBackend(LFM2Audio):
 
     @staticmethod
     def _merge_adapter(model: Any, adapter: Any) -> None:
-        """Injecte puis fusionne un adaptateur LoRA dans les poids de base."""
+        """Inject then merge a LoRA adapter into the base weights.
+
+        The LoRA helpers pull peft and safetensors, which are training-only
+        extras: importing them here keeps a plain serving install (and this
+        backend) usable without them.
+        """
+        from lfm2_audio.training.lora import inject_lora, load_lora, load_lora_settings, merge_lora
 
         settings = load_lora_settings(str(adapter))
         inject_lora(model, settings)
