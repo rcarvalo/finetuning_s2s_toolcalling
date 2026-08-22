@@ -33,7 +33,12 @@ serving-liquid = [
 # Serving vLLM-Omni (plugin out-of-tree + wrapper LFM2Audio) — GPU.
 serving = [
     "lfm2-audio[serving-liquid]",
-    "vllm-omni>=0.22.0",
+    # Pinned, not floating: the out-of-tree plugin is written against the 0.22
+    # engine and its documented workarounds (_set_final_only_for_llm_stages,
+    # enable_prefix_caching=False) are not known to hold on 0.24+. An unbounded
+    # >=0.22.0 resolves to the latest, which then demands a newer vLLM than the
+    # one pinned by URL just above it — and the install fails on the conflict.
+    "vllm-omni>=0.22,<0.23",
 ]
 # Évaluation : métriques audio (WER via Whisper, DNSMOS, NISQA) et juge LLM.
 # Les poids DNSMOS/NISQA ne sont pas redistribuables : chemins dans
