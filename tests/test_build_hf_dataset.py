@@ -1,6 +1,6 @@
 import json
 
-import lfm2_audio.cli.build_dataset as bhd
+import lfm2_audio.data_prep.hf_dataset as bhd
 
 
 def test_dialogue_to_row_positive():

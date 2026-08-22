@@ -18,8 +18,15 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast
 
+from liquid_audio.data.types import (
+    AudioSegment,
+    ChatMessage,
+    InterleavedSegment,
+    TextSegment,
+)
+
 from lfm2_audio.core import chat_format
-from lfm2_audio.ds.dialogue import Dialogue
+from lfm2_audio.ds.dialogue import Dialogue, load_dialogues
 
 if TYPE_CHECKING:
     from liquid_audio.data.types import ChatMessage
@@ -35,12 +42,6 @@ def dialogue_to_chat_messages(
     assistant_audio_mode: AssistantAudioMode = "interleaved",
     default_system: str = chat_format.DEFAULT_SYSTEM_INSTRUCTIONS,
 ) -> list[ChatMessage]:
-    from liquid_audio.data.types import (
-        AudioSegment,
-        ChatMessage,
-        InterleavedSegment,
-        TextSegment,
-    )
 
     audio_root = Path(audio_root)
 
@@ -141,7 +142,6 @@ class DialogueChatMessages:
         self.assistant_audio_mode = assistant_audio_mode
 
     def __iter__(self) -> Iterator[list[ChatMessage]]:
-        from lfm2_audio.ds.dialogue import load_dialogues
 
         return dialogues_to_chat_messages(
             load_dialogues(self.dialogues_path),

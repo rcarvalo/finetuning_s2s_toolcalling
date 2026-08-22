@@ -112,7 +112,7 @@ lfm2-synthesize-audio --engine voxtral --dialogues data/tc_en_train.jsonl ...
 lfm2-build-dataset --repo-id <user>/tc-en-audio --train ... --private
 lfm2-analyze-dataset --dialogues data/tc_en_train.jsonl --audio-root data/audio_tc_en
 lfm2-preprocess-sft --dialogues ... --output datasets/tc_en_train
-accelerate launch -m lfm2_audio.cli.train_sft --config configs/training/phase_en_toolcalling.yaml
+accelerate launch -m lfm2_audio.cli.train.sft --config configs/training/phase_en_toolcalling.yaml
 lfm2-eval-audio --backend vllm --checkpoint exports/tc_en --cases ... --arg-match token_f1
 ```
 

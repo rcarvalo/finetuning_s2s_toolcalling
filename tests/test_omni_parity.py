@@ -65,7 +65,7 @@ def _reference_interleaved_greedy(model, proc, prompt: str, max_new_tokens: int 
 
 def test_stage0_greedy_parity(reference):
     """Tokens texte + codes audio identiques entre plugin et référence."""
-    from lfm2_audio.vllm_plugin.lfm2_audio_ar import Lfm2AudioARForConditionalGeneration  # noqa: F401
+    from lfm2_audio.vllm_plugin.stage_ar import Lfm2AudioARForConditionalGeneration  # noqa: F401
 
     model, proc = reference
     prompts = [
@@ -90,7 +90,7 @@ def test_stage1_waveform_parity(reference):
     frames = torch.stack([f for f in ref_frames if int(f[0]) != 2048], dim=1)
     ref_wav = proc.decode(frames.unsqueeze(0).cuda())
 
-    from lfm2_audio.vllm_plugin.lfm2_audio_code2wav import Lfm2AudioCode2Wav
+    from lfm2_audio.vllm_plugin.stage_code2wav import Lfm2AudioCode2Wav
 
     class _Cfg:
         class model_config:

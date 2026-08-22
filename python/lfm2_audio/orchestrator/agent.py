@@ -23,12 +23,17 @@ et fallback ``notify_receptionist`` si l'appel est invalide.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import torch
+from liquid_audio import ChatState, LFMModality
+
 from lfm2_audio.core import chat_format
+from lfm2_audio.core.chat_format import verify_special_tokens
 from lfm2_audio.orchestrator.events import (
     AgentError,
     AgentEvent,
@@ -87,8 +92,6 @@ class ReceptionAgent:
         self.fillers = fillers or FillerBank()
         self.mimi = processor.mimi.eval() if self.config.decode_audio else None
 
-        from lfm2_audio.core.chat_format import verify_special_tokens
-
         bad = [tok for tok, ok in verify_special_tokens(processor.text).items() if not ok]
         if bad:
             raise RuntimeError(f"tokenizer is missing special tokens (not single ids): {bad}")
@@ -97,7 +100,6 @@ class ReceptionAgent:
 
     def new_session(self) -> ChatState:
         """Nouveau contexte avec system prompt + liste d'outils (= contrat d'entraînement)."""
-        from liquid_audio import ChatState
 
         chat = ChatState(self.proc)
         chat.new_turn("system")
@@ -208,8 +210,6 @@ class ReceptionAgent:
         tour tool-call → generate_sequential (texte propre). Yield les événements ;
         retourne (pending_calls, visible_text, audio_frames, interrupted).
         """
-        import torch
-        from liquid_audio import LFMModality
 
         cfg = self.config
         parser = StreamingToolCallParser()
@@ -220,8 +220,6 @@ class ReceptionAgent:
         audio_frames = 0
         pending_calls: list = []
         interrupted = False
-
-        import contextlib
 
         stream_ctx = self.mimi.streaming(1) if self.mimi is not None else contextlib.nullcontext()
         gen_fn = self.model.generate_interleaved if speaking else self.model.generate_sequential

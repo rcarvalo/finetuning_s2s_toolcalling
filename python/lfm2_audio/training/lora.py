@@ -11,28 +11,21 @@ ni les têtes audio.
 
 from __future__ import annotations
 
+import json
 import logging
-from dataclasses import dataclass, field
 from pathlib import Path
 
+from peft import LoraConfig, inject_adapter_in_model
+from peft.tuners.lora import LoraLayer
+from safetensors.torch import load_file, save_file
+
+from lfm2_audio.training.lora_settings import LoraSettings
+
 logger = logging.getLogger(__name__)
-
-# Attention (q/k/v/out), GLU (w1/w2/w3), conv LIV (in_proj/out_proj).
-DEFAULT_TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "out_proj", "w1", "w2", "w3", "in_proj"]
-
-
-@dataclass(slots=True)
-class LoraSettings:
-    enabled: bool = True
-    r: int = 16
-    alpha: int = 32
-    dropout: float = 0.05
-    target_modules: list[str] = field(default_factory=lambda: list(DEFAULT_TARGET_MODULES))
 
 
 def inject_lora(model, settings: LoraSettings):
     """Injecte les adaptateurs dans ``model.lfm`` (in place). Retourne la LoraConfig."""
-    from peft import LoraConfig, inject_adapter_in_model
 
     config = LoraConfig(
         r=settings.r,
@@ -57,9 +50,6 @@ def lora_state_dict(model) -> dict:
 def save_lora(model, output_dir: str | Path, settings: LoraSettings | None = None) -> Path:
     """Sauve les poids de l'adaptateur + sa config (nécessaire pour réinjecter
     le LoRA à l'identique au moment du merge/export)."""
-    import json
-
-    from safetensors.torch import save_file
 
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -89,7 +79,6 @@ def load_lora_settings(adapter_dir: str | Path) -> LoraSettings:
     la même structure LoRA que ``save_lora`` par défaut, donc le ``.safetensors``
     se recharge correctement même sans config.
     """
-    import json
 
     cfg_path = Path(adapter_dir) / "adapter_config.json"
     if not cfg_path.exists():
@@ -101,7 +90,6 @@ def load_lora_settings(adapter_dir: str | Path) -> LoraSettings:
 
 
 def load_lora(model, adapter_path: str | Path) -> None:
-    from safetensors.torch import load_file
 
     weights = load_file(str(adapter_path))
     _missing, unexpected = model.load_state_dict(weights, strict=False)
@@ -115,7 +103,6 @@ def merge_lora(model) -> int:
 
     Retourne le nombre de couches fusionnées.
     """
-    from peft.tuners.lora import LoraLayer
 
     merged = 0
     for module in model.modules():

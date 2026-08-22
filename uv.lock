@@ -2424,6 +2424,7 @@ name = "lfm2-audio"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "huggingface-hub" },
     { name = "numpy" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -2526,6 +2527,7 @@ requires-dist = [
     { name = "httpx", marker = "extra == 'app'", specifier = ">=0.27" },
     { name = "httpx", marker = "extra == 'client'", specifier = ">=0.27" },
     { name = "httpx", marker = "extra == 'tooldata'", specifier = ">=0.27" },
+    { name = "huggingface-hub", specifier = ">=0.25" },
     { name = "huggingface-hub", marker = "extra == 'serving-liquid'", specifier = ">=0.25" },
     { name = "huggingface-hub", marker = "extra == 'tooldata'", specifier = ">=0.25" },
     { name = "kokoro", marker = "extra == 'tooldata'", specifier = ">=0.9" },

@@ -1,44 +1,23 @@
-"""Accès PostgreSQL en lecture seule pour l'outil ``query_database`` (Phase 3).
+"""``Database`` — accès PostgreSQL en LECTURE SEULE pour l'outil ``query_database``.
 
-Double protection :
-1. garde syntaxique (`ensure_read_only`) : une seule instruction, SELECT/WITH
-   uniquement, mots-clés d'écriture interdits ;
-2. session PostgreSQL ouverte avec ``default_transaction_read_only=on`` +
-   ``statement_timeout`` court, donc même une requête qui passerait la garde
-   serait refusée côté serveur.
+``asyncpg`` est importé en tête : ce module n'est chargé que si on ouvre
+réellement une base. Le garde syntaxique, lui, vit dans
+:mod:`lfm2_audio.tools.sql_guard` et reste testable sans installation.
+
+Trois verrous indépendants, aucun suffisant seul : le garde syntaxique, la
+session ``default_transaction_read_only``, et un rôle SQL sans droit d'écriture.
 """
 
 from __future__ import annotations
 
-import re
+import logging
 from typing import Any
 
-# Mots-clés interdits où qu'ils apparaissent (hors littéraux — la garde est
-# volontairement conservatrice : un faux positif est préférable à une écriture).
-_FORBIDDEN = re.compile(
-    r"\b(insert|update|delete|drop|alter|create|truncate|grant|revoke|copy|vacuum|merge|call|do|execute|listen|notify|set|reset|lock)\b",
-    re.IGNORECASE,
-)
-_COMMENT = re.compile(r"(--[^\n]*|/\*.*?\*/)", re.DOTALL)
+import asyncpg
 
+from lfm2_audio.tools.sql_guard import ensure_read_only
 
-class UnsafeQueryError(ValueError):
-    pass
-
-
-def ensure_read_only(sql: str) -> str:
-    """Valide qu'une requête est une instruction SELECT unique. Retourne le SQL nettoyé."""
-    cleaned = _COMMENT.sub(" ", sql).strip().rstrip(";").strip()
-    if not cleaned:
-        raise UnsafeQueryError("empty query")
-    if ";" in cleaned:
-        raise UnsafeQueryError("multiple statements are not allowed")
-    first_word = cleaned.split(None, 1)[0].lower()
-    if first_word not in ("select", "with"):
-        raise UnsafeQueryError("only SELECT queries are allowed")
-    if _FORBIDDEN.search(cleaned):
-        raise UnsafeQueryError("query contains a forbidden keyword")
-    return cleaned
+logger = logging.getLogger(__name__)
 
 
 class Database:
@@ -52,8 +31,6 @@ class Database:
 
     async def _get_pool(self) -> Any:
         if self._pool is None:
-            import asyncpg
-
             self._pool = await asyncpg.create_pool(
                 self.dsn,
                 min_size=1,

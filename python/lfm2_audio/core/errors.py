@@ -30,3 +30,7 @@ class ConversionError(CheckpointError):
 
 class RemoteInferenceError(Lfm2AudioError):
     """Échec d'un appel à l'endpoint d'inférence distant (RunPod serverless)."""
+
+
+class ExportError(Lfm2AudioError):
+    """Export de checkpoint impossible : clés inattendues, adaptateur non fusionné."""

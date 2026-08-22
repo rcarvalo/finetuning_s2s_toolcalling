@@ -10,7 +10,7 @@ warmup+cosine, la validation et les checkpoints. Ce module ajoute :
 2. les callbacks décrits par la config (journalisation, wandb, sauvegardes, push
    Hub, et le **scoring périodique** avec les métriques de la pipeline d'éval).
 
-    accelerate launch -m lfm2_audio.cli.train_sft \\
+    accelerate launch -m lfm2_audio.cli.train.sft \\
         --config configs/training/phase_en_toolcalling.yaml
 """
 
@@ -29,7 +29,8 @@ from lfm2_audio.ds.training_config import TrainingConfig
 from lfm2_audio.training.callback_builder import CallbackBuilder
 from lfm2_audio.training.freeze import FreezePolicy, apply_freeze_policy
 from lfm2_audio.training.instrumented_trainer import InstrumentedTrainer
-from lfm2_audio.training.lora import LoraSettings, inject_lora
+from lfm2_audio.training.lora import inject_lora
+from lfm2_audio.training.lora_settings import LoraSettings
 
 logger = logging.getLogger(__name__)
 

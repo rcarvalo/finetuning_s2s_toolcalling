@@ -24,21 +24,24 @@ import base64
 import logging
 from pathlib import Path
 
+import numpy as np
+import torch
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from liquid_audio import LFM2AudioModel, LFM2AudioProcessor
+
+from lfm2_audio.orchestrator.agent import AgentConfig, ReceptionAgent
+from lfm2_audio.orchestrator.events import AudioChunk, event_to_dict
+from lfm2_audio.orchestrator.fillers import FillerBank
+from lfm2_audio.rag.retriever import KnowledgeBaseRetriever
+from lfm2_audio.tools.database import Database
+from lfm2_audio.tools.reception import InMemoryReceptionBackend, build_reception_registry
+from lfm2_audio.tools.reception_postgres import PostgresReceptionBackend
+
 logger = logging.getLogger(__name__)
 
 
 def build_agent_from_config(config: dict):
     """Assemble modèle + registre + agent depuis configs/orchestrator.yaml (GPU requis)."""
-    from liquid_audio import LFM2AudioModel, LFM2AudioProcessor
-
-    from lfm2_audio.orchestrator.agent import AgentConfig, ReceptionAgent
-    from lfm2_audio.orchestrator.fillers import FillerBank
-    from lfm2_audio.tools.database import Database
-    from lfm2_audio.tools.reception import (
-        InMemoryReceptionBackend,
-        PostgresReceptionBackend,
-        build_reception_registry,
-    )
 
     model_cfg = config.get("model", {})
     model_id = model_cfg.get("model_id", "LiquidAI/LFM2.5-Audio-1.5B")
@@ -59,8 +62,6 @@ def build_agent_from_config(config: dict):
     rag_search = None
     rag_cfg = config.get("rag", {})
     if rag_cfg.get("persist_dir"):
-        from lfm2_audio.rag.retriever import KnowledgeBaseRetriever
-
         retriever = KnowledgeBaseRetriever(
             persist_dir=rag_cfg["persist_dir"],
             collection=rag_cfg.get("collection", "company_kb"),
@@ -89,11 +90,6 @@ def build_agent_from_config(config: dict):
 
 
 def create_app(agent):
-    import numpy as np
-    import torch
-    from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-
-    from lfm2_audio.orchestrator.events import AudioChunk, event_to_dict
 
     app = FastAPI(title="s2s-toolcalling reception agent")
 

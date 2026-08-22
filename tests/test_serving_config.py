@@ -10,7 +10,8 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from lfm2_audio.ds.config import EngineConfig, GenerationConfig
+from lfm2_audio.ds.generation_config import GenerationConfig
+from lfm2_audio.ds.inference_config import EngineConfig
 
 
 @pytest.fixture

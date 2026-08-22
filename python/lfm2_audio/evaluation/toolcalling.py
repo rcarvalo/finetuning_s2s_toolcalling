@@ -33,6 +33,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from lfm2_audio.core.lazy_component import LazyComponent
 from lfm2_audio.orchestrator.tool_parser import StreamingToolCallParser
 
 
@@ -74,6 +75,14 @@ def token_f1(a: str, b: str) -> float:
 
 _EMBEDDER_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
+# sentence-transformers ne sert qu'à l'arg-match sémantique : résolu
+# dynamiquement pour que les modes `exact` et `token_f1` tournent sans lui.
+_EMBEDDER = LazyComponent(
+    module="sentence_transformers",
+    class_name="SentenceTransformer",
+    requires=("sentence_transformers",),
+)
+
 
 @lru_cache(maxsize=1)
 def _embedder() -> Any:  # noqa: ANN401 — SentenceTransformer non typé
@@ -82,9 +91,8 @@ def _embedder() -> Any:  # noqa: ANN401 — SentenceTransformer non typé
     ``lru_cache`` plutôt qu'un global mutable : même effet (un seul chargement),
     sans état modifiable au niveau module.
     """
-    from sentence_transformers import SentenceTransformer
 
-    return SentenceTransformer(_EMBEDDER_NAME)
+    return _EMBEDDER.build(model_name_or_path=_EMBEDDER_NAME)
 
 
 def _semantic_sim(a: str, b: str) -> float:

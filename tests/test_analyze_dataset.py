@@ -1,4 +1,4 @@
-import lfm2_audio.cli.analyze_dataset as ad
+import lfm2_audio.data_prep.dataset_report as ad
 
 
 def _pos(tool, q, **meta):

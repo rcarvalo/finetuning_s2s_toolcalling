@@ -24,7 +24,7 @@ def rehydrate_if_missing(repo_id: str, out: Path) -> None:
     if (out / "train.jsonl").exists():
         print(f"réhydratation sautée : {out}/train.jsonl existe")
         return
-    from lfm2_audio.cli.hf_to_dialogues import rehydrate
+    from lfm2_audio.data_prep.hf_rehydrate import rehydrate
 
     counts = rehydrate(repo_id, out)
     print(f"réhydraté {repo_id} → {out} : {counts}")
@@ -50,7 +50,7 @@ def write_tool_definitions() -> None:
 
 
 def preprocess_if_missing(out: Path) -> None:
-    from lfm2_audio.cli.preprocess_sft import main as preprocess
+    from lfm2_audio.cli.data.pack_sft import main as preprocess
 
     for split, dataset_dir in (("train_only", TRAIN_DATASET), ("val", VAL_DATASET)):
         if dataset_dir.exists():  # preprocess_sft exige un dossier neuf → on ne re-packe jamais par-dessus

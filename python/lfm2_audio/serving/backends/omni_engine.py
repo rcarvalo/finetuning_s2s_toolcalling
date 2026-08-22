@@ -13,8 +13,12 @@ import time
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
+from vllm import SamplingParams
+from vllm.sampling_params import RequestOutputKind
+from vllm_omni import Omni
+
 from lfm2_audio.core.env import load_vllm_omni_plugins
-from lfm2_audio.ds.config import EngineConfig
+from lfm2_audio.ds.inference_config import EngineConfig
 
 if TYPE_CHECKING:
     from lfm2_audio.ds.checkpoint import ResolvedCheckpoint
@@ -30,7 +34,6 @@ class OmniEngine:
         self._closed = False
 
         load_vllm_omni_plugins()
-        from vllm_omni import Omni
 
         started = time.time()
         self._omni = Omni(**self.config.to_omni_kwargs(str(checkpoint.path)))
@@ -68,8 +71,6 @@ class OmniEngine:
         car vLLM retirerait sinon ``<|tool_call_start|>`` / ``<|tool_call_end|>``
         du texte, rendant les tool calls indétectables.
         """
-        from vllm import SamplingParams
-        from vllm.sampling_params import RequestOutputKind
 
         return [
             SamplingParams(

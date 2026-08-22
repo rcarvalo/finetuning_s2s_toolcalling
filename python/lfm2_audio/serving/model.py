@@ -26,8 +26,9 @@ import numpy.typing as npt
 from lfm2_audio.core.prompt import DEFAULT_SYSTEM
 from lfm2_audio.ds.audio import Waveform
 from lfm2_audio.ds.checkpoint import CheckpointRequest, ResolvedCheckpoint
-from lfm2_audio.ds.config import EngineConfig, GenerationConfig
 from lfm2_audio.ds.conversation import Conversation
+from lfm2_audio.ds.generation_config import GenerationConfig
+from lfm2_audio.ds.inference_config import EngineConfig
 from lfm2_audio.ds.reply import Reply, TurnMetrics
 from lfm2_audio.serving.checkpoint.resolver import CheckpointResolver
 from lfm2_audio.serving.registry import BACKENDS

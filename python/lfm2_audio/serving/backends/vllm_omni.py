@@ -15,14 +15,22 @@ import time
 from collections.abc import Iterator, Sequence
 from typing import Any, Self
 
+from transformers import AutoTokenizer
+
 from lfm2_audio.core.prompt import ChatMLRenderer, strip_special_tokens
 from lfm2_audio.ds.audio import OUTPUT_SAMPLE_RATE, Waveform
 from lfm2_audio.ds.checkpoint import ResolvedCheckpoint
-from lfm2_audio.ds.config import EngineConfig, GenerationConfig
 from lfm2_audio.ds.conversation import Conversation, ConversationTurn
+from lfm2_audio.ds.generation_config import GenerationConfig
+from lfm2_audio.ds.inference_config import EngineConfig
 from lfm2_audio.ds.reply import Reply
 from lfm2_audio.serving.backends.omni_engine import OmniEngine
 from lfm2_audio.serving.model import LFM2Audio
+from lfm2_audio.vllm_plugin.constants import (
+    AUDIO_EOA_PLACEHOLDER_ID,
+    AUDIO_FRAME_PLACEHOLDER_ID,
+    IM_END_TOKEN_ID,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,9 +67,6 @@ class VllmOmniBackend(LFM2Audio):
         engine: EngineConfig | None,
         generation: GenerationConfig | None,
     ) -> Self:
-        from transformers import AutoTokenizer
-
-        from lfm2_audio.vllm_plugin.constants import AUDIO_FRAME_PLACEHOLDER_ID
 
         tokenizer = AutoTokenizer.from_pretrained(str(checkpoint.path))
         return cls(
@@ -74,11 +79,6 @@ class VllmOmniBackend(LFM2Audio):
 
     @staticmethod
     def _load_frame_ids() -> dict[str, int]:
-        from lfm2_audio.vllm_plugin.constants import (
-            AUDIO_EOA_PLACEHOLDER_ID,
-            AUDIO_FRAME_PLACEHOLDER_ID,
-            IM_END_TOKEN_ID,
-        )
 
         return {
             "frame": AUDIO_FRAME_PLACEHOLDER_ID,

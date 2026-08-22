@@ -19,6 +19,9 @@ import os
 from typing import Any
 
 import torch
+from vllm.inputs import TextPrompt  # noqa: F401
+from vllm_omni.data_entry_keys import CodesStruct, MetaStruct, OmniPayloadStruct
+from vllm_omni.inputs.data import OmniTokensPrompt
 
 from lfm2_audio.vllm_plugin.constants import (
     CODEBOOKS,
@@ -100,7 +103,6 @@ def _buffers(transfer_manager: Any) -> dict[str, list[list[int]]]:
 
 
 def _build_payload(frames: list[list[int]], *, new_frames: int, left_context: int, finished: bool):
-    from vllm_omni.data_entry_keys import CodesStruct, MetaStruct, OmniPayloadStruct
 
     end = len(frames)
     start = max(0, end - new_frames - left_context)
@@ -207,8 +209,6 @@ def ar2code2wav_async_chunk(transfer_manager: Any, pooling_output: Any, request:
 
 def ar2code2wav(source_outputs: list[Any], prompt=None, requires_multimodal_data: bool = False):
     """Mode synchrone (pipeline legacy) : tout l'audio d'un coup, en fin de tour."""
-    from vllm.inputs import TextPrompt  # noqa: F401
-    from vllm_omni.inputs.data import OmniTokensPrompt
 
     results: list[OmniTokensPrompt] = []
     for output in source_outputs:

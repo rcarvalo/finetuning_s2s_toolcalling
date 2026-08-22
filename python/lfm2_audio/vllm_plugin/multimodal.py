@@ -21,6 +21,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 import torch
+from liquid_audio.model.conformer.processor import AudioToMelSpectrogramPreprocessor
 from transformers import BatchFeature
 from vllm.multimodal.inputs import MultiModalFieldConfig, MultiModalKwargsItems
 from vllm.multimodal.parse import MultiModalDataItems, MultiModalDataParser
@@ -60,8 +61,6 @@ def _mel_preprocessor(hf_config: Any):
     key = id(hf_config)
     proc = _MEL_CACHE.get(key)
     if proc is None:
-        from liquid_audio.model.conformer.processor import AudioToMelSpectrogramPreprocessor
-
         cfg = getattr(hf_config, "preprocessor", None) or {}
         if not cfg:
             raise ValueError(

@@ -1,6 +1,6 @@
 import pytest
 
-from lfm2_audio.tools.database import UnsafeQueryError, ensure_read_only
+from lfm2_audio.tools.sql_guard import UnsafeQueryError, ensure_read_only
 
 
 def test_select_allowed():

@@ -9,7 +9,8 @@ from typing import Any
 from huggingface_hub import HfApi
 
 from lfm2_audio.training.callback import TrainingCallback
-from lfm2_audio.training.lora import LoraSettings, save_lora
+from lfm2_audio.training.lora import save_lora
+from lfm2_audio.training.lora_settings import LoraSettings
 from lfm2_audio.training.step_context import StepContext
 
 logger = logging.getLogger(__name__)

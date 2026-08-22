@@ -7,7 +7,7 @@ active. Lire une recette d'entraînement ne doit rien installer.
 
 from __future__ import annotations
 
-from lfm2_audio.scorer.lazy import LazyComponent
+from lfm2_audio.core.lazy_component import LazyComponent
 
 WANDB_CALLBACK = LazyComponent(
     module="lfm2_audio.training.callbacks.wandb_logger",

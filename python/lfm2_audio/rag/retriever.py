@@ -5,6 +5,9 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+import chromadb
+from chromadb.utils import embedding_functions
+
 
 class KnowledgeBaseRetriever:
     def __init__(
@@ -16,8 +19,6 @@ class KnowledgeBaseRetriever:
         top_k: int = 4,
         max_chars_per_passage: int = 600,
     ) -> None:
-        import chromadb
-        from chromadb.utils import embedding_functions
 
         client = chromadb.PersistentClient(path=persist_dir)
         ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=embedding_model)

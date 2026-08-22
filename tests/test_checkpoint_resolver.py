@@ -53,7 +53,7 @@ class RecordingPreparer(CheckpointPreparer):
     def prepare(self, source, target, request, adapter):
         self.calls.append((source, target, adapter))
         target.mkdir(parents=True, exist_ok=True)
-        self._mark_ready(target)
+        self.mark_ready(target)
         return target
 
 

@@ -17,10 +17,10 @@ import logging
 from typing import Any
 
 from lfm2_audio.core.errors import Lfm2AudioError
+from lfm2_audio.core.lazy_component import LazyComponent
 from lfm2_audio.ds.scoring_config import ScorerConfig, ScoringConfig
 from lfm2_audio.scorer.audio.transcriber import Transcriber
 from lfm2_audio.scorer.base import BaseScorer
-from lfm2_audio.scorer.lazy import LazyComponent
 from lfm2_audio.scorer.missing import MissingScorer
 from lfm2_audio.scorer.registry import SCORERS, ScorerRegistry
 from lfm2_audio.scorer.text.judge import Judge

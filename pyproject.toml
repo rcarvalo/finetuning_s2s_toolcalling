@@ -11,6 +11,9 @@ requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
 dependencies = [
     "numpy>=1.26",
+    # Résolution des checkpoints depuis le Hub : `from_pretrained("org/repo")`
+    # est le chemin principal du README, pas une option.
+    "huggingface-hub>=0.25",
     "pydantic>=2.9",
     "pydantic-settings>=2.5",
     "pyyaml>=6.0",
@@ -94,27 +97,27 @@ tooldata = [
 ]
 
 [project.scripts]
-lfm2-demo = "lfm2_audio.cli.demo:main"
-lfm2-bench = "lfm2_audio.cli.bench:main"
-lfm2-smoke = "lfm2_audio.cli.smoke:main"
-lfm2-evaluate = "lfm2_audio.cli.evaluate:main"
-lfm2-eval-audio = "lfm2_audio.cli.eval_audio:main"
-lfm2-eval-toolcalling = "lfm2_audio.cli.eval_toolcalling:main"
-lfm2-toolcalling-demo = "lfm2_audio.cli.toolcalling_demo:main"
-lfm2-orchestrator-demo = "lfm2_audio.cli.orchestrator_demo:main"
-lfm2-convert-checkpoint = "lfm2_audio.cli.convert_checkpoint:main"
-lfm2-export-checkpoint = "lfm2_audio.cli.export_checkpoint:main"
-lfm2-preprocess-sft = "lfm2_audio.cli.preprocess_sft:main"
-lfm2-train-sft = "lfm2_audio.cli.train_sft:main"
-lfm2-generate-data = "lfm2_audio.cli.generate_data:main"
-lfm2-synthesize-audio = "lfm2_audio.cli.synthesize_audio:main"
-lfm2-build-dataset = "lfm2_audio.cli.build_dataset:main"
-lfm2-analyze-dataset = "lfm2_audio.cli.analyze_dataset:main"
-lfm2-hf-to-dialogues = "lfm2_audio.cli.hf_to_dialogues:main"
-lfm2-prepare-fr = "lfm2_audio.cli.prepare_fr:main"
-lfm2-calibrate = "lfm2_audio.cli.calibrate:main"
-lfm2-rag-ingest = "lfm2_audio.cli.rag_ingest:main"
-lfm2-serve-ws = "lfm2_audio.cli.serve_ws:main"
+lfm2-demo = "lfm2_audio.cli.serve.demo_s2s:main"
+lfm2-bench = "lfm2_audio.cli.eval.latency:main"
+lfm2-smoke = "lfm2_audio.cli.serve.smoke_vllm:main"
+lfm2-evaluate = "lfm2_audio.cli.eval.suite:main"
+lfm2-eval-audio = "lfm2_audio.cli.eval.audio_toolcall:main"
+lfm2-eval-toolcalling = "lfm2_audio.cli.eval.toolcall:main"
+lfm2-toolcalling-demo = "lfm2_audio.cli.serve.demo_toolcall:main"
+lfm2-orchestrator-demo = "lfm2_audio.cli.serve.demo_orchestrator:main"
+lfm2-convert-checkpoint = "lfm2_audio.cli.serve.convert_omni:main"
+lfm2-export-checkpoint = "lfm2_audio.cli.train.export:main"
+lfm2-preprocess-sft = "lfm2_audio.cli.data.pack_sft:main"
+lfm2-train-sft = "lfm2_audio.cli.train.sft:main"
+lfm2-generate-data = "lfm2_audio.cli.data.generate:main"
+lfm2-synthesize-audio = "lfm2_audio.cli.data.synthesize:main"
+lfm2-build-dataset = "lfm2_audio.cli.data.push_hf:main"
+lfm2-analyze-dataset = "lfm2_audio.cli.data.analyze:main"
+lfm2-hf-to-dialogues = "lfm2_audio.cli.data.pull_hf:main"
+lfm2-prepare-fr = "lfm2_audio.cli.data.prepare_fr:main"
+lfm2-calibrate = "lfm2_audio.cli.train.calibrate_ratio:main"
+lfm2-rag-ingest = "lfm2_audio.cli.data.rag_ingest:main"
+lfm2-serve-ws = "lfm2_audio.cli.serve.websocket:main"
 
 # Chargé par vLLM-Omni dans TOUS ses process (engine + workers) :
 # enregistre l'architecture Lfm2AudioOmniModel et le pipeline lfm2_audio.
@@ -192,7 +195,7 @@ ignore = [
 "python/lfm2_audio/tools/*" = ["ANN401"]
 "python/lfm2_audio/orchestrator/tool_parser.py" = ["ANN401"]
 "python/lfm2_audio/serving/backends/*" = ["ANN401"]
-"python/lfm2_audio/cli/*" = ["ANN401"]
+"python/lfm2_audio/cli/**/*.py" = ["ANN401"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -209,10 +212,10 @@ no_implicit_reexport = true
 module = [
     "vllm.*", "vllm_omni.*", "liquid_audio.*", "torch.*", "torchaudio.*",
     "transformers.*", "peft.*", "datasets.*", "safetensors.*",
-    "soundfile.*", "chromadb.*", "sentence_transformers.*",
+    "soundfile.*", "chromadb.*",
     "gradio.*", "fastrtc.*", "wandb.*", "kokoro.*", "ddgs.*", "tavily.*",
     "google.*", "anthropic.*", "asyncpg.*",
-    "huggingface_hub.*", "uvicorn.*", "fastapi.*", "httpx.*", "onnxruntime.*", "onnxruntime.*",
+    "huggingface_hub.*", "uvicorn.*", "fastapi.*", "httpx.*", "onnxruntime.*",
 ]
 ignore_missing_imports = true
 
@@ -254,4 +257,4 @@ markers = [
 
 [tool.coverage.run]
 source = ["python/lfm2_audio"]
-omit = ["*/cli/*", "*/vllm_plugin/*"]
+omit = ["*/cli/**", "*/vllm_plugin/*"]

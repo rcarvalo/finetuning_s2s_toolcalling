@@ -1,7 +1,7 @@
 import pytest
 
-from lfm2_audio.training.export_checkpoint import (
-    ExportError,
+from lfm2_audio.core.errors import ExportError
+from lfm2_audio.training.checkpoint_layout import (
     build_backbone_config,
     merged_full_mapping,
     remap_backbone_keys,

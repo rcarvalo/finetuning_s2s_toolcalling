@@ -35,12 +35,12 @@ def register() -> None:
     # is_multimodal_model → supports_mm_inputs=False → l'encodeur audio (mel/
     # conformer) n'est JAMAIS appelé → l'audio d'entrée est ignoré (réponses
     # génériques). Les imports lourds (liquid_audio) restent paresseux (méthodes).
-    import lfm2_audio.vllm_plugin.lfm2_audio  # noqa: F401
+    import lfm2_audio.vllm_plugin.omni_model  # noqa: F401
     from lfm2_audio.vllm_plugin.configuration import register_config
     from lfm2_audio.vllm_plugin.pipeline import LFM2_AUDIO_PIPELINE
 
     arch = "Lfm2AudioOmniModel"
-    target = "lfm2_audio.vllm_plugin.lfm2_audio:Lfm2AudioOmniForConditionalGeneration"
+    target = "lfm2_audio.vllm_plugin.omni_model:Lfm2AudioOmniForConditionalGeneration"
 
     # AutoConfig d'abord : vLLM core charge le config HF avant de résoudre
     # l'architecture (un model_type inconnu tue l'orchestrateur au démarrage).

@@ -18,6 +18,10 @@ import subprocess
 import sys
 from importlib.util import find_spec
 
+import vllm_omni.plugins as omni_plugins
+from vllm_omni.plugins import load_omni_general_plugins
+
+import lfm2_audio.vllm_plugin  # noqa: F401 — enregistre l'entry point
 from lfm2_audio.core.errors import BackendUnavailableError
 
 logger = logging.getLogger(__name__)
@@ -99,12 +103,6 @@ def load_vllm_omni_plugins() -> None:
     """
     require_vllm()
 
-    import vllm_omni.plugins as omni_plugins
-
     omni_plugins.omni_plugins_loaded = False
-
-    from vllm_omni.plugins import load_omni_general_plugins
-
-    import lfm2_audio.vllm_plugin  # noqa: F401 — enregistre l'entry point
 
     load_omni_general_plugins()

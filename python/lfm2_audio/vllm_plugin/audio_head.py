@@ -15,6 +15,12 @@ from __future__ import annotations
 import math
 
 import torch
+from liquid_audio.model.transformer import (
+    MHA,
+    RawLMBackbone,
+    SharedEmbedding,
+    StandardBlock,
+)
 from torch import nn
 
 
@@ -34,12 +40,6 @@ class Lfm2AudioHead(nn.Module):
     ) -> None:
         super().__init__()
         # SharedEmbedding vit dans model.transformer (vérifié sur liquid-audio 1.3.0)
-        from liquid_audio.model.transformer import (
-            MHA,
-            RawLMBackbone,
-            SharedEmbedding,
-            StandardBlock,
-        )
 
         self.codebooks = codebooks
         self.audio_vocab_size = audio_vocab_size

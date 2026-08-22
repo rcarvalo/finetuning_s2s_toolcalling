@@ -23,7 +23,7 @@ from lfm2_audio.training.callback import TrainingCallback
 from lfm2_audio.training.callbacks.console import ConsoleCallback
 from lfm2_audio.training.callbacks.scoring import ScoringCallback
 from lfm2_audio.training.lazy import CHECKPOINT_CALLBACK, HUB_PUSH_CALLBACK, WANDB_CALLBACK
-from lfm2_audio.training.lora import LoraSettings
+from lfm2_audio.training.lora_settings import LoraSettings
 
 logger = logging.getLogger(__name__)
 

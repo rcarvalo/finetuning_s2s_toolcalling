@@ -12,6 +12,9 @@ from __future__ import annotations
 from collections.abc import Iterator
 from pathlib import Path
 
+import chromadb
+from chromadb.utils import embedding_functions
+
 
 def chunk_text(text: str, *, chunk_size: int = 800, overlap: int = 150) -> Iterator[str]:
     """Chunking par paragraphes avec taille cible et recouvrement (caractères)."""
@@ -51,8 +54,6 @@ def ingest(
     chunk_size: int = 800,
     overlap: int = 150,
 ) -> int:
-    import chromadb
-    from chromadb.utils import embedding_functions
 
     client = chromadb.PersistentClient(path=str(persist_dir))
     ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=embedding_model)

@@ -12,6 +12,8 @@ import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+from huggingface_hub import snapshot_download
+
 from lfm2_audio.core.errors import CheckpointError
 
 logger = logging.getLogger(__name__)
@@ -55,7 +57,6 @@ class HuggingFaceSource(CheckpointSource):
         return "/" in text and not text.startswith((".", "/", "~"))
 
     def materialize(self, spec: str | Path) -> Path:
-        from huggingface_hub import snapshot_download
 
         logger.info("téléchargement du repo Hugging Face %s", spec)
         try:

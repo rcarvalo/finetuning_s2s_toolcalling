@@ -3,7 +3,8 @@
 Générateur : chaque chunk audio est *yield* dès sa sortie du modèle, donc
 ``/stream/{id}`` sert le streaming et — grâce à ``return_aggregate_stream`` —
 ``/runsync`` reçoit la même séquence agrégée. Un seul handler pour les deux
-modes ; le contrat d'événements est celui de ``lfm2_audio.remote.client``.
+modes ; le contrat d'événements est celui de
+:mod:`lfm2_audio.remote.protocol`, partagé avec le client.
 
 Le modèle est chargé UNE fois par worker (import module), pas par job : c'est
 tout l'intérêt de FlashBoot. v1 stateless : chaque job repart d'un contexte
@@ -24,10 +25,18 @@ from collections.abc import Iterator
 from typing import Any
 
 import runpod
+from pydantic import ValidationError
 
 from lfm2_audio.core.prompt import DEFAULT_SYSTEM
 from lfm2_audio.ds.audio import Waveform
-from lfm2_audio.remote.codec import waveform_from_wav_b64, waveform_to_wav_b64
+from lfm2_audio.remote.protocol import (
+    AudioChunkEvent,
+    ErrorEvent,
+    FinalEvent,
+    TurnMetricsPayload,
+    TurnRequest,
+)
+from lfm2_audio.remote.wav_base64 import waveform_from_wav_b64, waveform_to_wav_b64
 from lfm2_audio.serving.model import LFM2Audio
 
 logging.basicConfig(level=logging.INFO)
@@ -49,32 +58,29 @@ def get_model() -> LFM2Audio:
 
 def handler(job: dict[str, Any]) -> Iterator[dict[str, Any]]:
     """audio/texte en entrée → chunks audio puis événement final."""
-    job_input: dict[str, Any] = job.get("input") or {}
-    text: str | None = job_input.get("text")
-    audio_b64: str | None = job_input.get("audio_b64")
-    if text is None and audio_b64 is None:
-        yield {"kind": "error", "error": "input.text ou input.audio_b64 requis"}
+    try:
+        request = TurnRequest.model_validate(job.get("input") or {})
+    except ValidationError as exc:
+        yield ErrorEvent(kind="error", error=str(exc.errors()[0]["msg"])).model_dump()
         return
 
     model = get_model()
     model.reset()  # v1 stateless : pas d'historique entre jobs
-    audio: Waveform | None = waveform_from_wav_b64(audio_b64) if audio_b64 else None
+    audio: Waveform | None = waveform_from_wav_b64(request.audio_b64) if request.audio_b64 else None
 
-    for chunk in model.stream(text=text, audio=audio, max_tokens=job_input.get("max_tokens")):
+    for chunk in model.stream(text=request.text, audio=audio, max_tokens=request.max_tokens):
         if not chunk.is_empty:
-            yield {
-                "kind": "audio",
-                "audio_b64": waveform_to_wav_b64(chunk),
-                "sample_rate": chunk.sample_rate,
-            }
+            yield AudioChunkEvent(
+                audio_b64=waveform_to_wav_b64(chunk),
+                sample_rate=chunk.sample_rate,
+            ).model_dump()
 
     reply = model.last_reply
-    yield {
-        "kind": "final",
-        "text": reply.text if reply else "",
-        "raw_text": reply.raw_text if reply else "",
-        "metrics": reply.metrics.as_dict() if reply else {},
-    }
+    yield FinalEvent(
+        text=reply.text if reply else "",
+        raw_text=reply.raw_text if reply else "",
+        metrics=TurnMetricsPayload(**reply.metrics.as_dict()) if reply else TurnMetricsPayload(),
+    ).model_dump()
 
 
 if __name__ == "__main__":

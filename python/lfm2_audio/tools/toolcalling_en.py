@@ -16,11 +16,9 @@ from typing import Any, Protocol
 
 from lfm2_audio.tools import schemas
 from lfm2_audio.tools.registry import ToolRegistry
-from lfm2_audio.tools.web_search import (
-    StubWebSearchBackend,
-    WebSearchBackend,
-    web_search_handler,
-)
+from lfm2_audio.tools.web_search import web_search_handler
+from lfm2_audio.tools.web_search.base import WebSearchBackend
+from lfm2_audio.tools.web_search.stub import StubWebSearchBackend
 
 
 class DbQueryBackend(Protocol):

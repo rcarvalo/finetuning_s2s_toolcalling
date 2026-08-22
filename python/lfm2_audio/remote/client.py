@@ -25,7 +25,7 @@ import numpy.typing as npt
 from lfm2_audio.core.errors import RemoteInferenceError
 from lfm2_audio.ds.audio import Waveform
 from lfm2_audio.ds.reply import Reply, TurnMetrics
-from lfm2_audio.remote.codec import waveform_from_wav_b64, waveform_to_wav_b64
+from lfm2_audio.remote.wav_base64 import waveform_from_wav_b64, waveform_to_wav_b64
 
 type AudioInput = Waveform | str | Path | tuple[npt.ArrayLike, int]
 

@@ -12,7 +12,7 @@ import pytest
 from lfm2_audio.core.errors import RemoteInferenceError
 from lfm2_audio.ds.audio import Waveform
 from lfm2_audio.remote.client import LiquidAudioClient
-from lfm2_audio.remote.codec import waveform_to_wav_b64
+from lfm2_audio.remote.wav_base64 import waveform_to_wav_b64
 
 ENDPOINT = "ep123"
 

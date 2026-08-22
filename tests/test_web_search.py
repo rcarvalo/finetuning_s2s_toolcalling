@@ -1,7 +1,8 @@
 import pytest
 
 from lfm2_audio.tools.toolcalling_en import StubDbQueryBackend, build_toolcalling_en_registry
-from lfm2_audio.tools.web_search import StubWebSearchBackend, web_search_handler
+from lfm2_audio.tools.web_search import web_search_handler
+from lfm2_audio.tools.web_search.stub import StubWebSearchBackend
 
 
 async def test_stub_backend_returns_k_results():

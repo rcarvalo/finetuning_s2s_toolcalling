@@ -13,13 +13,24 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any, Self
+
+import torch
+from liquid_audio import ChatState, LFM2AudioModel, LFM2AudioProcessor
 
 from lfm2_audio.ds.audio import OUTPUT_SAMPLE_RATE, Waveform
 from lfm2_audio.ds.checkpoint import ResolvedCheckpoint
-from lfm2_audio.ds.config import EngineConfig, GenerationConfig
+from lfm2_audio.ds.generation_config import GenerationConfig
+from lfm2_audio.ds.inference_config import EngineConfig
 from lfm2_audio.ds.reply import Reply
 from lfm2_audio.serving.model import LFM2Audio
+from lfm2_audio.training.lora import (
+    inject_lora,
+    load_lora,
+    load_lora_settings,
+    merge_lora,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +70,6 @@ class LiquidAudioBackend(LFM2Audio):
         engine: EngineConfig | None,
         generation: GenerationConfig | None,
     ) -> Self:
-        import torch
-        from liquid_audio import LFM2AudioModel, LFM2AudioProcessor
 
         source = str(checkpoint.path)
         started = time.time()
@@ -76,14 +85,6 @@ class LiquidAudioBackend(LFM2Audio):
     @staticmethod
     def _merge_adapter(model: Any, adapter: Any) -> None:
         """Injecte puis fusionne un adaptateur LoRA dans les poids de base."""
-        from pathlib import Path
-
-        from lfm2_audio.training.lora import (
-            inject_lora,
-            load_lora,
-            load_lora_settings,
-            merge_lora,
-        )
 
         settings = load_lora_settings(str(adapter))
         inject_lora(model, settings)
@@ -98,7 +99,6 @@ class LiquidAudioBackend(LFM2Audio):
         rend la première frame audible en ~80 ms, au lieu d'attendre un décodage
         en bloc à la fin du tour.
         """
-        import torch
 
         with self._mimi.streaming(1), torch.no_grad():
             for _ in range(_MIMI_WARMUP_STEPS):
@@ -110,7 +110,6 @@ class LiquidAudioBackend(LFM2Audio):
 
     def reset(self) -> None:
         """Repart d'un ``ChatState`` neuf, amorcé par le system prompt."""
-        from liquid_audio import ChatState
 
         super().reset()
         self._chat = ChatState(self._processor)
@@ -125,7 +124,6 @@ class LiquidAudioBackend(LFM2Audio):
         audio: Any = None,
         max_tokens: int | None = None,
     ) -> Iterator[Waveform]:
-        import torch
 
         waveform = self._coerce_audio(audio)
         if waveform is None and not text:
@@ -160,7 +158,6 @@ class LiquidAudioBackend(LFM2Audio):
         self._close_assistant_turn(text_ids, started, frames, ttfa)
 
     def _open_user_turn(self, text: str | None, waveform: Waveform | None) -> None:
-        import torch
 
         self._chat.new_turn("user")
         if waveform is not None:

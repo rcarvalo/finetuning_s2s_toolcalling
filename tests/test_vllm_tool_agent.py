@@ -15,7 +15,7 @@ from lfm2_audio.orchestrator.events import (
 )
 from lfm2_audio.orchestrator.vllm_tool_agent import Turn, VllmToolAgent
 from lfm2_audio.tools.toolcalling_en import StubDbQueryBackend, build_toolcalling_en_registry
-from lfm2_audio.tools.web_search import StubWebSearchBackend
+from lfm2_audio.tools.web_search.stub import StubWebSearchBackend
 
 
 class FakeBackend:

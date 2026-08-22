@@ -49,6 +49,15 @@ vérifie sur Colab / pod. Dire explicitement ce qui n'a pas pu être exécuté.
   il dégrade juste les réponses. Ne jamais revenir à `tuple[ndarray, int]` nu.
 - **`reply.text` vs `reply.raw_text`** : `text` est parlable (marqueurs retirés),
   `raw_text` garde les `<|tool_call_*|>` dont l'orchestrateur a besoin.
+- **Les CLIs sont rangées par domaine** : `cli/data/` (dataset), `cli/train/`,
+  `cli/eval/`, `cli/serve/`. Un module de `cli/` ne porte QUE son argparse — la
+  logique vit dans le sous-paquet métier, testable sans CLI. Les noms des
+  commandes (`lfm2-*` dans `[project.scripts]`) ne bougent pas quand un module
+  se déplace.
+- **`remote/protocol.py` est le contrat de fil**, importé par le client ET par
+  `infra/handler.py`. Tout ce qui vient du réseau y est validé par pydantic
+  (union discriminée sur `kind`) : aucun accès `dict` brut sur une réponse. Un
+  champ modifié casse les deux bords en même temps — c'est voulu.
 
 ## Gotchas
 

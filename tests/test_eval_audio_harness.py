@@ -1,6 +1,6 @@
 import json
 
-import lfm2_audio.cli.eval_audio as eah
+import lfm2_audio.evaluation.audio_harness as eah
 from lfm2_audio.core.chat_format import render_tool_calls
 
 

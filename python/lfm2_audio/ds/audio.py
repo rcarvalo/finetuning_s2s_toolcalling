@@ -14,11 +14,18 @@ from __future__ import annotations
 import wave
 from collections.abc import Sequence
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
 import numpy.typing as npt
+import soundfile
+
+from lfm2_audio.core.lazy_component import LazyComponent
+
+if TYPE_CHECKING:
+    from lfm2_audio.ds.resampler import AudioResampler
 
 INPUT_SAMPLE_RATE = 16_000
 """Fréquence attendue par l'encodeur conformer (``preprocessor.sample_rate``)."""
@@ -27,6 +34,16 @@ OUTPUT_SAMPLE_RATE = 24_000
 """Fréquence produite par le détokeniseur Mimi."""
 
 _PCM16_MAX = 32_767
+
+# Résolution dynamique : garde ce module libre de torch (cf. AudioResampler).
+_RESAMPLER = LazyComponent(module="lfm2_audio.ds.resampler", class_name="AudioResampler", requires=("torchaudio",))
+
+
+@lru_cache(maxsize=1)
+def _resampler() -> AudioResampler:
+    """Rééchantillonneur partagé, construit au premier usage."""
+    built: AudioResampler = _RESAMPLER.build()
+    return built
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,9 +74,7 @@ class Waveform:
     @classmethod
     def from_file(cls, path: str | Path) -> Self:
         """Lit un fichier audio (WAV, FLAC, …) via soundfile."""
-        import soundfile as sf
-
-        data, sample_rate = sf.read(str(path), dtype="float32")
+        data, sample_rate = soundfile.read(str(path), dtype="float32")
         return cls.of(data, int(sample_rate))
 
     @classmethod
@@ -107,15 +122,15 @@ class Waveform:
     # -- transformations ------------------------------------------------- #
 
     def resample(self, target_rate: int) -> Self:
-        """Rééchantillonne (no-op si déjà à la bonne fréquence)."""
+        """Rééchantillonne (no-op si déjà à la bonne fréquence).
+
+        Le rééchantillonneur vit dans son propre module, qui importe torchaudio :
+        ce value object reste ainsi du numpy pur, utilisable sans torch.
+        """
         if self.sample_rate == target_rate:
             return self
-
-        import torch
-        import torchaudio
-
-        resampled = torchaudio.functional.resample(torch.from_numpy(self.samples), self.sample_rate, target_rate)
-        return type(self)(samples=resampled.numpy().astype(np.float32), sample_rate=target_rate)
+        converted = _resampler().resample(self.samples, self.sample_rate, target_rate)
+        return type(self)(samples=converted, sample_rate=target_rate)
 
     def for_encoder(self) -> Self:
         """Prêt pour l'encodeur audio : mono 16 kHz.

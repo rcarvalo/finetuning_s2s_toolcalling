@@ -71,7 +71,7 @@ CUDA graphs PIECEWISE sur le stage 0 et `initial_codec_chunk_frames=2`, soit un
 TTFA de 250-350 ms contre ~750 ms en tout-eager.
 
 ```python
-from lfm2_audio.ds.config import EngineConfig
+from lfm2_audio.ds.inference_config import EngineConfig
 
 LFM2Audio.from_pretrained(ckpt, engine=EngineConfig())  # YAML (défaut)
 LFM2Audio.from_pretrained(ckpt, engine=EngineConfig(deploy_config=None))  # legacy eager

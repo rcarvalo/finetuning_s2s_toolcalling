@@ -1,7 +1,7 @@
 from pathlib import Path
 
-import lfm2_audio.cli.build_dataset as bhd
-import lfm2_audio.cli.hf_to_dialogues as h2d
+import lfm2_audio.data_prep.hf_dataset as bhd
+import lfm2_audio.data_prep.hf_rehydrate as h2d
 
 
 def _roundtrip(dlg):
