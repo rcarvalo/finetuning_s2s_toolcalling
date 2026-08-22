@@ -57,6 +57,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   tool calling 0.333 — the vanilla model emits **zero** tool calls on the
   8 positive cases while abstaining correctly on all 4 negatives.
 
+### Added (steps 3-5)
+- `lfm2-dataset-inventory` run on `Rcarvalo`: 50 repos catalogued
+  (`docs/dataset_inventory.md`). Selection and gaps in `docs/dataset_selection.md`.
+- `data_prep/curation.py` + `lfm2-dataset-curate`: merge dialogue sources,
+  deduplicate on the normalized user utterance (contractions folded) and refuse
+  anything present in the held-out split; exit 1 on leakage. 15 tests.
+
 ### Conventions (from 2026-08-22)
 - New and modified code comments are written in English.
 - Work branches are named `rd/pr_rca_{action}` (action ≤ 2 words).
