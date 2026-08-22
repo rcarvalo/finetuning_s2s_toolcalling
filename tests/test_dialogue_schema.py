@@ -1,9 +1,8 @@
-import json
 from pathlib import Path
 
 import pytest
 
-from s2s_toolcalling.data.dialogue_schema import DialogueValidationError, load_dialogues, parse_dialogue
+from lfm2_audio.ds.dialogue import DialogueValidationError, load_dialogues, parse_dialogue
 
 SAMPLE = Path(__file__).resolve().parents[1] / "data" / "examples" / "dialogues.sample.jsonl"
 
@@ -26,7 +25,7 @@ def test_tool_call_turn_with_audio_rejected():
             {"role": "assistant", "audio": "a.wav", "tool_calls": [{"name": "f", "arguments": {}}]},
         ],
     }
-    with pytest.raises(DialogueValidationError, match="text-only"):
+    with pytest.raises(DialogueValidationError, match="texte seul"):
         parse_dialogue(obj)
 
 
@@ -38,7 +37,7 @@ def test_tool_turn_requires_content():
 
 def test_invalid_role_rejected():
     obj = {"id": "bad", "turns": [{"role": "wizard", "text": "x"}]}
-    with pytest.raises(DialogueValidationError, match="invalid role"):
+    with pytest.raises(DialogueValidationError, match="role"):
         parse_dialogue(obj)
 
 

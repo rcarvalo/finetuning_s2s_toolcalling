@@ -35,7 +35,7 @@ def reference_model():
 
 @pytest.fixture(scope="module")
 def audio_head(reference_model):
-    from vllm_omni_lfm2_audio.audio_head import Lfm2AudioHead
+    from lfm2_audio.vllm_plugin.audio_head import Lfm2AudioHead
 
     m = reference_model
     head = Lfm2AudioHead(
@@ -76,7 +76,8 @@ def test_should_match_reference_frame_embedding(reference_model, audio_head):
 def test_should_load_all_audio_head_weights(reference_model, audio_head):
     own = {n for n, _ in audio_head.named_parameters()}
     ref = {
-        n for n, _ in reference_model.named_parameters()
+        n
+        for n, _ in reference_model.named_parameters()
         if n.split(".")[0] in ("audio_embedding", "depthformer", "depth_linear", "depth_embeddings")
     }
     assert own == ref

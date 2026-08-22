@@ -1,6 +1,6 @@
-from s2s_toolcalling.data import synth_dialogues as sd
-from s2s_toolcalling.data.dialogue_schema import parse_dialogue
-from s2s_toolcalling.tools.toolcalling_en import build_toolcalling_en_registry
+from lfm2_audio.data_prep import synth_dialogues as sd
+from lfm2_audio.ds.dialogue import parse_dialogue
+from lfm2_audio.tools.toolcalling_en import build_toolcalling_en_registry
 
 REGISTRY = build_toolcalling_en_registry()
 
@@ -91,7 +91,13 @@ def test_jaccard_trigram_bounds():
 
 
 def test_case_to_dialogue_is_valid_schema_positive():
-    case = _case("web_search", utterance="search dogs", arguments={"query": "dogs"}, style="direct command", depth="explicit arguments")
+    case = _case(
+        "web_search",
+        utterance="search dogs",
+        arguments={"query": "dogs"},
+        style="direct command",
+        depth="explicit arguments",
+    )
     dlg = sd.case_to_dialogue(case, 0, tools=["web_search", "db_query"])
     parsed = parse_dialogue(dlg)  # ne doit pas lever
     assert parsed.turns[0].role == "user" and parsed.turns[0].text == "search dogs"
@@ -107,8 +113,12 @@ def test_case_to_dialogue_is_valid_schema_negative():
 
 
 def test_loop_verify_valid_positive():
-    case = _case("db_query", utterance="how many open orders", arguments={"question": "how many open orders"},
-                 answer="There are 4 open orders right now.")
+    case = _case(
+        "db_query",
+        utterance="how many open orders",
+        arguments={"question": "how many open orders"},
+        answer="There are 4 open orders right now.",
+    )
     case.tool_result = {"count": 4}
     assert sd.verify_case(case, REGISTRY, mode="loop") is None
 
@@ -125,17 +135,25 @@ def test_loop_positive_needs_spoken_answer():
 
 
 def test_loop_positive_rejects_placeholder_answer():
-    case = _case("web_search", utterance="time in Tokyo", arguments={"query": "time in Tokyo"},
-                 answer="It is [current time] in Tokyo.")
+    case = _case(
+        "web_search",
+        utterance="time in Tokyo",
+        arguments={"query": "time in Tokyo"},
+        answer="It is [current time] in Tokyo.",
+    )
     case.tool_result = {"time": "10:30"}
     assert "placeholder" in sd.verify_case(case, REGISTRY, mode="loop")
 
 
 def test_loop_case_to_dialogue_positive_is_four_turns():
-    from s2s_toolcalling.data.dialogue_schema import parse_dialogue
+    from lfm2_audio.ds.dialogue import parse_dialogue
 
-    case = _case("db_query", utterance="how many orders", arguments={"question": "how many orders"},
-                 answer="You have 4 open orders.")
+    case = _case(
+        "db_query",
+        utterance="how many orders",
+        arguments={"question": "how many orders"},
+        answer="You have 4 open orders.",
+    )
     case.tool_result = {"count": 4}
     dlg = sd.case_to_dialogue(case, 0, tools=["web_search", "db_query"], mode="loop")
     roles = [t["role"] for t in dlg["turns"]]
@@ -152,11 +170,14 @@ def test_loop_case_to_dialogue_negative_is_two_turns():
 
 
 def test_loop_parse_generation_response():
-    text = ('[{"utterance": "how many open orders", "tool": "db_query", '
-            '"arguments": {"question": "how many open orders"}, '
-            '"tool_result": {"count": 4}, "answer": "There are 4 open orders."}]')
-    cases = sd.parse_generation_response(text, target="db_query", style="direct command",
-                                         depth="explicit arguments", mode="loop")
+    text = (
+        '[{"utterance": "how many open orders", "tool": "db_query", '
+        '"arguments": {"question": "how many open orders"}, '
+        '"tool_result": {"count": 4}, "answer": "There are 4 open orders."}]'
+    )
+    cases = sd.parse_generation_response(
+        text, target="db_query", style="direct command", depth="explicit arguments", mode="loop"
+    )
     assert len(cases) == 1
     assert cases[0].tool_result == {"count": 4}
     assert cases[0].answer == "There are 4 open orders."

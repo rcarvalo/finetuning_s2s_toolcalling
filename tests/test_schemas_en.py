@@ -1,4 +1,4 @@
-from s2s_toolcalling.tools.schemas import (
+from lfm2_audio.tools.schemas import (
     DB_QUERY,
     TOOLCALLING_EN_TOOL_DEFINITIONS,
     TOOLCALLING_EN_TOOL_NAMES,

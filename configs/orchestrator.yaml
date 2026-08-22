@@ -13,7 +13,7 @@ agent:
   # system_instructions: ...             # défaut : chat_format.DEFAULT_SYSTEM_INSTRUCTIONS
 
 postgres:
-  # dsn: postgresql://agent_ro:***@db-host:5432/reception   # rôle LECTURE SEULE (cf. sql/schema.sql)
+  # dsn: postgresql://agent_ro:***@db-host:5432/reception   # rôle LECTURE SEULE (cf. configs/sql/schema.sql)
   max_rows: 50
 
 rag:

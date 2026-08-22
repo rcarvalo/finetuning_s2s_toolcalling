@@ -1,7 +1,7 @@
 import pytest
 
-from vllm_omni_lfm2_audio.constants import verify_placeholder_ids
-from vllm_omni_lfm2_audio.convert_checkpoint import ConversionError, build_omni_config
+from lfm2_audio.vllm_plugin.constants import verify_placeholder_ids
+from lfm2_audio.vllm_plugin.convert_checkpoint import ConversionError, build_omni_config
 
 LIQUID_CONFIG = {
     "lfm": {"hidden_size": 2048, "vocab_size": 65536},

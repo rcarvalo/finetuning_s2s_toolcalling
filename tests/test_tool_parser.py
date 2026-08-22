@@ -1,6 +1,6 @@
 import pytest
 
-from s2s_toolcalling.orchestrator.tool_parser import (
+from lfm2_audio.orchestrator.tool_parser import (
     StreamingToolCallParser,
     ToolCallParseError,
     parse_tool_call_block,
@@ -10,7 +10,7 @@ CALL = '<|tool_call_start|>[check_appointment(visitor_name="Marie Dupont", host_
 
 
 def test_parse_block_single():
-    calls = parse_tool_call_block('[get_guest_wifi()]')
+    calls = parse_tool_call_block("[get_guest_wifi()]")
     assert calls[0].name == "get_guest_wifi"
     assert calls[0].arguments == {}
 
@@ -47,7 +47,15 @@ def test_streaming_token_by_token():
     parser = StreamingToolCallParser()
     calls = []
     # le marqueur arrive entier (token spécial), le reste en petits morceaux
-    pieces = ["Je vérifie. ", "<|tool_call_start|>", "[check_appointment(", 'visitor_name="Ma', 'rie")', "]", "<|tool_call_end|>"]
+    pieces = [
+        "Je vérifie. ",
+        "<|tool_call_start|>",
+        "[check_appointment(",
+        'visitor_name="Ma',
+        'rie")',
+        "]",
+        "<|tool_call_end|>",
+    ]
     for p in pieces:
         calls.extend(parser.feed(p))
     assert len(calls) == 1

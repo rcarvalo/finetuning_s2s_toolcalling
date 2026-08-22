@@ -10,13 +10,13 @@ import random
 
 import pytest
 
-from vllm_omni_lfm2_audio.constants import (
+from lfm2_audio.vllm_plugin.constants import (
     AUDIO_EOA_PLACEHOLDER_ID,
     AUDIO_FRAME_PLACEHOLDER_ID,
     IM_END_TOKEN_ID,
     TEXT_END_TOKEN_ID,
 )
-from vllm_omni_lfm2_audio.modality import (
+from lfm2_audio.vllm_plugin.modality import (
     Modality,
     ModalityConfig,
     expected_modalities,
@@ -125,8 +125,7 @@ TOOL_START, TOOL_END = 396, 397  # ids de <|tool_call_start|>/<|tool_call_end|> 
 
 
 def _locked_cfg(n_text=6, n_audio=12):
-    return ModalityConfig(n_text=n_text, n_audio=n_audio,
-                          tool_call_start_id=TOOL_START, tool_call_end_id=TOOL_END)
+    return ModalityConfig(n_text=n_text, n_audio=n_audio, tool_call_start_id=TOOL_START, tool_call_end_id=TOOL_END)
 
 
 def test_tool_call_lock_suppresses_audio_switch():
@@ -171,7 +170,7 @@ def test_tool_call_lock_inert_without_start_token():
 
 def test_tool_call_lock_replay_is_prefix_consistent():
     # La pureté (rejouabilité après préemption / prefix cache) tient avec le verrou.
-    from vllm_omni_lfm2_audio.modality import advance
+    from lfm2_audio.vllm_plugin.modality import advance
 
     cfg = _locked_cfg()
     ids = [TOOL_START] + [TXT] * 18 + [TOOL_END]
@@ -210,7 +209,7 @@ def test_property_random_schedules(seed):
 
 def test_replay_is_pure_prefix_consistent():
     # rejouer un préfixe puis avancer == rejouer le tout (robustesse préemption)
-    from vllm_omni_lfm2_audio.modality import advance
+    from lfm2_audio.vllm_plugin.modality import advance
 
     cfg = ModalityConfig(n_text=6, n_audio=12)
     script = [TXT] * 8 + [TEXT_END_TOKEN_ID]

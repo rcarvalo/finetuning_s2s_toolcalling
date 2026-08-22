@@ -1,0 +1,65 @@
+# Tool calling vocal EN (Phase A, v1 single-turn audio→tool-call).
+# Données : dialogues synthétiques (generate_toolcalling_data → synthesize_user_audio)
+#   packés par preprocess_sft avec le set d'outils EN :
+#     python -m lfm2_audio.data_prep.preprocess_sft \
+#       --dialogues data/tc_en_train.audio.jsonl --audio-root data/audio_tc_en \
+#       --output datasets/tc_en_train --assistant-audio-mode sequential \
+#       --tool-definitions tools_en.json   # = TOOLCALLING_EN_TOOL_DEFINITIONS
+#
+# v1 = single-turn : tour user audio → tour assistant tool-call TEXTE seul (ou
+# réponse texte pour les négatifs). Aucun tour AUDIO assistant → têtes audio non
+# sollicitées (gel gratuit) et ratio interleaved sans objet (compte en Phase B).
+# Précédent OHF-Voice (cookbook) : ctx 512, ~1000 steps/A100 suffisent.
+
+model_id: LiquidAI/LFM2.5-Audio-1.5B   # ou le checkpoint Phase 2a (adaptation langue)
+train_dataset: datasets/tc_en_train
+val_dataset: datasets/tc_en_val
+context_length: 1024
+
+# LoRA backbone (model.lfm) ; encodeur + têtes audio GELÉS → on n'apprend QUE la
+# décision d'appel d'outil dans le flux texte, sans toucher compréhension/timbre.
+lora:
+  enabled: true
+  r: 16
+  alpha: 32
+  dropout: 0.05
+
+freeze:
+  freeze_encoder: true
+  freeze_audio_heads: true
+
+lr: 1.0e-4
+max_steps: 1500
+warmup_steps: 150
+batch_size: 8
+dataloader_num_workers: 4
+logging_interval: 10
+save_interval: 500
+val_interval: 100
+output_dir: outputs/phase_en_toolcalling
+
+# Instrumentation — chaque bloc active un callback, aucun code à écrire.
+grad_clip: 1.0
+wandb_project: lfm25-toolcalling-en      # null pour désactiver
+wandb_run_name: phase_en_v1
+hub_repo: Rcarvalo/lfm25-tc-en-adapter   # push de l'adaptateur LoRA (privé) ; null = jamais
+push_interval: 500                        # tous les N steps
+
+# Suivi métrique en cours d'entraînement : ce sont EXACTEMENT les scorers de la
+# pipeline d'évaluation, donc les chiffres du step 500 et ceux du rapport final
+# sont comparables. Garder le jeu PETIT (générer puis transcrire coûte cher).
+evaluation:
+  enabled: true
+  question_set: benchmark/toolcalling_en/cases.sample.jsonl
+  audio_root: data/audio_tc_en
+  interval: 500
+  at_start: true            # mesure de référence : sans elle rien n'est lisible
+  max_questions: 32
+  max_new_tokens: 256
+  scoring:
+    scorers:
+      - name: tool_call     # décision d'appel : le signal direct de cette phase
+        options: { arg_match: token_f1, threshold: 0.7 }
+      - name: wer           # dérive des têtes audio, visible avant la loss
+      - name: dnsmos        # qualité perçue, sans référence
+      - name: reasoning     # ancrage de la réponse dans le résultat d'outil

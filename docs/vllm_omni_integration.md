@@ -1,7 +1,7 @@
 # Spec : intégration de LFM2.5-Audio (fine-tuné FR + tool calling) dans vLLM-Omni
 
 > Statut : **implémenté comme plugin out-of-tree** dans ce repo
-> (`src/vllm_omni_lfm2_audio/`) — pas de fork nécessaire. Vérifié contre le
+> (`src/lfm2_audio.vllm_plugin/`) — pas de fork nécessaire. Vérifié contre le
 > package PyPI `vllm-omni==0.22.0` (juin 2026) : le groupe d'entry points
 > `vllm_omni.general_plugins` est chargé dans tous les process (engine +
 > workers), `register_pipeline()` est documenté « for out-of-tree plugins »,
@@ -12,7 +12,7 @@
 > la première version du stage 0 n'existent pas dans le runtime — voir
 > §3bis. Le stage 0 doit migrer vers le hook `sample()` /
 > `prefer_model_sampler` (idiome cosyvoice3/glm_tts). Itération en cours sur
-> Colab (`scripts/colab_smoke_vllm_omni.py`).
+> Colab (`lfm2-smoke`).
 >
 > ✅ **Jalon engine (10 juin 2026, Colab T4)** : `Omni(model=…)` démarre les
 > 2 stages et `generate()` produit du texte (stage 0) + une sortie typée
@@ -121,7 +121,7 @@ wheel PyPI — pas spéculatifs :
    (garde-fou ``modality.advance`` fatal). ``async_scheduling=False`` requis
    pour l'instant ; support propre à concevoir en phase TTFA.
 
-## 4. Design LFM2.5-Audio (implémenté dans `src/vllm_omni_lfm2_audio/`)
+## 4. Design LFM2.5-Audio (implémenté dans `src/lfm2_audio.vllm_plugin/`)
 
 ### 4.1 Flux d'ids et placeholders (`constants.py`)
 
@@ -215,7 +215,7 @@ stage 1  Lfm2AudioCode2Wav                   (détokeniseur LFM2, non-AR)
 Fichiers du plugin (ce repo, package `vllm-omni-lfm2-audio`) :
 
 ```
-src/vllm_omni_lfm2_audio/
+src/lfm2_audio.vllm_plugin/
 ├── __init__.py               # register() : entry point vllm_omni.general_plugins
 ├── constants.py              # ids spéciaux, placeholders, garde-fous tokenizer
 ├── modality.py               # machine à états PURE (rejouable) — testée par
@@ -228,22 +228,22 @@ src/vllm_omni_lfm2_audio/
 ├── stage_input_processors.py # chunking codes → stage 1 (async_chunk)
 ├── pipeline.py               # PipelineConfig (register_pipeline)
 └── convert_checkpoint.py     # export full → layout vLLM-Omni (config.json)
-configs/vllm_omni_lfm2_audio.yaml   # déploiement 2 stages, prefix caching ON
+configs/serving/vllm_omni.yaml   # déploiement 2 stages, prefix caching ON
 ```
 
 Mise en service :
 
 ```bash
 pip install -e ".[vllm-omni]"        # vllm-omni + liquid-audio + le plugin (entry point)
-python -m vllm_omni_lfm2_audio.convert_checkpoint \
+python -m lfm2_audio.vllm_plugin.convert_checkpoint \
     --checkpoint exports/lfm25_audio_fr --output exports/lfm25_audio_fr_omni
 vllm-omni serve exports/lfm25_audio_fr_omni \
-    --stage-config-path configs/vllm_omni_lfm2_audio.yaml
+    --stage-config-path configs/serving/vllm_omni.yaml
 ```
 
 ### 4.6 Checkpoint
 
-`s2s_toolcalling/training/export_checkpoint.py` (ce repo) produit :
+`lfm2_audio/training/export_checkpoint.py` (ce repo) produit :
 - `--mode full` : LFM2.5-Audio fusionné (LoRA mergé) + `config.json` portant le
   ratio interleaved calibré → entrée de la conversion stage 0/1 (le
   `load_weights` du fork remappe `lfm.*`→backbone, `conformer.*`+
@@ -267,7 +267,7 @@ préfillée.
 | **P0** (code fait) | `export_checkpoint.py` + remapping testé + parité backbone (`tests/test_backbone_parity.py`, marqué `gpu`) | **à exécuter sur GPU** : top-10 logits et greedy identiques liquid-audio ↔ HF/vLLM |
 | **P1** (fait) | plugin : registry + pipeline (`register()`, entry point), config conversion, `load_weights` réparti | testé sans GPU (conversion, layout) |
 | **P2** (code fait) | stage 0 : placeholders + machine à états + depthformer + mel mm | machine à états **vérifiée par propriété** vs transcription amont ; **parité greedy GPU à exécuter** (`tests/test_omni_parity.py`) — bloquant |
-| **P3** (code fait) | stage 1 détokeniseur + chunking async_chunk + `configs/vllm_omni_lfm2_audio.yaml` | parité waveform (test GPU prêt) + TTFA à mesurer |
+| **P3** (code fait) | stage 1 détokeniseur + chunking async_chunk + `configs/serving/vllm_omni.yaml` | parité waveform (test GPU prêt) + TTFA à mesurer |
 | **P4** (à faire) | backend `vllm_omni` dans l'orchestrateur + benchs (TTFA, RTF, round-trip ±prefix-cache, multi-sessions) + non-régression `eval_toolcalling` | seuils méthodo : <500 ms perçu, round-trip <1,5 s, FC accuracy = liquid-audio |
 
 ## 6. Risques
@@ -275,7 +275,7 @@ préfillée.
 | Risque | Mitigation |
 |---|---|
 | Flux mixte texte+codes dans un seul stage | précédent in-tree MiMo-Audio (même topologie) ; le forçage du placeholder via `sample()` custom reste dans le contrat « 1 id/step » (idiome cosyvoice3) |
-| Plomberie runtime (mm processor, hooks du runner) à ajuster sur la version exacte de vllm-omni | écarts majeurs déjà identifiés par audit du wheel (§3bis) ; le reste se révèle au smoke Colab (`scripts/colab_smoke_vllm_omni.py`), localisé dans `lfm2_audio_ar.py` |
+| Plomberie runtime (mm processor, hooks du runner) à ajuster sur la version exacte de vllm-omni | écarts majeurs déjà identifiés par audit du wheel (§3bis) ; le reste se révèle au smoke Colab (`lfm2-smoke`), localisé dans `lfm2_audio_ar.py` |
 | Clé d'identité requête pour le cache d'embedding de frame (§3bis.3) | 3 pistes hiérarchisées ; la variante vocab unifié supprime le cache si le canal `additional_information` ne convient pas |
 | Embedding de frame perdu en préemption | reconstruit au prefill depuis les codes (mm data), déterministe |
 | Divergence ratio entraînement/serving | ratio lu uniquement depuis le config exporté |

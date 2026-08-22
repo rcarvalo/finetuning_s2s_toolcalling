@@ -1,21 +1,49 @@
+# Python
 __pycache__/
 *.py[cod]
-*.egg-info/
-.pytest_cache/
 .venv/
 venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+coverage.xml
+dist/
+build/
+*.egg-info/
 
-# Artefacts d'entraînement / données
+# Env — .env JAMAIS commité (cf. .env.example)
+.env
+.env.local
+.env.*.local
+.envrc.local
+
+# Artefacts d'entraînement / serving
 checkpoints/
 outputs/
+exports/
 wandb/
-*.safetensors
-*.gguf
-*.wav
-!data/examples/**/*.wav
 datasets_cache/
 chroma_db/
+*.safetensors
+*.gguf
+*.pt
+*.ckpt
 
-.env
+# Données — brut jamais dans git (cf. docs/data.md)
+data/raw/
+data/interim/
+data/processed/
+data/audio*/
+*.wav
+!data/examples/**/*.wav
 
+# Notebooks
+.ipynb_checkpoints/
+
+# IDE / OS
+.vscode/
+.idea/
 .DS_Store
+Thumbs.db

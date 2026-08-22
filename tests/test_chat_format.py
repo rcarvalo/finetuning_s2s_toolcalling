@@ -1,4 +1,4 @@
-from s2s_toolcalling.data import chat_format as cf
+from lfm2_audio.core import chat_format as cf
 
 
 def test_render_tool_call_kwargs():
@@ -32,7 +32,7 @@ def test_system_prompt_contains_tool_list():
 
 
 def test_roundtrip_with_parser():
-    from s2s_toolcalling.orchestrator.tool_parser import StreamingToolCallParser
+    from lfm2_audio.orchestrator.tool_parser import StreamingToolCallParser
 
     block = cf.render_tool_calls([("notify_employee", {"employee_name": "Karim Benali", "message": "Visiteur là"})])
     calls = StreamingToolCallParser().feed(block)

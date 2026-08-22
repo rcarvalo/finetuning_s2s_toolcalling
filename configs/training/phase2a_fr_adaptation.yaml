@@ -1,0 +1,30 @@
+# Phase 2a — Adaptation FR (recette du variant japonais LFM2.5-Audio-1.5B-JP).
+# Données : paires ASR/TTS FR en mode sequential (lfm2-prepare-fr
+# puis lfm2_audio.data_prep.preprocess_sft --assistant-audio-mode sequential).
+# Objectif : ancrer la phonétique FR (encodeur + têtes audio ENTRAÎNÉS ici).
+
+model_id: LiquidAI/LFM2.5-Audio-1.5B
+train_dataset: datasets/fr_asr_tts_train
+val_dataset: datasets/fr_asr_tts_val
+context_length: 4096
+
+# Adaptation langue : LoRA backbone + encodeur/têtes audio dégelés.
+lora:
+  enabled: true
+  r: 32
+  alpha: 64
+  dropout: 0.05
+
+freeze:
+  freeze_encoder: false      # l'encodeur apprend la phonétique FR
+  freeze_audio_heads: false  # les têtes audio apprennent la prosodie FR
+                             # ⚠ surveiller l'UTMOS : si chute > 0,3 vs vanilla → repasser à true
+
+lr: 5.0e-5
+max_steps: 8000
+warmup_steps: 400
+batch_size: 4
+dataloader_num_workers: 4
+save_interval: 1000
+val_interval: 500
+output_dir: outputs/phase2a_fr

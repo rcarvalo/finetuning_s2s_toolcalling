@@ -1,0 +1,46 @@
+# syntax=docker/dockerfile:1
+# Worker serverless RunPod — LFM2.5-Audio S2S via vLLM-Omni.
+#
+# Build (le token HF passe en secret, jamais dans une layer) :
+#   docker build -f infra/Dockerfile.serve \
+#     --build-arg LFM2_CHECKPOINT=Rcarvalo/<checkpoint-finetuné> \
+#     --secret id=hf_token,env=HF_TOKEN \
+#     -t <user>/lfm2-audio-serverless:v1 .
+#   docker push <user>/lfm2-audio-serverless:v1
+#
+# Les poids CONVERTIS sont bakés dans l'image (~1,5B → l'image reste FlashBoot-
+# friendly) : le cold start ne télécharge ni ne convertit rien.
+
+FROM python:3.12-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libsndfile1 curl \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=ghcr.io/astral-sh/uv:0.8.13 /uv /usr/local/bin/uv
+
+WORKDIR /app
+COPY pyproject.toml uv.lock README.md ./
+COPY python ./python
+COPY infra/handler.py infra/bake_checkpoint.py ./infra/
+
+# vLLM 0.22 sur PyPI est buildé CUDA 13 ; les hôtes RunPod sont en CUDA 12 →
+# wheel cu129 officiel (même diagnostic que lfm2_audio/core/env.py). vllm-omni
+# ne déclare PAS vllm en dépendance : l'ordre d'installation compte.
+RUN uv pip install --system \
+        "vllm @ https://github.com/vllm-project/vllm/releases/download/v0.22.1/vllm-0.22.1+cu129-cp38-abi3-manylinux_2_28_x86_64.whl" \
+        --extra-index-url https://download.pytorch.org/whl/cu129 \
+    && uv pip install --system ".[serving,client]" "runpod>=1.7"
+
+ARG LFM2_CHECKPOINT=LiquidAI/LFM2.5-Audio-1.5B
+ARG LFM2_ADAPTER=""
+ENV LFM2_CHECKPOINT=${LFM2_CHECKPOINT} \
+    LFM2_ADAPTER=${LFM2_ADAPTER} \
+    LFM2_BACKEND=vllm \
+    LFM2_SERVE_CACHE=/models/cache \
+    HF_HOME=/models/hf \
+    PYTHONUNBUFFERED=1
+
+RUN --mount=type=secret,id=hf_token \
+    sh -c 'export HF_TOKEN="$(cat /run/secrets/hf_token 2>/dev/null || true)"; python infra/bake_checkpoint.py'
+
+CMD ["python", "-u", "infra/handler.py"]

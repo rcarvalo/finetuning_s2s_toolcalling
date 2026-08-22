@@ -1,4 +1,4 @@
-from s2s_toolcalling.evaluation.eval_toolcalling import calls_match, score_case, token_f1
+from lfm2_audio.evaluation.toolcalling import calls_match, score_case, token_f1
 
 
 def test_token_f1_bounds():
@@ -36,7 +36,7 @@ def test_name_mismatch_never_matches():
 
 
 def test_score_case_uses_tolerant_args():
-    from s2s_toolcalling.data.chat_format import render_tool_calls
+    from lfm2_audio.core.chat_format import render_tool_calls
 
     predicted_text = render_tool_calls([("web_search", {"query": "latest news about mars rover"})])
     expected = [{"name": "web_search", "arguments": {"query": "news about mars rover"}}]

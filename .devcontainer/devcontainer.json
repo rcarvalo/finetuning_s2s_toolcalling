@@ -1,0 +1,43 @@
+{
+  "name": "lfm2-audio",
+  "build": { "dockerfile": "Dockerfile" },
+  "workspaceFolder": "/workspaces/lfm2-audio",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/lfm2-audio,type=bind",
+
+  // GPU : décommenter sur un hôte NVIDIA (pod, workstation Linux).
+  // Sans GPU, tout marche sauf l'extra `serving` (vLLM-Omni).
+  // "runArgs": ["--gpus", "all"],
+
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "containerEnv": {
+    "UV_PROJECT_ENVIRONMENT": "/workspaces/lfm2-audio/.venv"
+  },
+
+  // --group dev seulement : les extras GPU (serving/train) ne s'installent pas
+  // sur une image CPU. `make install-serving` sur un hôte NVIDIA.
+  "postCreateCommand": "uv sync --group dev && uv run pre-commit install",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-toolsai.jupyter",
+        "tamasfe.even-better-toml"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/workspaces/lfm2-audio/.venv/bin/python",
+        "python.testing.pytestEnabled": true,
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": { "source.fixAll.ruff": "explicit" },
+        "[python]": { "editor.defaultFormatter": "charliermarsh.ruff" }
+      }
+    }
+  },
+
+  "remoteUser": "vscode"
+}

@@ -1,6 +1,6 @@
 import pytest
 
-from s2s_toolcalling.training.export_checkpoint import (
+from lfm2_audio.training.export_checkpoint import (
     ExportError,
     build_backbone_config,
     merged_full_mapping,
@@ -58,16 +58,14 @@ def test_merged_full_mapping_unwraps_base_layer():
     ]
     mapping = merged_full_mapping(keys)
     # nom d'export nu → nom source wrappé (pour réindexer le state_dict)
-    assert mapping["lfm.layers.0.short_conv.in_proj.weight"] == \
-        "lfm.layers.0.short_conv.in_proj.base_layer.weight"
+    assert mapping["lfm.layers.0.short_conv.in_proj.weight"] == "lfm.layers.0.short_conv.in_proj.base_layer.weight"
     assert mapping["lfm.embed_tokens.weight"] == "lfm.embed_tokens.weight"
     assert not any("base_layer" in dst or "lora_" in dst for dst in mapping)
 
 
 def test_remap_backbone_unwraps_base_layer():
     mapping = remap_backbone_keys(["lfm.layers.0.self_attn.q_proj.base_layer.weight"])
-    assert mapping["lfm.layers.0.self_attn.q_proj.base_layer.weight"] == \
-        "model.layers.0.self_attn.q_proj.weight"
+    assert mapping["lfm.layers.0.self_attn.q_proj.base_layer.weight"] == "model.layers.0.self_attn.q_proj.weight"
 
 
 def test_build_backbone_config():

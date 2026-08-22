@@ -1,0 +1,42 @@
+# Entraînement batch sur RunPod via SkyPilot — lancé depuis le poste local.
+#
+# Prérequis (une fois) :
+#   uv tool install "skypilot[runpod]"          # ou: uv add --dev "skypilot[runpod]"
+#   # clé API RunPod dans ~/.runpod/config.toml (runpod config) puis: sky check runpod
+#
+# Lancement (env lues depuis .env ; --down détruit le pod à la fin du job) :
+#   set -a; source .env; set +a
+#   sky launch -c liquid-train infra/sky_train.yaml --down \
+#       --env HF_TOKEN --env WANDB_API_KEY
+#
+# Relance d'un batch sur un cluster encore up (la préparation est idempotente) :
+#   sky exec liquid-train infra/sky_train.yaml --env HF_TOKEN --env WANDB_API_KEY
+#
+# Autres GPU dispo : sky show-gpus --cloud runpod   (ex. A100-80GB-SXM, L40S)
+# L'artefact durable est l'adaptateur LoRA poussé sur le Hub (hub_repo +
+# push_interval de la config d'entraînement) : perdre le pod ne perd rien.
+
+name: liquid-train
+
+resources:
+  cloud: runpod
+  accelerators: RTX4090:1      # 24 Go — suffisant pour LoRA 1.5B ctx 1024, ~0,7 $/h
+  disk_size: 80                # checkpoints HF + dataset audio + outputs
+
+workdir: .                     # sync du repo → ~/sky_workdir (respecte .gitignore)
+
+envs:
+  HF_TOKEN: ""                 # requis : dataset privé + push de l'adaptateur
+  WANDB_API_KEY: ""            # vide → wandb en mode anonyme/désactivé
+  HF_DATASET: Rcarvalo/tc-en-audio-toolcalling
+  TRAIN_CONFIG: configs/training/phase_en_toolcalling.yaml
+
+setup: |
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="$HOME/.local/bin:$PATH"
+  uv sync --frozen --extra train
+
+run: |
+  export PATH="$HOME/.local/bin:$PATH"
+  uv run python infra/prepare_data.py --repo-id "$HF_DATASET"
+  uv run lfm2-train-sft --config "$TRAIN_CONFIG"

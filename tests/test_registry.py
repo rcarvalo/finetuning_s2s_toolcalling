@@ -2,9 +2,9 @@ import asyncio
 
 import pytest
 
-from s2s_toolcalling.tools.reception import InMemoryReceptionBackend, build_reception_registry
-from s2s_toolcalling.tools.registry import ToolRegistry
-from s2s_toolcalling.tools.schemas import RECEPTION_TOOL_DEFINITIONS
+from lfm2_audio.tools.reception import InMemoryReceptionBackend, build_reception_registry
+from lfm2_audio.tools.registry import ToolRegistry
+from lfm2_audio.tools.schemas import RECEPTION_TOOL_DEFINITIONS
 
 
 @pytest.fixture

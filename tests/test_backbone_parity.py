@@ -7,7 +7,7 @@ docs/vllm_omni_integration.md, phase P0).
 
 GPU requis + checkpoint exporté :
 
-    python -m s2s_toolcalling.training.export_checkpoint \\
+    python -m lfm2_audio.training.export_checkpoint \\
         --base LiquidAI/LFM2.5-Audio-1.5B --mode backbone --output exports/backbone
     EXPORTED_BACKBONE=exports/backbone BASE_MODEL=LiquidAI/LFM2.5-Audio-1.5B \\
         python -m pytest tests/test_backbone_parity.py -m gpu -q
@@ -29,7 +29,7 @@ pytestmark = [
 
 # Prompts outillés représentatifs (system + tool list + tour user → tool call attendu).
 PROMPTS = [
-    '<|startoftext|><|im_start|>system\nTu es l\'assistant d\'accueil. Liste des outils disponibles : '
+    "<|startoftext|><|im_start|>system\nTu es l'assistant d'accueil. Liste des outils disponibles : "
     '<|tool_list_start|>[{"name":"check_appointment"}]<|tool_list_end|><|im_end|>\n'
     "<|im_start|>user\nBonjour, je suis Marie Dupont, j'ai rendez-vous avec Claire Martin.<|im_end|>\n"
     "<|im_start|>assistant\n",

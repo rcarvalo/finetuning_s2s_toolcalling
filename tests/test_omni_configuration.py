@@ -4,7 +4,7 @@ import pytest
 
 pytest.importorskip("transformers")
 
-from vllm_omni_lfm2_audio.configuration import Lfm2AudioConfig, register_config
+from lfm2_audio.vllm_plugin.configuration import Lfm2AudioConfig, register_config
 
 LFM_SECTION = {
     "architectures": ["Lfm2ForCausalLM"],

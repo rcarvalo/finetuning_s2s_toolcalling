@@ -1,9 +1,6 @@
 import json
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-import build_hf_dataset as bhd  # noqa: E402
+import lfm2_audio.cli.build_dataset as bhd
 
 
 def test_dialogue_to_row_positive():
@@ -51,10 +48,13 @@ def test_dialogue_to_row_missing_audio_raises():
 
 
 def test_load_rows(tmp_path):
-    dlg = {"id": "a", "turns": [
-        {"role": "user", "text": "search cats", "audio": "a_u0.wav"},
-        {"role": "assistant", "tool_calls": [{"name": "web_search", "arguments": {"query": "cats"}}]},
-    ]}
+    dlg = {
+        "id": "a",
+        "turns": [
+            {"role": "user", "text": "search cats", "audio": "a_u0.wav"},
+            {"role": "assistant", "tool_calls": [{"name": "web_search", "arguments": {"query": "cats"}}]},
+        ],
+    }
     p = tmp_path / "d.jsonl"
     p.write_text(json.dumps(dlg) + "\n", encoding="utf-8")
     rows = bhd.load_rows(p, "/audio")

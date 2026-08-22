@@ -17,7 +17,7 @@
 
 ## Implémentation (pattern in-tree : mimo_audio_llm.py, hérite Qwen2-Audio)
 
-1. `src/vllm_omni_lfm2_audio/multimodal.py` :
+1. `src/lfm2_audio.vllm_plugin/multimodal.py` :
    - `Lfm2AudioProcessingInfo` : limites (1+ audio / prompt), nombre de
      placeholders = `ceil(T_mel/8)` ;
    - `Lfm2AudioDummyInputsBuilder` (profiling) ;

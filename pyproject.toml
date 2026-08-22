@@ -1,26 +1,54 @@
 [build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
-name = "s2s-toolcalling"
+name = "lfm2-audio"
 version = "0.1.0"
-description = "Phases 2 & 3 : fine-tuning FR + tool calling de LFM2.5-Audio et orchestrateur d'outils (accueil entreprise, Reachy Mini)"
+description = "Fine-tuning, serving vLLM et orchestration tool-calling de LFM2.5-Audio-1.5B (assistant vocal S2S)"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
 dependencies = [
+    "numpy>=1.26",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
     "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
-# Fine-tuning (Phase 2) — liquid-audio impose Python >= 3.12
+# Serving backend de référence (liquid-audio PyTorch) — GPU, sans vLLM.
+# Isolé de `serving` : l'image serverless de validation économise ainsi les
+# ~5 Go de vLLM + ses dépendances CUDA.
+serving-liquid = [
+    "liquid-audio>=1.3.0",
+    "huggingface-hub>=0.25",
+    "soundfile>=0.12",
+    "torchaudio>=2.4",
+    "transformers>=4.55",
+]
+# Serving vLLM-Omni (plugin out-of-tree + wrapper LFM2Audio) — GPU.
+serving = [
+    "lfm2-audio[serving-liquid]",
+    "vllm-omni>=0.22.0",
+]
+# Évaluation : métriques audio (WER via Whisper, DNSMOS, NISQA) et juge LLM.
+# Les poids DNSMOS/NISQA ne sont pas redistribuables : chemins dans
+# $DNSMOS_MODEL_PATH / $NISQA_MODEL_PATH (cf. docs/evaluation.md).
+eval = [
+    "torch>=2.4",
+    "torchaudio>=2.4",
+    "transformers>=4.55",
+    "onnxruntime>=1.18",
+    "google-genai>=0.3",
+    "soundfile>=0.12",
+]
+
+# Fine-tuning — liquid-audio impose Python >= 3.12.
+# peft <0.15 : peft>=0.15 exige torchao>=0.16, ININSTALLABLE avec le torch de
+# l'env vllm 0.22 → on garde peft 0.14 pour l'ENTRAÎNEMENT.
 train = [
     "liquid-audio>=1.3.0",
-    # <0.15 : peft>=0.15 exige torchao>=0.16, ININSTALLABLE avec le torch de
-    # l'env vllm 0.22 → on garde peft 0.14 pour l'ENTRAÎNEMENT. (Voxtral/vllm-omni
-    # veut peft>=0.17 via diffusers → incompatible : Phase B TTS via Kokoro à la
-    # place, pas de vllm-omni dans l'env d'entraînement.)
     "peft>=0.13,<0.15",
     "accelerate>=1.0",
     "datasets>=3.0",
@@ -30,23 +58,28 @@ train = [
     "transformers>=4.55",
     "wandb>=0.18",
 ]
-# Orchestrateur temps réel (Phase 3)
+# Orchestrateur temps réel (WebSocket / WebRTC).
 serve = [
     "fastapi>=0.115",
     "uvicorn>=0.30",
     "websockets>=13.0",
     "asyncpg>=0.29",
-    "numpy>=1.26",
 ]
-# RAG projets (Phase 3)
+# Client de l'endpoint serverless RunPod — léger, sans GPU (Reachy Mini).
+client = [
+    "httpx>=0.27",
+]
+# App Gradio de test de l'endpoint serverless (app/gradio_app.py).
+app = [
+    "gradio>=5.0",
+    "httpx>=0.27",
+]
+# Base de connaissances RAG.
 rag = [
     "chromadb>=0.5",
     "sentence-transformers>=3.0",
 ]
-# Génération + TTS du dataset tool-calling EN (offline, hors chemin d'inférence) :
-# synthèse LLM (Gemini par défaut, Anthropic en option), TTS Voxtral via vLLM
-# (client httpx) ou Kokoro en repli, assemblage + push HF (datasets/hub).
-# sentence-transformers (extra rag) sert au scorer d'arguments sémantique.
+# Génération + TTS du dataset tool-calling (offline, hors chemin d'inférence).
 tooldata = [
     "google-genai>=0.3",
     "anthropic>=0.40",
@@ -59,27 +92,166 @@ tooldata = [
     "huggingface-hub>=0.25",
     "kokoro>=0.9",
 ]
-dev = [
-    "pytest>=8.0",
-    "pytest-asyncio>=0.24",
-]
-# Plugin vLLM-Omni (serveur S2S optimisé) — GPU, Python >= 3.12
-vllm-omni = [
-    "vllm-omni>=0.22.0",
-    "liquid-audio>=1.3.0",
-]
 
-# Chargé par vLLM-Omni dans tous ses process (engine + workers) :
+[project.scripts]
+lfm2-demo = "lfm2_audio.cli.demo:main"
+lfm2-bench = "lfm2_audio.cli.bench:main"
+lfm2-smoke = "lfm2_audio.cli.smoke:main"
+lfm2-evaluate = "lfm2_audio.cli.evaluate:main"
+lfm2-eval-audio = "lfm2_audio.cli.eval_audio:main"
+lfm2-eval-toolcalling = "lfm2_audio.cli.eval_toolcalling:main"
+lfm2-toolcalling-demo = "lfm2_audio.cli.toolcalling_demo:main"
+lfm2-orchestrator-demo = "lfm2_audio.cli.orchestrator_demo:main"
+lfm2-convert-checkpoint = "lfm2_audio.cli.convert_checkpoint:main"
+lfm2-export-checkpoint = "lfm2_audio.cli.export_checkpoint:main"
+lfm2-preprocess-sft = "lfm2_audio.cli.preprocess_sft:main"
+lfm2-train-sft = "lfm2_audio.cli.train_sft:main"
+lfm2-generate-data = "lfm2_audio.cli.generate_data:main"
+lfm2-synthesize-audio = "lfm2_audio.cli.synthesize_audio:main"
+lfm2-build-dataset = "lfm2_audio.cli.build_dataset:main"
+lfm2-analyze-dataset = "lfm2_audio.cli.analyze_dataset:main"
+lfm2-hf-to-dialogues = "lfm2_audio.cli.hf_to_dialogues:main"
+lfm2-prepare-fr = "lfm2_audio.cli.prepare_fr:main"
+lfm2-calibrate = "lfm2_audio.cli.calibrate:main"
+lfm2-rag-ingest = "lfm2_audio.cli.rag_ingest:main"
+lfm2-serve-ws = "lfm2_audio.cli.serve_ws:main"
+
+# Chargé par vLLM-Omni dans TOUS ses process (engine + workers) :
 # enregistre l'architecture Lfm2AudioOmniModel et le pipeline lfm2_audio.
 [project.entry-points."vllm_omni.general_plugins"]
-lfm2_audio = "vllm_omni_lfm2_audio:register"
+lfm2_audio = "lfm2_audio.vllm_plugin:register"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    # Lecture/écriture WAV : testée en CI, sans GPU ni extra `serving`.
+    "soundfile>=0.12",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    # Client remote : testé via httpx.MockTransport, sans réseau.
+    "httpx>=0.27",
+    "ruff>=0.7",
+    "mypy>=1.11",
+    "pre-commit>=4.0",
+    "nbstripout>=0.7",
+    "types-PyYAML>=6.0",
+    "ipykernel>=6.29",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["python/lfm2_audio"]
+
+[tool.uv]
+package = true
+
+# --------------------------------------------------------------------------- #
+# Qualité
+# --------------------------------------------------------------------------- #
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["python", "tests"]
+# Notebooks : exploration uniquement (règle projet). Ni lintés ni formatés —
+# nbstripout en pre-commit s'occupe de leurs sorties.
+extend-exclude = ["notebooks", "data", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF", "PL", "PT", "ANN"]
+ignore = [
+    "PLR0913",  # too many args : courant en ML (hyperparamètres)
+    "PLR2004",  # magic values : les constantes audio (24000, 16000) se lisent mieux nues
+    "B008",     # appels en défaut d'argument : idiome argparse/pydantic
+    # Les imports lourds (torch, vllm, liquid_audio) sont volontairement placés
+    # DANS les fonctions : `import lfm2_audio` doit rester utilisable sur une
+    # machine sans GPU, et le plugin est chargé dans chaque worker vLLM.
+    "PLC0415",
+    # Docstrings et messages en français : apostrophes et guillemets typographiques.
+    "RUF001", "RUF002", "RUF003",
+    # Métriques de complexité : elles signalent surtout les `main()` d'argparse et
+    # les forwards de modèles, où découper nuirait à la lisibilité. Les vraies
+    # limites du projet (fonctions < 50 l., classes < 200 l.) sont dans CLAUDE.md.
+    "PLR0911", "PLR0912", "PLR0915", "PLR0917",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"notebooks/*" = ["ALL"]
+# Les tests s'écrivent avec des assertions composées et des variables de
+# déballage inutilisées : lisible ici, et sans conséquence à l'exécution.
+"tests/*" = ["ANN", "PLR2004", "S101", "PT006", "PT018", "PT015", "PT017", "B011", "RUF059", "N801"]
+# Surface d'API non typée en amont (vLLM, vLLM-Omni, liquid-audio, torch) :
+# annoter `Any` y est la description honnête, pas un raccourci.
+# Modules qui manipulent des objets non typés en amont — torch `nn.Module`,
+# classes vLLM/vLLM-Omni, `Trainer` liquid-audio, handlers FastAPI. Y écrire
+# `Any` partout serait du bruit sans information ; le typage reste exigé sur
+# tout le reste du paquet (core, ds, serving, evaluation).
+"python/lfm2_audio/vllm_plugin/*" = ["ANN401", "ANN001", "ANN201", "ANN202", "ANN003", "ANN002", "ANN206"]
+"python/lfm2_audio/training/*" = ["ANN401", "ANN001", "ANN201", "ANN202", "ANN003", "ANN002", "ANN205"]
+"python/lfm2_audio/orchestrator/server.py" = ["ANN001", "ANN201", "ANN202"]
+# `Any` honnête : payload JSON d'outil, pool asyncpg, littéral parsé.
+"python/lfm2_audio/tools/*" = ["ANN401"]
+"python/lfm2_audio/orchestrator/tool_parser.py" = ["ANN401"]
+"python/lfm2_audio/serving/backends/*" = ["ANN401"]
+"python/lfm2_audio/cli/*" = ["ANN401"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["python/lfm2_audio"]
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_reexport = true
+
+# Le serving et l'entraînement s'appuient sur des libs non typées : on relâche
+# là où le typage externe manque, pas ailleurs.
+[[tool.mypy.overrides]]
+module = [
+    "vllm.*", "vllm_omni.*", "liquid_audio.*", "torch.*", "torchaudio.*",
+    "transformers.*", "peft.*", "datasets.*", "safetensors.*",
+    "soundfile.*", "chromadb.*", "sentence_transformers.*",
+    "gradio.*", "fastrtc.*", "wandb.*", "kokoro.*", "ddgs.*", "tavily.*",
+    "google.*", "anthropic.*", "asyncpg.*",
+    "huggingface_hub.*", "uvicorn.*", "fastapi.*", "httpx.*", "onnxruntime.*", "onnxruntime.*",
+]
+ignore_missing_imports = true
+
+# --------------------------------------------------------------------------- #
+# Dette de typage — modules antérieurs à la mise sous `mypy --strict`.
+#
+# `strict` tient sur le cœur du paquet (core, ds, serving, evaluation) : c'est
+# vérifié en CI et ne doit pas régresser. Les modules ci-dessous manipulent
+# massivement des objets non typés en amont (couches vLLM, `nn.Module` torch,
+# `Trainer` liquid-audio, handlers FastAPI) ; ils restent vérifiés, mais sans
+# exiger l'annotation de chaque signature. À resserrer module par module.
+# --------------------------------------------------------------------------- #
+[[tool.mypy.overrides]]
+module = [
+    "lfm2_audio.vllm_plugin.*",
+    "lfm2_audio.training.*",
+    "lfm2_audio.orchestrator.*",
+    "lfm2_audio.tools.*",
+    "lfm2_audio.data_prep.*",
+    "lfm2_audio.rag.*",
+    "lfm2_audio.cli.*",
+]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_any_generics = false
+disallow_untyped_decorators = false
+warn_return_any = false
+# Hériter de `nn.Module`, `Trainer` ou d'une classe vLLM non typée.
+disallow_subclassing_any = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = "-ra --strict-markers"
 markers = [
     "gpu: tests nécessitant un GPU et les checkpoints (désélectionnés par défaut : -m 'not gpu')",
 ]
+
+[tool.coverage.run]
+source = ["python/lfm2_audio"]
+omit = ["*/cli/*", "*/vllm_plugin/*"]

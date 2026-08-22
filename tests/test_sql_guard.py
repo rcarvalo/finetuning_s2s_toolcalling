@@ -1,6 +1,6 @@
 import pytest
 
-from s2s_toolcalling.tools.database import UnsafeQueryError, ensure_read_only
+from lfm2_audio.tools.database import UnsafeQueryError, ensure_read_only
 
 
 def test_select_allowed():

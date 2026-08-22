@@ -1,4 +1,4 @@
-from s2s_toolcalling.evaluation.eval_toolcalling import Report, score_case
+from lfm2_audio.evaluation.toolcalling import Report, score_case
 
 CALL = '<|tool_call_start|>[check_appointment(visitor_name="Marie Dupont")]<|tool_call_end|>'
 

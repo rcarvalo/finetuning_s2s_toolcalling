@@ -1,4 +1,4 @@
-from s2s_toolcalling.rag.ingest import chunk_text
+from lfm2_audio.rag.ingest import chunk_text
 
 
 def test_short_text_single_chunk():

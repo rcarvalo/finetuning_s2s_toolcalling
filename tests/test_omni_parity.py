@@ -6,8 +6,8 @@ audio déterministe, les tokens texte ET les codes Mimi doivent être identiques
 stage 1 doit coïncider avec le détokeniseur de référence (tolérance bf16).
 
 Prérequis :
-    python -m s2s_toolcalling.training.export_checkpoint --mode full ... --output exports/full
-    python -m vllm_omni_lfm2_audio.convert_checkpoint --checkpoint exports/full \\
+    python -m lfm2_audio.training.export_checkpoint --mode full ... --output exports/full
+    python -m lfm2_audio.vllm_plugin.convert_checkpoint --checkpoint exports/full \\
         --output exports/full_omni
     OMNI_CHECKPOINT=exports/full_omni BASE_MODEL=LiquidAI/LFM2.5-Audio-1.5B \\
         python -m pytest tests/test_omni_parity.py -m gpu -q
@@ -65,7 +65,7 @@ def _reference_interleaved_greedy(model, proc, prompt: str, max_new_tokens: int 
 
 def test_stage0_greedy_parity(reference):
     """Tokens texte + codes audio identiques entre plugin et référence."""
-    from vllm_omni_lfm2_audio.lfm2_audio_ar import Lfm2AudioARForConditionalGeneration  # noqa: F401
+    from lfm2_audio.vllm_plugin.lfm2_audio_ar import Lfm2AudioARForConditionalGeneration  # noqa: F401
 
     model, proc = reference
     prompts = [
@@ -90,7 +90,7 @@ def test_stage1_waveform_parity(reference):
     frames = torch.stack([f for f in ref_frames if int(f[0]) != 2048], dim=1)
     ref_wav = proc.decode(frames.unsqueeze(0).cuda())
 
-    from vllm_omni_lfm2_audio.lfm2_audio_code2wav import Lfm2AudioCode2Wav
+    from lfm2_audio.vllm_plugin.lfm2_audio_code2wav import Lfm2AudioCode2Wav
 
     class _Cfg:
         class model_config:

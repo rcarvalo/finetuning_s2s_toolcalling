@@ -10,7 +10,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from vllm_omni_lfm2_audio.depthformer_graph import CudaGraphDepthformer  # noqa: E402
+from lfm2_audio.vllm_plugin.depthformer_graph import CudaGraphDepthformer  # noqa: E402
 
 
 class _StubHead:
@@ -52,19 +52,27 @@ def test_oversized_batch_falls_back_to_eager():
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA requis")
 def test_graph_matches_eager_greedy_on_gpu():
     pytest.importorskip("liquid_audio")
-    from vllm_omni_lfm2_audio.audio_head import Lfm2AudioHead
+    from lfm2_audio.vllm_plugin.audio_head import Lfm2AudioHead
 
     torch.manual_seed(0)
-    head = Lfm2AudioHead(
-        lfm_hidden_size=64, depthformer_layers=2, depthformer_dim=32,
-        depthformer_tie=False, codebooks=8, audio_vocab_size=2049,
-    ).cuda().eval()
+    head = (
+        Lfm2AudioHead(
+            lfm_hidden_size=64,
+            depthformer_layers=2,
+            depthformer_dim=32,
+            depthformer_tie=False,
+            codebooks=8,
+            audio_vocab_size=2049,
+        )
+        .cuda()
+        .eval()
+    )
 
     g = CudaGraphDepthformer(head, capture_sizes=(1, 2, 4))
     for batch in (1, 2, 3, 4):  # 3 → bucket 4 : vérifie le padding
         hidden = torch.randn(batch, 64, device="cuda")
-        expected = head.sample_frames(hidden)          # greedy eager
-        got = g.sample_frames(hidden)                  # capture puis replay
+        expected = head.sample_frames(hidden)  # greedy eager
+        got = g.sample_frames(hidden)  # capture puis replay
         assert torch.equal(got.cpu(), expected.cpu()), f"divergence batch={batch}"
         # 2e appel : replay pur (le graph existe déjà) — toujours identique
         got2 = g.sample_frames(hidden)

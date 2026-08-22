@@ -10,7 +10,7 @@ import pytest
 torch = pytest.importorskip("torch")
 pytest.importorskip("vllm")
 
-from vllm_omni_lfm2_audio.multimodal import (  # noqa: E402
+from lfm2_audio.vllm_plugin.multimodal import (  # noqa: E402
     MIN_MEL_LEN,
     audio_in_token_id,
     extract_mel,
@@ -33,7 +33,7 @@ def test_mel2emb_len_is_ceil_div_8():
 
 
 def test_audio_in_token_id_default_and_override():
-    from vllm_omni_lfm2_audio.constants import AUDIO_FRAME_PLACEHOLDER_ID
+    from lfm2_audio.vllm_plugin.constants import AUDIO_FRAME_PLACEHOLDER_ID
 
     assert audio_in_token_id(_Cfg()) == AUDIO_FRAME_PLACEHOLDER_ID
     assert audio_in_token_id(_Cfg(audio_in_token_id=512)) == 512
@@ -43,11 +43,22 @@ def test_audio_in_token_id_default_and_override():
 def test_extract_mel_shapes(seconds, approx_emb):
     liquid_audio = pytest.importorskip("liquid_audio")  # noqa: F841
     # config préprocesseur du checkpoint LFM2.5-Audio (NeMo-style)
-    cfg = _Cfg(preprocessor={
-        "sample_rate": 16_000, "normalize": "per_feature", "window_size": 0.025,
-        "window_stride": 0.01, "window": "hann", "features": 128, "n_fft": 512,
-        "log": True, "frame_splicing": 1, "dither": 1e-5, "pad_to": 0, "pad_value": 0.0,
-    })
+    cfg = _Cfg(
+        preprocessor={
+            "sample_rate": 16_000,
+            "normalize": "per_feature",
+            "window_size": 0.025,
+            "window_stride": 0.01,
+            "window": "hann",
+            "features": 128,
+            "n_fft": 512,
+            "log": True,
+            "frame_splicing": 1,
+            "dither": 1e-5,
+            "pad_to": 0,
+            "pad_value": 0.0,
+        }
+    )
     wave = torch.randn(int(16_000 * seconds))
     mel = extract_mel(cfg, wave)
     assert mel.shape[0] == 128
@@ -57,11 +68,22 @@ def test_extract_mel_shapes(seconds, approx_emb):
 
 def test_extract_mel_too_short_raises():
     pytest.importorskip("liquid_audio")
-    cfg = _Cfg(preprocessor={
-        "sample_rate": 16_000, "normalize": "per_feature", "window_size": 0.025,
-        "window_stride": 0.01, "window": "hann", "features": 128, "n_fft": 512,
-        "log": True, "frame_splicing": 1, "dither": 1e-5, "pad_to": 0, "pad_value": 0.0,
-    })
+    cfg = _Cfg(
+        preprocessor={
+            "sample_rate": 16_000,
+            "normalize": "per_feature",
+            "window_size": 0.025,
+            "window_stride": 0.01,
+            "window": "hann",
+            "features": 128,
+            "n_fft": 512,
+            "log": True,
+            "frame_splicing": 1,
+            "dither": 1e-5,
+            "pad_to": 0,
+            "pad_value": 0.0,
+        }
+    )
     with pytest.raises(ValueError, match="trop court"):
         extract_mel(cfg, torch.randn(MIN_MEL_LEN * 40))  # << 9 frames mel
 
@@ -76,7 +98,7 @@ def test_data_parser_hook_resamples_to_16k():
     """
     from vllm.multimodal.processing import BaseProcessingInfo
 
-    from vllm_omni_lfm2_audio.multimodal import (
+    from lfm2_audio.vllm_plugin.multimodal import (
         AUDIO_IN_SAMPLE_RATE,
         Lfm2AudioProcessingInfo,
     )

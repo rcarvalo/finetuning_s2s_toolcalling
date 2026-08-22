@@ -1,5 +1,6 @@
 import pytest
-from s2s_toolcalling.tools.fake_db import FakeDbBackend
+
+from lfm2_audio.tools.fake_db import FakeDbBackend
 
 
 @pytest.fixture

@@ -70,7 +70,7 @@ Le constat « vLLM pas plus rapide » a trois causes de natures différentes :
 
 | Constat actuel | Exemplaire | Action | Gain attendu |
 |---|---|---|---|
-| Démos en `Omni()` in-process ; gateway fastrtc OK mais ASR série + audio livré en fin de tour en mode sync (« 45 frames · 3,6 s audio · généré en 4,0 s » = latence perçue 4 s) | `vllm-omni serve` (OpenAI-compatible, SSE streaming — `scripts/streaming_client.py` existe déjà) ; abort de requête pour le barge-in | Gateway WebRTC → `vllm-omni serve` HTTP streaming ; jouer les chunks dès réception (le mode async_chunk + initial chunk court rend ça utile) ; barge-in = abort + flush | latence PERÇUE : c'est elle qque l'utilisateur ressent |
+| Démos en `Omni()` in-process ; gateway fastrtc OK mais ASR série + audio livré en fin de tour en mode sync (« 45 frames · 3,6 s audio · généré en 4,0 s » = latence perçue 4 s) | `vllm-omni serve` (OpenAI-compatible, SSE streaming — `un client SSE à écrire` existe déjà) ; abort de requête pour le barge-in | Gateway WebRTC → `vllm-omni serve` HTTP streaming ; jouer les chunks dès réception (le mode async_chunk + initial chunk court rend ça utile) ; barge-in = abort + flush | latence PERÇUE : c'est elle qque l'utilisateur ressent |
 
 ## 2. Limitations upstream réelles (à tracer, pas de notre fait)
 
@@ -111,7 +111,7 @@ Le constat « vLLM pas plus rapide » a trois causes de natures différentes :
 **Objectif produit : TTFA 200-500 ms (parité ElevenLabs).** Budget visé :
 prefill (~30-80 ms) + ~8 steps avant la 1re frame audio (interleave 6:12)
 + 2 frames + détokenisation du chunk initial. En eager ≈ 400-500 ms ; avec
-CUDA graphs stage 0 ≈ 250-350 ms. Vérification : `scripts/bench_ttfa.py`
+CUDA graphs stage 0 ≈ 250-350 ms. Vérification : `lfm2-bench`
 (TTFT/TTFA/RTF, p50/p95, verdict vs objectif).
 
 **ATTEINT le 12/06 (Colab, speech→speech E2E via s2s_demo --warmup 2)** :

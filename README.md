@@ -1,260 +1,142 @@
-# finetuning_s2s_toolcalling
+# lfm2-audio
 
-Phases **2 (fine-tuning)** et **3 (tools + RAG)** de l'assistant vocal S2S français
-avec tool calling sur **LFM2.5-Audio-1.5B**, embarqué dans **Reachy Mini** —
-use case : agent d'accueil d'entreprise (vérification de rendez-vous,
-notification du collaborateur, orientation du visiteur, wifi invité, escalade
-réceptionniste, requêtes PostgreSQL, base de connaissances RAG).
+Fine-tuning, serving vLLM et orchestration tool-calling de **LFM2.5-Audio-1.5B** —
+assistant vocal speech-to-speech, embarqué dans Reachy Mini.
 
-Stratégie : **« thinking in text, speaking in audio »** — le modèle émet les
-tool calls dans le flux **texte** de la génération interleaved (tokens
-`<|tool_call_start|>…<|tool_call_end|>` hérités du backbone LFM2.5),
-l'orchestrateur exécute l'outil et réinjecte le résultat en rôle `tool`,
-puis le modèle génère la réponse audio.
+Stratégie : **« penser en texte, parler en audio »**. Le modèle émet ses tool calls
+dans le flux *texte* de la génération interleaved (`<|tool_call_start|>…<|tool_call_end|>`),
+l'orchestrateur exécute l'outil et réinjecte le résultat en rôle `tool`, puis le
+modèle produit la réponse **parlée**.
+
+## Inférence en trois lignes
+
+```python
+from lfm2_audio import LFM2Audio
+
+model = LFM2Audio.from_pretrained("Rcarvalo/lfm25-tc-en-s2s")
+text, audio = model.reply(audio="question.wav")
+```
+
+`from_pretrained` accepte **toutes** les formes de checkpoint et matérialise ce
+qui manque (fusion LoRA, conversion vers le layout vLLM-Omni) une seule fois, en
+cache :
+
+```python
+LFM2Audio.from_pretrained("exports/lfm25_audio_fr_omni")  # déjà converti
+LFM2Audio.from_pretrained("exports/lfm25_audio_fr")  # layout liquid → converti
+LFM2Audio.from_pretrained("Rcarvalo/lfm25-tc-en-s2s-adapter")  # base lue dans l'adaptateur
+LFM2Audio.from_pretrained(
+    "LiquidAI/LFM2.5-Audio-1.5B",  # base + LoRA → fusionné
+    adapter="Rcarvalo/lfm25-tc-en-s2s-adapter",
+    interleaved_ratio=(6, 10),
+)
+LFM2Audio.from_pretrained("exports/lfm25_audio_fr", backend="liquid")  # référence PyTorch
+
+for chunk in model.stream(audio="question.wav"):  # streaming 24 kHz, TTFA ~300 ms
+    play(chunk.samples)
+```
+
+Deux backends derrière la même API : **vLLM-Omni** (2 stages, streaming basse
+latence) et **liquid-audio** (référence PyTorch, batch = 1). `backend="auto"`
+prend le premier installé.
+
+## Démarrage
+
+```bash
+make install          # .venv + groupe dev (CPU : lint, typecheck, tests, données)
+make install-serving  # + vLLM-Omni et liquid-audio (GPU NVIDIA requis)
+make hooks            # hooks pre-commit
+make check            # lint + typecheck + tests — ce que vérifie la CI
+```
+
+Un [devcontainer](.devcontainer/) CPU est fourni : tout ce qui ne demande pas de
+GPU y tourne, y compris sur un Mac.
 
 ## Arborescence
 
 ```
-src/s2s_toolcalling/
-├── data/            # Phase 2 — format de données
-│   ├── chat_format.py        # tokens ChatML LFM2.5 (tool_list/call/response), system prompt
-│   ├── dialogue_schema.py    # schéma JSONL des dialogues d'entraînement (validation)
-│   ├── liquid_adapter.py     # Dialogue → list[ChatMessage] liquid-audio
-│   └── preprocess_sft.py     # CLI : JSONL + wavs → dataset pré-packé (LFM2AudioChatMapper)
-├── training/        # Phase 2 — fine-tuning
-│   ├── lora.py               # injection LoRA in-place dans le backbone (peft bas niveau)
-│   ├── freeze.py             # politiques de gel (encodeur / têtes audio / backbone)
-│   └── train_sft.py          # lanceur : réutilise le Trainer OFFICIEL liquid-audio
-├── tools/           # Phase 3 — outils métier
-│   ├── schemas.py            # définitions JSON (contrat unique entraînement/inférence)
-│   ├── registry.py           # dispatch async, validation, timeouts
-│   ├── reception.py          # 5 outils accueil + backends InMemory / Postgres
-│   └── database.py           # query_database : SELECT-only + session read-only
-├── orchestrator/    # Phase 3 — boucle agent
-│   ├── tool_parser.py        # parsing streaming des spans <|tool_call_*|> (ast, sans eval)
-│   ├── agent.py              # generate_interleaved ↔ exécution ↔ réinjection rôle tool
-│   ├── fillers.py            # fillers vocaux (« je vérifie… ») pendant le round-trip
-│   ├── events.py             # événements vers le transport
-│   └── server.py             # WebSocket minimal (point de branchement Reachy, Phase 4)
-├── rag/             # Phase 3 — base de connaissances
-│   ├── ingest.py             # chunking + indexation ChromaDB (embeddings multilingues)
-│   └── retriever.py          # outil search_knowledge_base
-└── evaluation/
-    └── eval_toolcalling.py   # scoring BFCL-style FR (call/name/relevance/parse)
+python/lfm2_audio/
+├── core/          # abstractions transverses — erreurs, environnement, prompt ChatML
+├── ds/            # structures de données — pydantic aux frontières, value objects
+│   ├── audio.py         Waveform (signal + fréquence, indissociables)
+│   ├── conversation.py  Conversation — garante de « un seul audio par prompt »
+│   ├── config.py        EngineConfig / GenerationConfig (pydantic)
+│   ├── dialogue.py      schéma JSONL d'entraînement (pydantic)
+│   └── reply.py         Reply + TurnMetrics
+├── serving/       # chargement du modèle et backends d'inférence
+│   ├── model.py         LFM2Audio — ABC + fabrique `from_pretrained`
+│   ├── registry.py      catalogue des backends (import paresseux)
+│   ├── checkpoint/      sources → détection de layout → préparation
+│   └── backends/        vllm_omni.py · liquid.py · omni_engine.py
+├── vllm_plugin/   # plugin out-of-tree vLLM-Omni (chargé dans chaque worker)
+├── training/      # SFT LoRA, gel encodeur / têtes audio, export de checkpoint
+├── data_prep/     # génération, packing et conversion des datasets
+├── tools/         # outils métier appelables par le modèle
+├── orchestrator/  # boucle agent tool-calling, fillers, transport temps réel
+├── rag/           # base de connaissances ChromaDB
+├── evaluation/    # scoring BFCL-style des tool calls, métriques de latence
+└── cli/          # points d.entrée `lfm2-*` (argparse seulement)
 
-configs/             # phase2a (adaptation FR), phase2b (SFT tool calling), orchestrateur
-scripts/             # prepare_fr_asr_tts, calibrate_interleaved_ratio, demo_orchestrator
-sql/schema.sql       # schéma PostgreSQL + rôle lecture seule + données de démo
-data/examples/       # dialogues d'exemple (dont négatif et escalade)
-tests/               # 67 tests, sans GPU ni torch
+configs/{serving,training,sql}/   tests/   docs/   notebooks/   data/
 ```
 
-## Installation
+Trois patterns structurent le serving, chacun justifié par une pluralité réelle
+d'implémentations (pas par anticipation) :
+
+| Pattern | Où | Ce qu'il permet |
+|---|---|---|
+| **Fabrique + registre** | `serving/registry.py` | ajouter un backend sans toucher à `LFM2Audio` ; import paresseux pour que `import lfm2_audio` reste léger |
+| **Chain of responsibility** | `serving/checkpoint/sources.py` | ajouter un stockage (S3…) sans toucher au résolveur |
+| **Strategy** | `serving/checkpoint/preparers.py` | un cas de préparation = une classe (passthrough / conversion / fusion LoRA) |
+
+`LFM2Audio.reply()` est une *template method* : les backends n'implémentent que
+`stream()`.
+
+## Commandes
+
+Toutes les CLIs sont des entry points `lfm2-*` (`--help` sur chacune) :
 
 ```bash
-pip install -e .                # cœur (Python ≥ 3.11)
-pip install -e ".[dev]"         # + tests
-pip install -e ".[train]"       # + fine-tuning (Python ≥ 3.12, GPU)
-pip install -e ".[serve,rag]"   # + orchestrateur / RAG
+lfm2-demo --checkpoint exports/lfm25_audio_fr --audio-in question.wav
+lfm2-demo --checkpoint exports/lfm25_audio_fr --interactive
+lfm2-bench --checkpoint exports/lfm25_audio_fr_omni --runs 5      # TTFA / RTF
+lfm2-toolcalling-demo --checkpoint exports/tc_en --adapter <repo> --share
+lfm2-smoke --checkpoint exports/lfm25_audio_fr_omni               # plugin vLLM-Omni
 ```
 
-## Phase 2 — Fine-tuning
-
-### 2a. Adaptation FR (recette du variant JP)
-
-1. Exporter un manifest `{"audio", "text"}` depuis Common Voice FR / MLS-FR (Phase 1).
-2. Calibrer le ratio interleaved FR (EN = 6:12, JP = 6:9) :
-   ```bash
-   python scripts/calibrate_interleaved_ratio.py --manifest cv_fr_stats.jsonl
-   ```
-3. Générer les dialogues ASR/TTS et packer en mode sequential :
-   ```bash
-   python scripts/prepare_fr_asr_tts.py --manifest cv_fr.jsonl --output data/fr_asr_tts.jsonl
-   python -m s2s_toolcalling.data.preprocess_sft --dialogues data/fr_asr_tts.jsonl \
-       --audio-root <racine> --output datasets/fr_asr_tts_train --assistant-audio-mode sequential
-   ```
-4. Entraîner (encodeur et têtes audio **dégelés** pour la phonétique FR) :
-   ```bash
-   accelerate launch -m s2s_toolcalling.training.train_sft --config configs/phase2a_fr_adaptation.yaml
-   ```
-
-### 2b. SFT interleaved : dialogues FR + tool calls (cœur)
-
-Les dialogues synthétiques (Phase 1) suivent `data/examples/dialogues.sample.jsonl` :
-tour assistant *tool call* = **texte seul** (audio supprimé), tour final =
-texte + audio (interleaved). Inclure 20–30 % de négatifs sans appel.
+Données et entraînement :
 
 ```bash
-python -m s2s_toolcalling.data.preprocess_sft --dialogues data/dialogues_train.jsonl \
-    --audio-root data/audio --output datasets/sft_toolcalling_train \
-    --interleaved-text-tokens 6 --interleaved-audio-tokens 10   # ratio calibré
-accelerate launch -m s2s_toolcalling.training.train_sft --config configs/phase2b_sft_toolcalling.yaml
+lfm2-generate-data --provider gemini --output data/tc_en_train.jsonl --n-total 3000
+lfm2-synthesize-audio --engine voxtral --dialogues data/tc_en_train.jsonl ...
+lfm2-build-dataset --repo-id <user>/tc-en-audio --train ... --private
+lfm2-analyze-dataset --dialogues data/tc_en_train.jsonl --audio-root data/audio_tc_en
+lfm2-preprocess-sft --dialogues ... --output datasets/tc_en_train
+accelerate launch -m lfm2_audio.cli.train_sft --config configs/training/phase_en_toolcalling.yaml
+lfm2-eval-audio --backend vllm --checkpoint exports/tc_en --cases ... --arg-match token_f1
 ```
 
-Le lanceur **réutilise le `Trainer` officiel de liquid-audio** et n'ajoute que
-l'injection LoRA (backbone seul) + le gel encodeur/têtes audio + la sauvegarde
-de l'adaptateur (`outputs/.../final_adapter/`).
+## Documentation
 
-### Critères de validation (méthodologie)
+- [docs/serving.md](docs/serving.md) — charger un modèle, choisir un backend, régler la latence
+- [docs/architecture.md](docs/architecture.md) — découpage du paquet et pourquoi
+- [docs/vllm_omni_integration.md](docs/vllm_omni_integration.md) — design du plugin out-of-tree
+- [docs/optimization_audit.md](docs/optimization_audit.md) — leviers de latence mesurés
+- [docs/audio_in_spec.md](docs/audio_in_spec.md) — chemin audio-in natif (mel, placeholders)
+
+## Critères de validation
 
 | Critère | Seuil | Mesure |
 |---|---|---|
 | WER FR | < 15 % | Common Voice FR test |
-| UTMOS | > 3,7 (chute < 0,3 vs vanilla, sinon geler têtes audio) | sorties TTS/S2S |
-| Tool calling FR | > 75 % | `eval_toolcalling` (BFCL-style) |
+| UTMOS | > 3,7 (chute < 0,3 vs vanilla) | sorties TTS/S2S |
+| Tool calling | name > 90 %, relevance > 85 %, arg > 75 %, parse > 98 % | `lfm2-eval-audio` (BFCL-style) |
+| TTFA | 200-500 ms | `lfm2-bench` |
 | VoiceBench | régression < 5 pts vs vanilla | suite officielle |
-
-```bash
-python -m s2s_toolcalling.evaluation.eval_toolcalling --predictions eval_fr.jsonl
-```
-
-## Capacité tool calling vocal EN — `web_search` + `db_query` (Phase A, v1)
-
-Donne au **même** modèle LFM2.5-Audio (aucun second modèle) la capacité d'appeler
-deux outils **à partir de la parole**, en anglais. v1 = **single-turn** : audio
-utilisateur → émission du tool call dans le flux **texte**
-(`<|tool_call_start|>[…]<|tool_call_end|>`). Précédent : le cookbook Liquid
-`voice-assistant` (OHF-Voice) prouve audio→function-call sur ce modèle
-(99 % name / 90 % arg). Réutilise toute la plomberie existante (format, LoRA,
-parser, éval) ; `db_query` prend une **question en langage naturel** (NL→SQL côté
-backend, hors chemin du modèle).
-
-**Construction du dataset (Gemini + Voxtral TTS → HF)** : le notebook
-[`notebooks/build_toolcalling_dataset.ipynb`](notebooks/build_toolcalling_dataset.ipynb)
-enchaîne génération → TTS → push HF sur une L4 (génère et sauvegarde le dataset
-audio sur ton Hub). Détail des étapes :
-
-```bash
-pip install -e ".[train,tooldata]"
-
-# 1) Données synthétiques vérifiées (taxonomie + parser/registre + anti-contamination)
-#    Gemini par défaut (~$1 pour 3k ex.) ; --provider anthropic en option.
-export GEMINI_API_KEY=...
-python scripts/generate_toolcalling_data.py --provider gemini --output data/tc_en_train.jsonl \
-    --n-total 3000 --held-out benchmark/toolcalling_en/cases.sample.jsonl
-
-# 2) TTS des tours user — Voxtral TTS via vLLM-Omni (qualité ≫ Kokoro ; L4) ;
-#    voix held-out pour le test. Serveur : vllm serve mistralai/Voxtral-4B-TTS-2603 --omni
-python scripts/synthesize_user_audio.py --engine voxtral --voices casual_male,... \
-    --dialogues data/tc_en_train.jsonl --audio-root data/audio_tc_en \
-    --out data/tc_en_train.audio.jsonl --split train
-python scripts/synthesize_user_audio.py --engine voxtral --voices <held-out> --split test \
-    --dialogues benchmark/toolcalling_en/cases.sample.jsonl \
-    --audio-root data/audio_tc_en --out data/tc_en_bench.audio.jsonl
-
-# 2b) Pousser le dataset audio sur le Hub (privé ; licence cc-by-nc-4.0, carte neutre)
-python scripts/build_hf_dataset.py --repo-id <user>/tc-en-audio \
-    --train data/tc_en_train.audio.jsonl --test data/tc_en_bench.audio.jsonl \
-    --audio-root data/audio_tc_en --private
-
-# 3) Packer (set d'outils EN) puis entraîner (LoRA backbone, encodeur + têtes audio gelés)
-python -c "import json,s2s_toolcalling.tools.schemas as s; open('tools_en.json','w').write(json.dumps(s.TOOLCALLING_EN_TOOL_DEFINITIONS))"
-python -m s2s_toolcalling.data.preprocess_sft --dialogues data/tc_en_train.audio.jsonl \
-    --audio-root data/audio_tc_en --output datasets/tc_en_train \
-    --tool-definitions tools_en.json --assistant-audio-mode sequential
-accelerate launch -m s2s_toolcalling.training.train_sft --config configs/phase_en_toolcalling.yaml
-
-# 4) Éval AUDIO → tool-call (harnais : audio → modèle → predicted_text → scoring)
-python scripts/eval_audio_toolcalling.py --backend vllm --checkpoint exports/lfm25_tc_en \
-    --cases data/tc_en_bench.audio.jsonl --audio-root data/audio_tc_en \
-    --out eval_tc_en.jsonl --arg-match token_f1
-```
-
-Métriques (BFCL-style + arg tolérant pour le texte libre) : `parse_rate`,
-`relevance_accuracy` (appeler / s'abstenir), `name_accuracy`, `call_accuracy`.
-Seuils v1 : name > 90 %, relevance > 85 %, arg tolérant > 75 %, parse > 98 %.
-
-**Notebooks clé-en-main** (L4) : [`build_toolcalling_dataset.ipynb`](notebooks/build_toolcalling_dataset.ipynb)
-(génération Gemini → TTS Voxtral → push HF) puis
-[`finetune_toolcalling.ipynb`](notebooks/finetune_toolcalling.ipynb) (analyse →
-packing → entraînement → éval gold). **QA dataset** : `python scripts/analyze_dataset.py
---dialogues … --audio-root …` (distribution, doublons, args, audio, **drapeaux**).
-**Suivi entraînement** (`InstrumentedTrainer`, wandb) : `train/text_ppl` = exp(text_loss)
-= signal direct du tool calling ; `grad_norm` (stabilité), `val/text_ppl`
-(surapprentissage) ; push HF de l'adaptateur tous les `push_interval` steps.
-
-**Phase B** (itération) : boucle complète (résultat d'outil réinjecté → réponse
-**parlée**) via l'orchestrateur existant + backends live (`ddgs`, NL→SQL sur
-`sql/schema_en.sql`).
-
-## Phase 3 — Orchestrateur tools + RAG
-
-Démo du round-trip complet **sans GPU** (parser → registre → réinjection) :
-
-```bash
-python scripts/demo_orchestrator.py
-```
-
-Mise en service complète (GPU) :
-
-```bash
-psql -f sql/schema.sql reception                                  # base + rôle lecture seule
-python -m s2s_toolcalling.rag.ingest --docs ./kb_docs --persist-dir ./chroma_db
-python -m s2s_toolcalling.orchestrator.server --config configs/orchestrator.yaml
-```
-
-Boucle agent (`orchestrator/agent.py`) : audio visiteur → `generate_interleaved`
-→ texte décodé token par token dans `StreamingToolCallParser` → au span complet :
-arrêt de la génération, **filler vocal** (masque le round-trip, cible < 1,5 s),
-exécution via le registre (validation, timeout), réinjection
-`<|tool_response_start|>…<|tool_response_end|>` en rôle `tool`, reprise de la
-génération pour la réponse audio. Garde-fous : `max_tool_rounds` avec escalade
-`notify_receptionist`, erreurs de parsing non fatales, hook barge-in
-(`should_stop`) prêt pour la Phase 4.
-
-Sécurité `query_database` : garde syntaxique SELECT-only **et** session
-PostgreSQL `default_transaction_read_only=on` + `statement_timeout` **et** rôle
-SQL `agent_ro` sans droits d'écriture.
-
-## Inférence optimisée : vLLM / vLLM-Omni
-
-LFM2.5-Audio n'est pas supporté nativement par vLLM-Omni → ce repo fournit le
-**plugin out-of-tree `vllm_omni_lfm2_audio`** (`src/vllm_omni_lfm2_audio/`,
-entry point `vllm_omni.general_plugins`, pas de fork) : stage 0 AR interleaved
-(backbone Lfm2 de vLLM core + depthformer, pattern MiMo-Audio) → stage 1
-détokeniseur, avec **prefix caching** (tours et tool round-trips sans
-re-prefill du contexte). Design et statut :
-[`docs/vllm_omni_integration.md`](docs/vllm_omni_integration.md).
-
-```bash
-pip install -e ".[vllm-omni]"
-python -m vllm_omni_lfm2_audio.convert_checkpoint \
-    --checkpoint exports/lfm25_audio_fr --output exports/lfm25_audio_fr_omni
-vllm-omni serve exports/lfm25_audio_fr_omni \
-    --stage-config-path configs/vllm_omni_lfm2_audio.yaml
-# parité vs liquid-audio (GPU, critère bloquant P2) :
-OMNI_CHECKPOINT=exports/lfm25_audio_fr_omni python -m pytest tests/test_omni_parity.py -m gpu
-```
-
-Également disponible (phase P0, voie hybride / parité backbone) :
-
-```bash
-# merge LoRA → checkpoint complet (ratio interleaved calibré écrit dans config.json)
-python -m s2s_toolcalling.training.export_checkpoint \
-    --base LiquidAI/LFM2.5-Audio-1.5B --adapter outputs/phase2b_sft/final_adapter \
-    --output exports/lfm25_audio_fr --mode full \
-    --interleaved-text-tokens 6 --interleaved-audio-tokens 10
-
-# backbone texte seul → servable immédiatement par vLLM (voie hybride / parité P0)
-python -m s2s_toolcalling.training.export_checkpoint \
-    --base LiquidAI/LFM2.5-Audio-1.5B --adapter outputs/phase2b_sft/final_adapter \
-    --output exports/lfm25_backbone_fr --mode backbone
-vllm serve exports/lfm25_backbone_fr
-
-# parité backbone (GPU) — prérequis avant d'investir dans les stages vLLM-Omni
-EXPORTED_BACKBONE=exports/lfm25_backbone_fr python -m pytest tests/test_backbone_parity.py -m gpu
-```
-
-## Risque technique tracé
-
-L'émission d'un tool call en mode interleaved audio n'est **pas documentée par
-Liquid AI** : c'est l'hypothèse à dérisquer en premier (entraîner 2b sur un
-petit sous-ensemble et vérifier que le modèle émet le span texte sans audio).
-En cas d'échec → repli hybride audio-in/text-out + TTS (cf. méthodologie,
-seuils de bascule).
 
 ## Tests
 
 ```bash
-python -m pytest tests/ -q   # 67 tests, sans GPU
+make test       # sans GPU
+make test-gpu   # parité numérique — checkpoints requis
 ```

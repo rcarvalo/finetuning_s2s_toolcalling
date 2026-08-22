@@ -1,0 +1,38 @@
+# Phase 2b — SFT interleaved : dialogues FR + tool calls (cœur du projet).
+# Données : dialogues synthétiques (Phase 1) au schéma dialogue_schema, packés par
+#   python -m lfm2_audio.data_prep.preprocess_sft \
+#       --dialogues data/dialogues_train.jsonl --audio-root data/audio \
+#       --output datasets/sft_toolcalling_train \
+#       --interleaved-text-tokens 6 --interleaved-audio-tokens 10
+# (ratio 6:10 indicatif — à calibrer avec lfm2-calibrate ;
+#  EN = 6:12, JP = 6:9).
+#
+# Mix recommandé (méthodologie) : ~60 % dialogue FR / ~30 % tool calls
+# (dont 20-30 % de négatifs sans appel) / ~10 % RAG.
+
+model_id: LiquidAI/LFM2.5-Audio-1.5B   # ou le checkpoint de sortie de la Phase 2a
+train_dataset: datasets/sft_toolcalling_train
+val_dataset: datasets/sft_toolcalling_val
+context_length: 4096
+
+# QLoRA backbone, encodeur GELÉ (préserve la compréhension audio),
+# têtes audio GELÉES (préserve le timbre — critère UTMOS).
+lora:
+  enabled: true
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  # target_modules: [q_proj, k_proj, v_proj, out_proj, w1, w2, w3, in_proj]
+
+freeze:
+  freeze_encoder: true
+  freeze_audio_heads: true
+
+lr: 1.0e-4
+max_steps: 4000
+warmup_steps: 200
+batch_size: 2
+dataloader_num_workers: 4
+save_interval: 500
+val_interval: 200
+output_dir: outputs/phase2b_sft
