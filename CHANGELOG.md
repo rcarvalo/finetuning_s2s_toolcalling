@@ -16,6 +16,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   DNSMOS figures are void and must be recomputed.
 
 ### Added
+- Listening bench (`lfm2-bench-app`): a Gradio app over one loaded model, with a
+  backend selector (`liquid` / `vllm` / `auto`). **Talk** tab for conversation,
+  **Rate** tab to walk a test set and score each answer 1-5 on intelligibility,
+  naturalness and overall, with a separate `derailed` flag for clips that loop or
+  babble. Verdicts append to `reports/human_ratings.jsonl` and the generated WAVs
+  are kept, so a judgement can be revisited and compared across versions.
 - Evaluation toolkit: `scorer/` (WER, DNSMOS, NISQA, tool-call, LLM judge) behind a
   registry, `evaluation/` pipeline (QuestionSet → generation → scoring → JSON report),
   `lfm2-evaluate` CLI. Missing optional dependencies degrade the report instead of
