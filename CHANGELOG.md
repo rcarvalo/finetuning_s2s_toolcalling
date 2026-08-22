@@ -84,6 +84,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   adapter pushed every 250 steps (Colab reclaims sessions), tool_call scoring
   during training with the same objects as the final campaign.
 
+### Added (pre-training review)
+- `docs/pre_training_review.md`: LoRA-vs-full-fine-tune decision with an
+  escalation ladder and a trigger per rung, the four blocking gaps found before
+  launching, and the enrichment ranking.
+- `infra/prepare_v1.py`: idempotent rehydrate → carve validation → pack, so a
+  reclaimed Colab session costs minutes.
+
+### Fixed (pre-training review)
+- Training recipe scored nothing: `EvaluationScheduleConfig.enabled` defaults to
+  `false` and `question_set` was empty, so the run would have trained blind for
+  1023 steps. Now enabled on a validation slice, with `at_start` for a reference
+  point, and the final test splits stay unwatched.
+
 ### Conventions (from 2026-08-22)
 - New and modified code comments are written in English.
 - Work branches are named `rd/pr_rca_{action}` (action ≤ 2 words).

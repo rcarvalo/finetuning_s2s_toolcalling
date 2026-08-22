@@ -53,6 +53,11 @@ wandb_run_name: tc_en_v1_phaseA
 # curve and the report are comparable rather than two implementations of the
 # same idea.
 evaluation:
+  enabled: true            # off by default: without this the run trains blind
+  question_set: data/tc_en_v1/val.jsonl
+  audio_root: data/tc_en_v1/audio_val
+  interval: 100
+  at_start: true           # reference point before step 1, else the curve is unreadable
   max_questions: 32
   max_new_tokens: 200
   scoring:
