@@ -1,0 +1,68 @@
+# v2 fine-tune — every choice below is tied to a v1 (June) observation.
+#
+# What v1 taught us, once the evaluation was fixed (tools declared, text-only
+# decode): routing was LEARNED (8/12 emissions on held-out voices, 60/60 on
+# seen ones), argument syntax looked broken (largely a measurement artifact:
+# interleaved audio shreds the span), and ABSTENTION WAS LOST — the adapter
+# calls a tool on all 60 cases, negatives included.
+#
+#   v1 observation                      -> v2 answer
+#   trained blind (scoring never ran)   -> evaluation block below actually runs
+#                                          (generator_factory now wired) on val,
+#                                          tools declared, every 100 steps
+#   argument syntax under-supervised    -> r 16->32 (ladder rung 2) for capacity
+#   abstention lost                     -> 3 epochs (not ~4), curve watched: stop
+#                                          at the checkpoint where relevance on
+#                                          negatives is still intact
+#   test set too small / contaminated   -> judged on tc-en-voice-agent-v1 splits
+#                                          (200 unseen-wording + 12 unseen-voice)
+#
+#   accelerate launch -m lfm2_audio.cli.train.sft \
+#       --config configs/training/tc_en_voice_agent_v2.yaml
+
+model_id: LiquidAI/LFM2.5-Audio-1.5B
+train_dataset: datasets/tc_en_v1_train
+val_dataset: datasets/tc_en_v1_val
+context_length: 1024
+
+# Same targets as v1 (they did learn routing); only capacity changes.
+lora:
+  enabled: true
+  r: 32
+  alpha: 64
+  dropout: 0.05
+
+freeze:
+  freeze_encoder: true
+  freeze_audio_heads: true   # Phase A never speaks a tool call; protect DNSMOS 3.33
+
+lr: 1.0e-4
+num_epochs: 3
+batch_size: 8
+warmup_steps: 100
+dataloader_num_workers: 4
+grad_clip: 1.0
+
+logging_interval: 10
+save_interval: 250           # checkpoints every 250 steps -> pick the best, not the last
+val_interval: 100
+output_dir: outputs/tc_en_voice_agent_v2
+
+hub_repo: Rcarvalo/lfm25-tc-en-v2-adapter
+push_interval: 250           # Colab reclaims sessions; a lost VM costs minutes
+
+wandb_project: lfm25-toolcalling-en
+wandb_run_name: tc_en_v2_phaseA
+
+evaluation:
+  enabled: true
+  question_set: data/tc_en_v1/val.jsonl
+  audio_root: data/tc_en_v1/audio_val
+  interval: 100
+  at_start: true             # the step-0 point IS the vanilla reference
+  max_questions: 32
+  max_new_tokens: 200
+  tool_definitions: en       # same prompt as the packed data — or the curve lies
+  scoring:
+    scorers:
+      - name: tool_call

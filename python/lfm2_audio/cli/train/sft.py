@@ -39,7 +39,11 @@ def main() -> int:
         print(json.dumps(config.as_dict(), indent=2, ensure_ascii=False))
         return 0
 
-    trainer = build_trainer(config)
+    from lfm2_audio.training.eval_generator import liquid_generator_factory
+
+    # Without a factory the ScoringCallback silently skips every measurement:
+    # the June run trained blind because of exactly this missing argument.
+    trainer = build_trainer(config, generator_factory=liquid_generator_factory(config))
     trainer.train()
 
     # Le Trainer écrit déjà `<output_dir>/final` (modèle complet, LoRA non fusionné) :

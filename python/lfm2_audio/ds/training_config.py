@@ -54,6 +54,14 @@ class EvaluationScheduleConfig(BaseModel):
 
     max_questions: int | None = 32
     max_new_tokens: int = Field(default=256, gt=0)
+
+    tool_definitions: str | None = None
+    """Tools to DECLARE in the scoring prompt: the "en" shortcut or a JSON path.
+
+    Must match what the packed dataset embedded, or the in-training curve
+    measures prompt drift instead of learning progress.
+    """
+
     scoring: ScoringConfig = Field(default_factory=ScoringConfig)
 
 

@@ -133,6 +133,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   prompt training used; the choice is recorded in the report context, since two
   campaigns that declared different tools are not comparable. 4 tests.
 
+### Fixed (v1 post-mortem — three inert or misleading mechanisms)
+- Interleaved audio decode shredded tool-call spans during evaluation: the
+  campaign now decodes text-only whenever no audio scorer is requested (the
+  GenerationConfig docstring had warned about exactly this).
+- In-training scoring silently skipped: the train CLI never passed a
+  `generator_factory`, so `ScoringCallback` resolved to no generator. New
+  `training/eval_generator.py` wraps the live model in the same serving stack
+  as the final campaign (text-only, tools declared, eval-mode toggling).
+- `evaluation.tool_definitions` on the schedule + one shared resolver
+  (`evaluation/tool_prompt.py`) for the CLI and the callback.
+
+### Added (v2)
+- `configs/training/tc_en_voice_agent_v2.yaml`: each choice tied to a v1
+  observation — r 16→32 for argument syntax, 3 epochs with a watched curve for
+  abstention, checkpoints every 250 steps to pick the best rather than the last.
+
 ### Conventions (from 2026-08-22)
 - New and modified code comments are written in English.
 - Work branches are named `rd/pr_rca_{action}` (action ≤ 2 words).

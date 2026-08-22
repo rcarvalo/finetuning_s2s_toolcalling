@@ -15,18 +15,16 @@ ce module ne porte que la CLI.
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
-from pathlib import Path
 
-from lfm2_audio.core.chat_format import build_system_prompt
 from lfm2_audio.core.errors import Lfm2AudioError
-from lfm2_audio.core.prompt import DEFAULT_SYSTEM
+from lfm2_audio.ds.generation_config import GenerationConfig
 from lfm2_audio.ds.scoring_config import ScorerConfig, ScoringConfig
 from lfm2_audio.evaluation.model_generator import ModelResponseGenerator
 from lfm2_audio.evaluation.pipeline import EvaluationPipeline
 from lfm2_audio.evaluation.question_set import QuestionSet
+from lfm2_audio.evaluation.tool_prompt import resolve_system
 from lfm2_audio.scorer.factory import ScorerFactory
 from lfm2_audio.scorer.registry import SCORERS
 from lfm2_audio.serving.model import LFM2Audio
@@ -91,24 +89,28 @@ def build_scoring_config(args: argparse.Namespace) -> ScoringConfig:
     )
 
 
-def build_system(args: argparse.Namespace) -> str:
-    """System prompt of the campaign — with the tool list when one is requested.
+AUDIO_SCORERS = frozenset({"wer", "dnsmos", "nisqa"})
+"""Scorers that grade the generated audio — they need interleaved generation."""
 
-    Training embeds the tool definitions in the system prompt
-    (`preprocess_sft --tool-definitions`). Evaluating without them asks the model
-    to call tools it was never told about: it answers in plain language and every
-    tool-calling metric reads zero, for the base model and a fine-tune alike.
+
+def build_generation(config: ScoringConfig) -> GenerationConfig:
+    """Decoding mode of the campaign, derived from what the scorers measure.
+
+    On the liquid backend, interleaved audio placeholders SHRED a structured
+    tool-call span — `web_search(query="…")` comes out mangled and every
+    argument reads as wrong. A campaign that grades no audio therefore decodes
+    text-only; one that grades audio keeps interleaving and accepts that any
+    tool-call metric in the same run is unreliable.
     """
-    if args.tool_definitions is None:
-        return DEFAULT_SYSTEM
+    text_only = not (set(config.enabled_names) & AUDIO_SCORERS)
+    if text_only:
+        logger.info("no audio scorer requested — decoding text-only to keep tool-call spans intact")
+    return GenerationConfig(text_only=text_only)
 
-    if args.tool_definitions == "en":
-        from lfm2_audio.tools.schemas import TOOLCALLING_EN_TOOL_DEFINITIONS
 
-        definitions = TOOLCALLING_EN_TOOL_DEFINITIONS
-    else:
-        definitions = json.loads(Path(args.tool_definitions).read_text(encoding="utf-8"))
-    return build_system_prompt(tool_definitions=definitions)
+def build_system(args: argparse.Namespace) -> str:
+    """System prompt of the campaign — same resolver as the training callback."""
+    return resolve_system(args.tool_definitions)
 
 
 def main() -> int:
@@ -126,9 +128,14 @@ def main() -> int:
     logger.info("%d questions (%d avec appel attendu)", len(questions), questions.positives)
 
     try:
-        scorers = ScorerFactory(build_scoring_config(args)).build_all()
+        scoring_config = build_scoring_config(args)
+        scorers = ScorerFactory(scoring_config).build_all()
         model = LFM2Audio.from_pretrained(
-            args.checkpoint, backend=args.backend, adapter=args.adapter, system=build_system(args)
+            args.checkpoint,
+            backend=args.backend,
+            adapter=args.adapter,
+            system=build_system(args),
+            generation=build_generation(scoring_config),
         )
     except Lfm2AudioError as error:
         print(f"❌ {error}", file=sys.stderr)
