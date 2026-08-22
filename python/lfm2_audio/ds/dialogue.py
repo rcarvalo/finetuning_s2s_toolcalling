@@ -93,6 +93,14 @@ class Turn(BaseModel):
     content: Any = None
     """Payload d'un tour ``tool`` (résultat d'exécution réinjecté)."""
 
+    voice: str | None = None
+    """TTS voice this turn was synthesized with.
+
+    Written by ``lfm2-synthesize-audio`` and by the Hub rehydration, and read
+    back when analysing whether a model generalizes across timbres. Declared
+    here because ``extra="forbid"`` otherwise rejects our own pipeline's output.
+    """
+
     @model_validator(mode="after")
     def _check_role_invariants(self) -> Self:
         """Contraintes de la stratégie « penser en texte, parler en audio »."""

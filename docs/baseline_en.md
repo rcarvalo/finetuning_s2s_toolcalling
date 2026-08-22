@@ -13,6 +13,12 @@ contexts disagree. Reports are committed under `reports/`.
 
 `benchmark/toolcalling_en/cases.sample.jsonl`, scorer `tool_call`, max 200 tokens.
 
+> **Modality caveat.** Those 12 cases carry no `audio` field, so this campaign
+> measured **text → tool call**, not speech → tool call. The conclusion holds a
+> fortiori — text is the easier modality, and the model already emits nothing —
+> but the figure is not the audio number. The audio baseline is measured on
+> `test_voices` / `test_utterances`, which do carry audio.
+
 | Figure | Baseline | Reading |
 |---|---:|---|
 | Aggregate score | **0.333** | mean over the 12 cases (median 0.0) |
