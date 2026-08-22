@@ -36,6 +36,11 @@ DNSMOS_SAMPLE_RATE = 16_000
 INPUT_LENGTH_S = 9.01
 SUBSCORES = ("sig", "bak", "ovrl")
 
+# Non-personalised polyfit from the reference implementation.
+SIG_POLY = np.poly1d([-0.08397278, 1.22083953, 0.0052439])
+BAK_POLY = np.poly1d([-0.13166888, 1.60915514, -0.39604546])
+OVRL_POLY = np.poly1d([-0.06766283, 1.11546468, 0.04602535])
+
 
 class DnsmosScorer(BaseScorer):
     """MOS P.835 prédit, sans référence."""
@@ -68,20 +73,27 @@ class DnsmosScorer(BaseScorer):
     def measure(self, sample: EvalSample) -> ScoreResult:
         audio = sample.predicted_audio
         if audio is None:
-            return ScoreResult.skipped(self.name, "aucun audio généré à noter")
+            return ScoreResult.skipped(self.name, "no generated audio to score")
 
         samples = audio.resample(DNSMOS_SAMPLE_RATE).samples
         window = int(INPUT_LENGTH_S * DNSMOS_SAMPLE_RATE)
-        if samples.size < window:  # le modèle attend une fenêtre de taille fixe
-            samples = np.pad(samples, (0, window - samples.size))
 
-        # Fenêtres non chevauchantes moyennées : le modèle est calibré sur ~9 s,
-        # une réponse plus longue se note par morceaux.
-        scores = [self._infer(samples[start : start + window]) for start in range(0, samples.size - window + 1, window)]
+        # Repeat the clip rather than zero-pad it. Padding a 5 s answer to 9 s
+        # feeds the model 45 % silence, which it rates as poor quality — and does
+        # so for every clip, which is how a real signal turns into a flat line.
+        # The reference implementation tiles; so do we.
+        while samples.size < window:
+            samples = np.concatenate([samples, samples])
+
+        # One-second hops, overlapping, as in the reference: more segments to
+        # average over, and a bad passage cannot hide between two windows.
+        hop = DNSMOS_SAMPLE_RATE
+        scores = [self._infer(samples[start : start + window]) for start in range(0, samples.size - window + 1, hop)]
         averaged = [float(np.mean([s[i] for s in scores])) for i in range(len(SUBSCORES))]
 
         details: dict[str, Any] = dict(zip(SUBSCORES, averaged, strict=True))
-        details["windows"] = len(scores)
+        details["segments"] = len(scores)
+        details["duration_s"] = round(audio.duration_s, 2)
         return ScoreResult.ok(self.name, float(details["ovrl"]), details=details)
 
     def _infer(self, window: np.ndarray) -> tuple[float, float, float]:
@@ -100,14 +112,17 @@ class DnsmosScorer(BaseScorer):
 
 
 def calibrate_p835(sig_raw: float, bak_raw: float, ovrl_raw: float) -> tuple[float, float, float]:
-    """Map raw ONNX outputs onto the published P.835 MOS scale.
+    """Map the model's raw outputs onto the published MOS scale.
 
-    Official non-personalized coefficients from ``dnsmos_local.py``
-    (microsoft/DNS-Challenge, ``get_polyfit_val``). They are QUADRATIC: an
-    earlier cubic approximation here saturated BAK below 2.0, so clean speech
-    scored like noisy speech and OVRL was meaningless.
+    Coefficients are the non-personalised polynomials of ``get_polyfit_val`` in
+    microsoft/DNS-Challenge — second degree, applied as ``a*x^2 + b*x + c``.
+
+    Getting this wrong is not a small offset: a mis-specified polynomial with an
+    interior maximum saturates, and every clip above a certain quality collapses
+    onto the same value. That is what produced a baseline where 24 answers all
+    scored between 1.60 and 1.62.
     """
-    sig = -0.08397278 * sig_raw**2 + 1.22083953 * sig_raw + 0.0052439
-    bak = -0.13166888 * bak_raw**2 + 1.60915514 * bak_raw - 0.39604546
-    ovrl = -0.06766283 * ovrl_raw**2 + 1.11546468 * ovrl_raw + 0.04602535
-    return sig, bak, ovrl
+    sig = SIG_POLY(sig_raw)
+    bak = BAK_POLY(bak_raw)
+    ovrl = OVRL_POLY(ovrl_raw)
+    return float(sig), float(bak), float(ovrl)

@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 
 ## [Unreleased]
 
+### Fixed
+- DNSMOS scored every clip between 1.60 and 1.62, which read as "uniformly poor
+  audio" and was in fact a broken metric. Three departures from
+  microsoft/DNS-Challenge: the calibration used a cubic with an interior maximum
+  (saturating at 1.62, so raw scores of 3.5-5.0 all collapsed into a 0.02-wide
+  band) instead of the official quadratic polyfit; short clips were zero-padded
+  to 9.01 s instead of tiled, feeding the model up to 45 % silence; windows did
+  not overlap. Pinned by `tests/test_dnsmos_calibration.py`. The EN baseline's
+  DNSMOS figures are void and must be recomputed.
+
 ### Added
 - Evaluation toolkit: `scorer/` (WER, DNSMOS, NISQA, tool-call, LLM judge) behind a
   registry, `evaluation/` pipeline (QuestionSet → generation → scoring → JSON report),
