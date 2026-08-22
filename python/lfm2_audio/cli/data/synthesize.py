@@ -40,6 +40,8 @@ import torch
 import torchaudio
 from kokoro import KPipeline
 
+from lfm2_audio.data_prep.turn_sampling import turn_random
+
 SAMPLE_RATE = 16_000
 # Voix Kokoro (repli) — am/af = American male/female, bm/bf = British.
 KOKORO_VOICES_TRAIN = ["af_heart", "af_bella", "am_adam", "am_michael", "bf_emma", "bm_george", "af_nicole", "am_eric"]
@@ -156,7 +158,6 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
-    rng = random.Random(args.seed)
     voices = _resolve_voices(args)
     tts = _build_engine(args)
 
@@ -169,19 +170,32 @@ def main() -> None:
     # (texte, pas de tool_calls) → voix assistant FIXE, sans aug (persona stable) ;
     # uniquement si --assistant-voice est fourni (Phase B S2S). Les tours tool-call
     # et tool (résultat) restent texte seul (pas d'audio).
+    # Voice and augmentation are drawn from a per-turn hash, not from a shared
+    # RNG: a resumed run skips turns whose WAV already exists, which would shift
+    # every later draw and silently re-voice the corpus.
     jobs = []  # (di, ti, text, voice, augment, rel)
+    resumed = 0
     for di, dlg in enumerate(dialogues):
         for ti, turn in enumerate(dlg.get("turns", [])):
             if turn.get("audio") or not turn.get("text"):
                 continue
             role = turn.get("role")
             if role == "user":
-                voice, aug, tag = rng.choice(voices), rng.random() < args.augment_prob, "u"
+                choice = turn_random(args.seed, dlg["id"], ti)
+                voice, aug, tag = voices[choice.randrange(len(voices))], choice.random() < args.augment_prob, "u"
             elif role == "assistant" and not turn.get("tool_calls") and args.assistant_voice:
                 voice, aug, tag = args.assistant_voice, False, "a"
             else:
                 continue
-            jobs.append((di, ti, turn["text"], voice, aug, f"{dlg['id']}_{tag}{ti}.wav"))
+            rel = f"{dlg['id']}_{tag}{ti}.wav"
+            if (args.audio_root / rel).exists():
+                # Already synthesized by an interrupted run: reattach, don't redo.
+                turn["audio"], turn["voice"] = rel, voice
+                resumed += 1
+                continue
+            jobs.append((di, ti, turn["text"], voice, aug, rel))
+    if resumed:
+        print(f"reprise : {resumed} utterance(s) déjà synthétisée(s), conservées", flush=True)
 
     def _do(job: Any) -> Any:
         di, ti, text, voice, aug, rel = job
