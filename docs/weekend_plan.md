@@ -12,7 +12,7 @@ push, pre-commit green on a clean test run.
 | 4 | Curated dataset repo + enrichment pipeline | to design after step 3 results | pending |
 | 5 | Preprocessing + push CLI to the curated repo | builds on `lfm2-preprocess-sft` / `lfm2-build-dataset` | pending |
 | 6 | Training CLI from the baseline (steps/epochs sweeps) | builds on `lfm2-train-sft` + scoring callbacks | pending |
-| 7 | Re-evaluate, compare to baselines, decide next steps | same two campaigns as 1–2, same question sets | pending |
+| 7 | Re-evaluate, compare to baselines, decide next steps | `lfm2-eval-compare` (built) + same two campaigns as 1–2 | tooling ready |
 
 ## Step 1–2 how-to
 

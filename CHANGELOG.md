@@ -38,6 +38,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   (it has no runtime-management tool). Confirmed on an L4 (23034 MiB, Python 3.13.15)
   that vLLM 0.22.x and vllm-omni 0.22.0 still resolve — the versions the plugin targets.
 
+### Fixed
+- `serving/backends/liquid.py`: hand liquid-audio a `Path`, not a `str`.
+  `get_model_dir` overloads its argument by type (str = Hub repo id via
+  snapshot_download, Path = local directory), so every locally materialized
+  checkpoint failed with HFValidationError. Found by the first baseline run on
+  an L4. LoRA helpers are now imported inside `_merge_adapter`: peft and
+  safetensors are training-only extras that broke a plain serving install.
+
+### Added (step 7 tooling)
+- `evaluation/comparison.py` + `lfm2-eval-compare`: baseline vs candidate table,
+  metric direction read from the report, comparability warnings, exit code 1 on
+  regression so a training loop can gate on it.
+
 ### Conventions (from 2026-08-22)
 - New and modified code comments are written in English.
 - Work branches are named `rd/pr_rca_{action}` (action ≤ 2 words).
