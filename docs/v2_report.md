@@ -7,7 +7,7 @@ text-only decode, `tool_call` scorer. All six campaigns on one L4, 2026-08-22.
 
 ## The table
 
-| model | set | mean | emission | name | call (exact args) | abstention | parse |
+| model | set | mean | emission | name | call (args token-F1 ≥ 0.7) | abstention | parse |
 |---|---|---:|---|---|---|---|---|
 | vanilla | voices (12) | 0.333 | 0/8 | 0/8 | 0/8 | 4/4 | 12/12 |
 | vanilla | utterances (200) | 0.255 | 0/149 | 0/149 | 0/149 | 51/51 | 200/200 |
@@ -27,7 +27,7 @@ held-out voices), they tie at 0.750.
 |---|---|---|---|
 | name accuracy | > 90% | **100%** (149/149) | ✅ |
 | relevance | > 85% | **95%** (emission 100%, abstention 94%) | ✅ |
-| args (tolerant) | > 75% | **76.5% on EXACT match** — tolerant is only higher | ✅ |
+| args (tolerant) | > 75% | **76.5%** at token-F1 ≥ 0.7 (the scorer's default) | ✅ just above |
 | parse rate | > 98% | **100%** | ✅ |
 
 **v2 passes every acceptance criterion on an uncontaminated test set, at
@@ -35,11 +35,11 @@ held-out voices), they tie at 0.750.
 
 ## Reading the failures
 
-- **Argument mismatches (35/149)** are now real, not decode shredding: the call
-  is well-formed, the tool right, the argument *wording* differs from the
-  reference (`query="latest news elections"` vs `query="news on the upcoming
-  elections"`). Scoring them with token-F1 (`--arg-match token_f1`, as the
-  README specifies for free text) would reclassify most.
+- **Argument mismatches (35/149)**: the call is well-formed, the tool right,
+  the wording differs. Note the 76.5% is already token-F1 ≥ 0.7 (scorer
+  default); close reading shows mostly faithful paraphrases of a free-text
+  question — see `docs/v2_limits.md` for why a semantic judge is the honest
+  arbiter on `db_query` args.
 - **3 false calls on 51 negatives** — abstention held (94%), the regression the
   ladder feared did not materialize.
 - **The 12-voice set saturates at 5/8 exact calls for both adapters**: at n=8,
