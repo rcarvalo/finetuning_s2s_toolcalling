@@ -7,10 +7,10 @@ il n'existe aucune vérité terrain audio.
 Trois sous-notes P.835 sur 5 — ``sig`` (qualité de la parole), ``bak`` (bruit de
 fond), ``ovrl`` (impression générale) ; c'est ``ovrl`` qui est agrégé.
 
-``onnxruntime`` est importé en tête : ce module n'est chargé que par qui
-construit réellement le scorer, et le registre sait le déclarer indisponible
-sans l'importer. Le modèle ONNX de Microsoft n'étant pas redistribuable, son
-absence est signalée avec la marche à suivre au lieu de faire échouer l'éval.
+``onnxruntime`` is imported lazily in :meth:`DnsmosScorer._onnx`: the pure
+calibration below must stay importable (and testable) without the ``eval``
+extra. Microsoft's ONNX weights are not redistributable, so their absence is
+reported with the fix instead of failing the campaign.
 """
 
 from __future__ import annotations
@@ -18,14 +18,16 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
-import onnxruntime
 
 from lfm2_audio.scorer.base import BaseScorer
 from lfm2_audio.scorer.result import ScoreResult
 from lfm2_audio.scorer.sample import EvalSample
+
+if TYPE_CHECKING:
+    import onnxruntime
 
 logger = logging.getLogger(__name__)
 
@@ -90,18 +92,22 @@ class DnsmosScorer(BaseScorer):
     def _onnx(self) -> onnxruntime.InferenceSession:
         """Session ONNX, construite au premier usage puis conservée."""
         if self._session is None:
-            logger.info("chargement du modèle DNSMOS : %s", self._model_path)
+            import onnxruntime
+
+            logger.info("loading DNSMOS model: %s", self._model_path)
             self._session = onnxruntime.InferenceSession(str(self._model_path))
         return self._session
 
 
 def calibrate_p835(sig_raw: float, bak_raw: float, ovrl_raw: float) -> tuple[float, float, float]:
-    """Calibration polynomiale officielle des sorties brutes vers l'échelle MOS.
+    """Map raw ONNX outputs onto the published P.835 MOS scale.
 
-    Coefficients de ``dnsmos_local.py`` (microsoft/DNS-Challenge) : sans eux, les
-    sorties brutes ne sont pas comparables aux MOS publiés.
+    Official non-personalized coefficients from ``dnsmos_local.py``
+    (microsoft/DNS-Challenge, ``get_polyfit_val``). They are QUADRATIC: an
+    earlier cubic approximation here saturated BAK below 2.0, so clean speech
+    scored like noisy speech and OVRL was meaningless.
     """
-    sig = 0.8546 * sig_raw - 0.0322 * sig_raw**2 + 0.0016 * sig_raw**3 + 0.7526
-    bak = 1.0637 * bak_raw - 0.1735 * bak_raw**2 + 0.0100 * bak_raw**3 - 0.2650
-    ovrl = 1.1370 * ovrl_raw - 0.2331 * ovrl_raw**2 + 0.0155 * ovrl_raw**3 - 0.1908
+    sig = -0.08397278 * sig_raw**2 + 1.22083953 * sig_raw + 0.0052439
+    bak = -0.13166888 * bak_raw**2 + 1.60915514 * bak_raw - 0.39604546
+    ovrl = -0.06766283 * ovrl_raw**2 + 1.11546468 * ovrl_raw + 0.04602535
     return sig, bak, ovrl

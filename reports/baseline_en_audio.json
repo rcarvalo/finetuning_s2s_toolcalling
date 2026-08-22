@@ -1,0 +1,797 @@
+{
+  "context": {
+    "checkpoint": "LiquidAI/LFM2.5-Audio-1.5B",
+    "backend": "liquid",
+    "question_set": "benchmark/baseline_en/questions.jsonl",
+    "cases": 24,
+    "positives": 0,
+    "scorers": [
+      "wer",
+      "dnsmos",
+      "nisqa"
+    ]
+  },
+  "cases": 24,
+  "metrics": [
+    {
+      "scorer": "wer",
+      "mean": 0.39005995720926717,
+      "median": 0.04078368652538984,
+      "higher_is_better": false,
+      "measured": 24,
+      "skipped": 0,
+      "unavailable": 0,
+      "failed": 0,
+      "coverage": 1.0
+    },
+    {
+      "scorer": "dnsmos",
+      "mean": 1.5946893580778332,
+      "median": 1.6157407628973148,
+      "higher_is_better": true,
+      "measured": 24,
+      "skipped": 0,
+      "unavailable": 0,
+      "failed": 0,
+      "coverage": 1.0
+    },
+    {
+      "scorer": "nisqa",
+      "mean": null,
+      "median": null,
+      "higher_is_better": true,
+      "measured": 0,
+      "skipped": 0,
+      "unavailable": 24,
+      "failed": 0,
+      "coverage": 0.0,
+      "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+    }
+  ],
+  "samples": [
+    {
+      "sample_id": "base_en_01",
+      "predicted_text": "I'm doing great, thanks for asking! How can I help you today?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "reference": "I'm doing great, thanks for asking! How can I help you today?",
+            "hypothesis": "I'm doing great. Thanks for asking. How can I help you today?"
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6028166330847335,
+          "details": {
+            "sig": 3.6235986027522515,
+            "bak": 1.9050634045066932,
+            "ovrl": 1.6028166330847335,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_02",
+      "predicted_text": "Sure! Photosynthesis is how plants turn sunlight, water and carbon dioxide into food and oxygen. The green pigment chlorophyll captures the light, and the plant uses that energy to make sugars for growth while releasing oxygen into the air. It’s basically the plant’s way of making its own food and giving us the air we breathe.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.06896551724137931,
+          "details": {
+            "reference": "Sure! Photosynthesis is how plants turn sunlight, water and carbon dioxide into food and oxygen. The green pigment chlorophyll captures the light, and the plant uses that energy to make sugars for growth while releasing oxygen into the air. It’s basically the plant’s way of making its own food and giving us the air we breathe.",
+            "hypothesis": "Sure. Photosynthesis is how plants turn sunlight, water, and carbon dioxide into food and oxygen. The green pigment chlorophyll captures the light, and the plant uses that energy to make sugars for growth while releasing oxygen into the air. It's basically the plant's way of making its own food and giving us the air we breathe."
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.612056022489675,
+          "details": {
+            "sig": 3.8242256038568736,
+            "bak": 1.897547285829703,
+            "ovrl": 1.612056022489675,
+            "windows": 2
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_03",
+      "predicted_text": "In a quiet workshop, a robot named Chef was given a chance to learn. It first tried simple stir‑fries, then added a pinch of spice, and soon mastered sauces and desserts. By the end, Chef could cook a gourmet meal, sharing it with friends and proving that even machines can create flavor.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.018867924528301886,
+          "details": {
+            "reference": "In a quiet workshop, a robot named Chef was given a chance to learn. It first tried simple stir‑fries, then added a pinch of spice, and soon mastered sauces and desserts. By the end, Chef could cook a gourmet meal, sharing it with friends and proving that even machines can create flavor.",
+            "hypothesis": "In a quiet workshop, a robot named Chef was given a chance to learn. It first tried simple stir-fries, then added a pinch of spice, and soon mastered salsas and desserts. By the end, Chef could cook a gourmet meal, sharing it with friends and proving that even machines can create flavor."
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6170616985659452,
+          "details": {
+            "sig": 3.842002297139283,
+            "bak": 1.9189181184855784,
+            "ovrl": 1.6170616985659452,
+            "windows": 2
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_04",
+      "predicted_text": "Sure, here are three things you can try. First, keep your bedroom cool, dark and quiet so your body can relax. Second, stick to a regular sleep schedule—go to bed and wake up at the same time every day, even on weekends. Third, wind down before bed by turning off screens, doing some gentle stretching or breathing exercises, and maybe reading a book or listening to soft music.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "reference": "Sure, here are three things you can try. First, keep your bedroom cool, dark and quiet so your body can relax. Second, stick to a regular sleep schedule—go to bed and wake up at the same time every day, even on weekends. Third, wind down before bed by turning off screens, doing some gentle stretching or breathing exercises, and maybe reading a book or listening to soft music.",
+            "hypothesis": "Sure. Here are three things you can try. First, keep your bedroom cool, dark and quiet so your body can relax. Second, stick to a regular sleep schedule. Go to bed and wake up at the same time every day, even on weekends. Third, wind down before bed by turning off screens, doing some gentle stretching or breathing exercises, and maybe reading a book or listening to soft music."
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6183736682077168,
+          "details": {
+            "sig": 3.8868862788546386,
+            "bak": 1.9232328230111464,
+            "ovrl": 1.6183736682077168,
+            "windows": 2
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_05",
+      "predicted_text": "A fresh strawberry tastes sweet and juicy, with a bright, slightly tart edge that feels like a mix of ripe fruit and a hint of citrus. It’s smooth and velvety, almost like a quick burst of sunshine on the tongue.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.04878048780487805,
+          "details": {
+            "reference": "A fresh strawberry tastes sweet and juicy, with a bright, slightly tart edge that feels like a mix of ripe fruit and a hint of citrus. It’s smooth and velvety, almost like a quick burst of sunshine on the tongue.",
+            "hypothesis": "A fresh strawberry tastes sweet and juicy, with a bright, slightly tart edge that feels like a mix of ripe fruit and a hint of citrus. It's smooth and velvety, almost like a quick burst of sunshine on the tongue."
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.609927227124982,
+          "details": {
+            "sig": 3.7503543520710183,
+            "bak": 1.8940366347555084,
+            "ovrl": 1.609927227124982,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_06",
+      "predicted_text": "Rainbows appear when sunlight passes through raindrops, bends, reflects inside, and splits into colors, with the brightest arc opposite the sun. Want to know how the colors appear?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "reference": "Rainbows appear when sunlight passes through raindrops, bends, reflects inside, and splits into colors, with the brightest arc opposite the sun. Want to know how the colors appear?",
+            "hypothesis": "Rainbows appear when sunlight passes through raindrops, bends, reflects inside, and splits into colors, with the brightest arc opposite the sun. Want to know how the colors appear?"
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6184782734835526,
+          "details": {
+            "sig": 3.9067213857496874,
+            "bak": 1.916774347028309,
+            "ovrl": 1.6184782734835526,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_07",
+      "predicted_text": "Sure, here’s a quick tomato‑cheese omelette: whisk two eggs with a pinch of salt and pepper, then heat a non‑stick pan over medium heat and melt a little butter. Add the eggs, let them set for a minute, then pour in a can of crushed tomatoes and season with a little salt and pepper. Cook until the eggs are just set, then fold in shredded cheese and cook another minute until it melts and the omelette is golden. Serve it warm with a slice of bread or crackers.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.15384615384615385,
+          "details": {
+            "reference": "Sure, here’s a quick tomato‑cheese omelette: whisk two eggs with a pinch of salt and pepper, then heat a non‑stick pan over medium heat and melt a little butter. Add the eggs, let them set for a minute, then pour in a can of crushed tomatoes and season with a little salt and pepper. Cook until the eggs are just set, then fold in shredded cheese and cook another minute until it melts and the omelette is golden. Serve it warm with a slice of bread or crackers.",
+            "hypothesis": "Sure. Here's a quick tomato cheese omelet. Whisk two eggs with a pinch of salt and pepper, then heat a non-stick pan over medium heat and melt a little butter. Add the eggs, let them set for a minute, then pour in a can of crushed tomatoes and season with a little salt and pepper. Cook until the eggs are just set, then fold in shredded cheese and cook another minute until it melts and the omelet is golden."
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6165178263058289,
+          "details": {
+            "sig": 3.900562211733969,
+            "bak": 1.9202755469629673,
+            "ovrl": 1.6165178263058289,
+            "windows": 2
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_08",
+      "predicted_text": "Weather is short‑term, day‑to‑day conditions like rain or temperature, while climate is long‑term averages over decades, shaping regional patterns. Which aspect interests you most?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "reference": "Weather is short‑term, day‑to‑day conditions like rain or temperature, while climate is long‑term averages over decades, shaping regional patterns. Which aspect interests you most?",
+            "hypothesis": "Weather is short-term, day-to-day conditions like rain or temperature, while climate is long-term averages over decades, shaping regional patterns. Which aspect interests you most?"
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6194024742767021,
+          "details": {
+            "sig": 3.874810427581014,
+            "bak": 1.9282904772909601,
+            "ovrl": 1.6194024742767021,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_09",
+      "predicted_text": "Sure, a great option is a nature hike with a picnic. You can pick a nearby park or nature reserve, bring a blanket, some snacks and a camera, and let the kids explore the trails while you enjoy the fresh air. It’s a fun way to get some exercise, learn about the local wildlife and create some lasting memories together.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.03278688524590164,
+          "details": {
+            "reference": "Sure, a great option is a nature hike with a picnic. You can pick a nearby park or nature reserve, bring a blanket, some snacks and a camera, and let the kids explore the trails while you enjoy the fresh air. It’s a fun way to get some exercise, learn about the local wildlife and create some lasting memories together.",
+            "hypothesis": "Sure. A great option is a nature hike with a picnic. You can pick a nearby park or nature reserve, bring a blanket, some snacks, and a camera, and let the kids explore the trails while you enjoy the fresh air. It's a fun way to get some exercise, learn about the local wildlife, and create some lasting memories together."
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6205120394345593,
+          "details": {
+            "sig": 3.9519484649110117,
+            "bak": 1.9292333828264345,
+            "ovrl": 1.6205120394345593,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_10",
+      "predicted_text": "Cats purr to communicate—comfort, pain, excitement, or even self‑soothing. Want to know how to tell if it’s a sign of stress?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.125,
+          "details": {
+            "reference": "Cats purr to communicate—comfort, pain, excitement, or even self‑soothing. Want to know how to tell if it’s a sign of stress?",
+            "hypothesis": "Cats purr to communicate. Comfort, pain, excitement, or even self-soothing. Want to know how to tell if it's a sense of stress?"
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6061383900490311,
+          "details": {
+            "sig": 3.704548831861395,
+            "bak": 1.8958960537419571,
+            "ovrl": 1.6061383900490311,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_11",
+      "predicted_text": "Romeo and Juliet, two young lovers from feuding families, secretly marry, only to be killed by their families, sparking a tragic love story. Would you like more details?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "reference": "Romeo and Juliet, two young lovers from feuding families, secretly marry, only to be killed by their families, sparking a tragic love story. Would you like more details?",
+            "hypothesis": "Romeo and Juliet, two young lovers from feuding families, secretly marry only to be killed by their families, sparking a tragic love story. Would you like more details?"
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.618244715922901,
+          "details": {
+            "sig": 3.8838670420379775,
+            "bak": 1.9178104903408841,
+            "ovrl": 1.618244715922901,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_12",
+      "predicted_text": "Pack a sturdy pack, water, food, layers, a map, first‑aid kit, and a headlamp, plus a rain jacket and sturdy shoes. Anything else you’d like to know?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.10344827586206896,
+          "details": {
+            "reference": "Pack a sturdy pack, water, food, layers, a map, first‑aid kit, and a headlamp, plus a rain jacket and sturdy shoes. Anything else you’d like to know?",
+            "hypothesis": "Pack a sturdy pack, water, food, layers, a nap, first aid kit, and a headlamp, plus a rain jacket and sturdy shoes. Anything else you'd like to know?"
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6191609116261534,
+          "details": {
+            "sig": 3.9059862207125744,
+            "bak": 1.917766961456587,
+            "ovrl": 1.6191609116261534,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_13",
+      "predicted_text": "Rock, paper, scissors are a game where you pick one of three moves. Rock beats scissors, scissors beats paper, and paper beats rock. If you all pick the same move, it’s a tie. Want to try a round?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.05128205128205128,
+          "details": {
+            "reference": "Rock, paper, scissors are a game where you pick one of three moves. Rock beats scissors, scissors beats paper, and paper beats rock. If you all pick the same move, it’s a tie. Want to try a round?",
+            "hypothesis": "Rock, paper, scissors are a game where you pick one of three moves. Rock beats scissors, scissors beats paper, and paper beats rock. If you all pick the same move, it's a tie. Want to try a round?"
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.61806374634848,
+          "details": {
+            "sig": 3.8679183673079556,
+            "bak": 1.9217353966420023,
+            "ovrl": 1.61806374634848,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_14",
+      "predicted_text": "Ocean water is salty mainly because of dissolved salts like sodium and chloride, which come from the weathering of rocks and volcanic activity, and because evaporation leaves minerals behind. The water also picks up minerals from the continents as rivers flow into the sea. Over time, the salt stays dissolved, so the ocean ends up with a high salt concentration.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.016666666666666666,
+          "details": {
+            "reference": "Ocean water is salty mainly because of dissolved salts like sodium and chloride, which come from the weathering of rocks and volcanic activity, and because evaporation leaves minerals behind. The water also picks up minerals from the continents as rivers flow into the sea. Over time, the salt stays dissolved, so the ocean ends up with a high salt concentration.",
+            "hypothesis": "Ocean water is salty mainly because of dissolved salts like sodium and chloride, which come from the leathering of rocks and volcanic activity, and because evaporation leaves minerals behind. The water also picks up minerals from the continents as rivers flow into the sea. Over time, the salt stays dissolved, so the ocean ends up with a high salt concentration."
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.616938484637288,
+          "details": {
+            "sig": 3.8722293379085846,
+            "bak": 1.9155424984112421,
+            "ovrl": 1.616938484637288,
+            "windows": 2
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_15",
+      "predicted_text": "Here’s a quote that can lift your spirit: “The greatest glory in living lies not in never falling, but in rising every time we fall.” It reminds us that setbacks are just setbacks, and each time we bounce back we grow stronger and more resilient. So when you face a challenge, remember that every stumble is a chance to learn and move forward.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.03125,
+          "details": {
+            "reference": "Here’s a quote that can lift your spirit: “The greatest glory in living lies not in never falling, but in rising every time we fall.” It reminds us that setbacks are just setbacks, and each time we bounce back we grow stronger and more resilient. So when you face a challenge, remember that every stumble is a chance to learn and move forward.",
+            "hypothesis": "Here's a quote that can lift your spirit. The greatest glory in living lies not in never falling, but in rising every time we fall. It reminds us that setbacks are just setbacks, and each time we bounce back we grow stronger and more resilient. So when you face a challenge, remember that every stumble is a chance to learn and move forward."
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6149636994888006,
+          "details": {
+            "sig": 3.8632849924987185,
+            "bak": 1.911891732668915,
+            "ovrl": 1.6149636994888006,
+            "windows": 2
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_16",
+      "predicted_text": "Airplanes stay aloft because the shape of their wings creates lift, which pushes them upward, while the engines generate thrust that moves the plane forward. The wings are curved on top and flatter underneath, so the air moves faster over the top and slower underneath, creating a pressure difference that lifts the plane. At the same time, the engines push air backward, and the resulting reaction force pushes the plane forward, which together with gravity keep it aloft.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.14102564102564102,
+          "details": {
+            "reference": "Airplanes stay aloft because the shape of their wings creates lift, which pushes them upward, while the engines generate thrust that moves the plane forward. The wings are curved on top and flatter underneath, so the air moves faster over the top and slower underneath, creating a pressure difference that lifts the plane. At the same time, the engines push air backward, and the resulting reaction force pushes the plane forward, which together with gravity keep it aloft.",
+            "hypothesis": "Airplanes stay aloft because the shape of their wings creates lift, which pushes them upward, while the engines generate thrust that moves the plane forward. The wings are curved on top and flatter underneath, so the air moves faster over the top and slower underneath, creating a pressure difference that lifts the plane. At the same time, the engines push air backward, and the resulting reaction force cushion"
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6143539843135193,
+          "details": {
+            "sig": 3.811556113401913,
+            "bak": 1.91451083726627,
+            "ovrl": 1.6143539843135193,
+            "windows": 2
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_17",
+      "predicted_text": "A ukulele is a great first instrument for adults because it’s small, affordable, and easy to pick up. It’s also very versatile, letting you play chords and sing, which keeps things fun. If you prefer something a bit louder, a guitar is a solid choice, though it does require a bit more space.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 7.927272727272728,
+          "details": {
+            "reference": "A ukulele is a great first instrument for adults because it’s small, affordable, and easy to pick up. It’s also very versatile, letting you play chords and sing, which keeps things fun. If you prefer something a bit louder, a guitar is a solid choice, though it does require a bit more space.",
+            "hypothesis": "Om. Om. Om. Om. Om. Om. Om. Om. Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om Om"
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.1343993277956916,
+          "details": {
+            "sig": 2.3979182021872005,
+            "bak": 1.250561074713571,
+            "ovrl": 1.1343993277956916,
+            "windows": 2
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_18",
+      "predicted_text": "I wake up, stretch, hydrate, then meditate and plan the day so I start focused and calm. Does that sound good?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "reference": "I wake up, stretch, hydrate, then meditate and plan the day so I start focused and calm. Does that sound good?",
+            "hypothesis": "I wake up, stretch, hydrate, then meditate and plan the day so I start focused and calm. Does that sound good?"
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6192927309367502,
+          "details": {
+            "sig": 3.8883319640542973,
+            "bak": 1.9255022592866857,
+            "ovrl": 1.6192927309367502,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_19",
+      "predicted_text": "The sky looks blue because sunlight scatters in the atmosphere, with shorter blue wavelengths spreading out. At sunset, the light travels through more air, scattering away the blue and letting the longer reds and oranges dominate. Does that help?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.05128205128205128,
+          "details": {
+            "reference": "The sky looks blue because sunlight scatters in the atmosphere, with shorter blue wavelengths spreading out. At sunset, the light travels through more air, scattering away the blue and letting the longer reds and oranges dominate. Does that help?",
+            "hypothesis": "The sky looks blue because sunlight statters in the atmosphere, with shorter blue wavelengths spreading out. At sunset, the light travels through more air, stattering away the blue and letting the longer reds and oranges dominate. Does that help?"
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6076461435606875,
+          "details": {
+            "sig": 3.6821079287872394,
+            "bak": 1.9086932870451294,
+            "ovrl": 1.6076461435606875,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_20",
+      "predicted_text": "Sure, the numbers are one, two, three, four, five, six, seven, eight, nine, ten. The alphabet from A to E is A, B, C, D, E.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.38461538461538464,
+          "details": {
+            "reference": "Sure, the numbers are one, two, three, four, five, six, seven, eight, nine, ten. The alphabet from A to E is A, B, C, D, E.",
+            "hypothesis": "Sure. The numbers are 1, 2, 3, 4, 5, 6, 7, 8, 9, 10. The alphabet from A to E is A, B, C, D, E."
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6132432671140702,
+          "details": {
+            "sig": 3.7454247306177195,
+            "bak": 1.92213629470539,
+            "ovrl": 1.6132432671140702,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_21",
+      "predicted_text": "Coffee is roasted beans, giving a stronger, more bitter, slightly acidic brew, while tea is dried leaves, offering milder, sweeter, less acidic flavor. Which one do you prefer?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "reference": "Coffee is roasted beans, giving a stronger, more bitter, slightly acidic brew, while tea is dried leaves, offering milder, sweeter, less acidic flavor. Which one do you prefer?",
+            "hypothesis": "Coffee is roasted beans, giving a stronger, more bitter, slightly acidic brew, while tea is dried leaves, offering milder, sweeter, less acidic flavor. Which one do you prefer?"
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.612400296578527,
+          "details": {
+            "sig": 3.752376398022896,
+            "bak": 1.9135069295157932,
+            "ovrl": 1.612400296578527,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_22",
+      "predicted_text": "Jupiter’s Great Red Spot is a massive, long‑lasting storm that’s larger than Earth and has been raging for at least 350 years. Want to hear more about its size or how it forms?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.1111111111111111,
+          "details": {
+            "reference": "Jupiter’s Great Red Spot is a massive, long‑lasting storm that’s larger than Earth and has been raging for at least 350 years. Want to hear more about its size or how it forms?",
+            "hypothesis": "Jupiter's Great Red Spot is a massive, long-lasting storm that's larger than Earth and has been raging for at least 350 years. Want to hear more about its size or how it forms?"
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6129180182598908,
+          "details": {
+            "sig": 3.7880464724598246,
+            "bak": 1.9107263179359548,
+            "ovrl": 1.6129180182598908,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_23",
+      "predicted_text": "Sure, think of the internet as a huge network of computers all over the world that can talk to each other instantly. It’s like a giant library where you can search for any book or piece of information and get it right away, and it’s also a place where people can share photos, videos, and ideas with anyone in the world. It’s a fast, global way to connect and learn, and it’s been growing a lot since the early 2000s.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.09523809523809523,
+          "details": {
+            "reference": "Sure, think of the internet as a huge network of computers all over the world that can talk to each other instantly. It’s like a giant library where you can search for any book or piece of information and get it right away, and it’s also a place where people can share photos, videos, and ideas with anyone in the world. It’s a fast, global way to connect and learn, and it’s been growing a lot since the early 2000s.",
+            "hypothesis": "Sure. Think of the internet as a huge network of computers all over the world that can talk to each other instantly. It's like a giant library where you can search for any book or piece of information and get it right away. And it's also a place where people can share photos, videos, and ideas with anyone in the world. It's a fast global way to connect and learn, and it's been growing a lot since the early 2000s."
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.6171749305411054,
+          "details": {
+            "sig": 3.8974407034660103,
+            "bak": 1.9049343750418153,
+            "ovrl": 1.6171749305411054,
+            "windows": 2
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    },
+    {
+      "sample_id": "base_en_24",
+      "predicted_text": "Try a Greek yogurt parfait with berries and a drizzle of honey, or a quick scrambled egg with spinach and cheese. Which sounds better?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "wer",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "reference": "Try a Greek yogurt parfait with berries and a drizzle of honey, or a quick scrambled egg with spinach and cheese. Which sounds better?",
+            "hypothesis": "Try a Greek yogurt parfait with berries and a drizzle of honey, or a quick scrambled egg with spinach and cheese. Which sounds better?"
+          }
+        },
+        {
+          "scorer": "dnsmos",
+          "status": "ok",
+          "value": 1.612460083721407,
+          "details": {
+            "sig": 3.804895685035532,
+            "bak": 1.885908676205914,
+            "ovrl": 1.612460083721407,
+            "windows": 1
+          }
+        },
+        {
+          "scorer": "nisqa",
+          "status": "unavailable",
+          "reason": "checkpoint NISQA introuvable — poser son chemin dans $NISQA_MODEL_PATH (nisqa.tar du dépôt gabrielmittag/NISQA)"
+        }
+      ]
+    }
+  ]
+}

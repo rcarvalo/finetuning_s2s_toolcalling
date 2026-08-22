@@ -1,0 +1,256 @@
+{
+  "context": {
+    "checkpoint": "LiquidAI/LFM2.5-Audio-1.5B",
+    "backend": "liquid",
+    "question_set": "benchmark/toolcalling_en/cases.sample.jsonl",
+    "cases": 12,
+    "positives": 8,
+    "scorers": [
+      "tool_call"
+    ]
+  },
+  "cases": 12,
+  "metrics": [
+    {
+      "scorer": "tool_call",
+      "mean": 0.3333333333333333,
+      "median": 0.0,
+      "higher_is_better": true,
+      "measured": 12,
+      "skipped": 0,
+      "unavailable": 0,
+      "failed": 0,
+      "coverage": 1.0
+    }
+  ],
+  "samples": [
+    {
+      "sample_id": "bench_ws_01",
+      "predicted_text": "I don’t have live weather data, but you can check a weather app or website for the latest forecast. Would you like a quick search phrase?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": false,
+            "name": false,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_ws_02",
+      "predicted_text": "Sure thing. The 2022‑23 Champions League was won by Manchester City, who beat Liverpool 2‑1 in the final.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": false,
+            "name": false,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_ws_03",
+      "predicted_text": "Sorry, I don’t have live internet access, so I can’t give the current Bitcoin price. You can check a trusted site like CoinMarketCap or the Bitcoin Exchange for the latest figure. Would you like a quick tip on how to find it?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": false,
+            "name": false,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_ws_04",
+      "predicted_text": "Try a veggie lasagna by layering lasagna noodles, marinara, ricotta, spinach, zucchini, mushrooms, and a blend of veggies, then baking until bubbly. Want a detailed ingredient list?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": false,
+            "name": false,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_db_01",
+      "predicted_text": "I don’t have live access to your order system, so I can’t tell you the current count. You can check the dashboard or contact support for the latest numbers. Would you like tips on how to view the open orders?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": false,
+            "name": false,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_db_02",
+      "predicted_text": "I’m not sure which customer you’re referring to—could you tell me a bit more about the order or the customer details? That way I can give you the right information.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": false,
+            "name": false,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_db_03",
+      "predicted_text": "I don’t have a live inventory, so I can’t list current out‑of‑stock items. Check the store’s website or call their customer line. Need help finding their contact?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": false,
+            "name": false,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_db_04",
+      "predicted_text": "I don’t have the latest hiring data, so I can’t tell you who was hired most recently. You could check the company’s recent news releases, LinkedIn or the HR portal for the newest employee announcements.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": false,
+            "name": false,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_neg_01",
+      "predicted_text": "Good morning! I'm doing well, thanks for asking. How can I help you today?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_neg_02",
+      "predicted_text": "You’re welcome! If anything else comes up, just let me know.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_neg_03",
+      "predicted_text": "Sure! Did you know that octopuses have three hearts and blue blood? Two hearts pump blood to the gills, while the third pumps it to the rest of the body, and their blood contains a copper‑based pigment that gives them their blue hue. It’s a pretty wild mix of biology and color.<|text_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_neg_04",
+      "predicted_text": "I can help with everything from answering questions to brainstorming ideas, planning projects, or just chatting. What would you like to work on first?<|text_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    }
+  ]
+}
