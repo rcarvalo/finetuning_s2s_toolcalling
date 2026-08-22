@@ -97,6 +97,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   1023 steps. Now enabled on a validation slice, with `at_start` for a reference
   point, and the final test splits stay unwatched.
 
+### Added (documentation)
+- `docs/datasets.md`: the dataset reference — shared dialogue schema and its
+  invariants, the three on-topic corpora with their real distributions, the
+  curated splits and why the two test sets must not be merged, the adapters
+  already on the Hub with their contamination caveat, the data-flow diagram and
+  what is still missing.
+
 ### Conventions (from 2026-08-22)
 - New and modified code comments are written in English.
 - Work branches are named `rd/pr_rca_{action}` (action ≤ 2 words).
