@@ -6,6 +6,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Fixed
+- Serverless worker crashed at generation time with "Failed to find C compiler".
+  `python:*-slim` ships none, and LFM2's causal convolution calls a Triton kernel
+  that is JIT-compiled on first use — so `TORCHDYNAMO_DISABLE=1` does not help,
+  the kernel is not reached through torch.compile. `Dockerfile.serve.liquid` now
+  installs `build-essential`. The failure surfaces *after* the image is pulled,
+  which reads as a slow cold start rather than a crash.
 - DNSMOS scored every clip between 1.60 and 1.62, which read as "uniformly poor
   audio" and was in fact a broken metric. Three departures from
   microsoft/DNS-Challenge: the calibration used a cubic with an interior maximum
