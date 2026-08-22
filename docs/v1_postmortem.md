@@ -27,15 +27,20 @@ the final campaign (text-only, tools declared, eval-mode toggled and restored).
 
 ## What v1 actually learned, measured after the fixes
 
-| | held-out voices (12) | seen voices (60) |
+| | held-out voices (12) | seen voices (first 60) |
 |---|---|---|
-| calls emitted | 8/12 | **60/60** |
+| calls emitted | 8/12 | 60/60 |
 | routing (which tool) | correct | correct |
-| abstention on negatives | — | **lost** (calls on everything) |
 
-So: routing learned, generalizes to unseen voices reasonably; the real
-regression is **abstention**. The v2 recipe answers each line
-(`configs/training/tc_en_voice_agent_v2.yaml`).
+So: routing learned, and it generalizes to unseen voices reasonably.
+
+**A fourth measurement trap surfaced while reading these numbers**: the carved
+splits were assembled group by group, so the *first 60 rows* of
+`test_utterances` were all `db_query` positives — no negative at all. "60/60
+calls" therefore says nothing about abstention (calling on 60 positives is
+correct). Abstention is **unknown** until the full-200 evaluation; the split
+now shuffles its output so any prefix mixes targets, and the in-training slice
+actually watches all three behaviours.
 
 ## The meta-lesson
 

@@ -98,6 +98,13 @@ def stratified_split(
     in_test = {id(d) for d in test}
     train = [d for d in dialogues if id(d) not in in_test]
 
+    # Both sides are assembled group by group: without a final shuffle, any
+    # prefix of the file is a single target — `--limit N` or `.take(N)` on a
+    # carved split would then evaluate one behaviour only (that is how an
+    # in-training slice ended up 100% db_query).
+    rng.shuffle(train)
+    rng.shuffle(test)
+
     return (
         train,
         test,

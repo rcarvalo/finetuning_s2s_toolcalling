@@ -92,3 +92,16 @@ class TestSplitReport:
 
         assert "train 800 / test 200" in summary
         assert "web_search=100 (50%)" in summary
+
+
+class TestPrefixRepresentativeness:
+    def test_should_not_leave_any_prefix_single_target(self) -> None:
+        """A carved file gets consumed through `--limit`/`take`: its head must
+        mix targets, not be one group glued first."""
+        from lfm2_audio.data_prep.splitting import target_of
+
+        _, test, _ = stratified_split(_corpus(), test_size=200)
+
+        head_targets = {target_of(d) for d in test[:30]}
+
+        assert len(head_targets) >= 2
