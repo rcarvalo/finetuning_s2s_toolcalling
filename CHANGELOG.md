@@ -157,6 +157,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   observation — r 16→32 for argument syntax, 3 epochs with a watched curve for
   abstention, checkpoints every 250 steps to pick the best rather than the last.
 
+### Results (v2)
+- v2 adapter (r=32, step 500/948, pushed by the 250-step Hub cadence after the
+  VM was reclaimed) passes every acceptance threshold on the uncontaminated
+  200-case set: emission 100%, name 100%, exact-args 76.5%, abstention 94%,
+  parse 100% — mean 0.810 vs vanilla 0.255. v1's 0.855 on the same set is
+  contaminated (those rows were its training data); on the mutually-clean
+  12-voice set both adapters tie at 0.750. Full table: `docs/v2_report.md`.
+- First measured training curve: val 0.281 → 0.844 over 500 steps.
+
 ### Conventions (from 2026-08-22)
 - New and modified code comments are written in English.
 - Work branches are named `rd/pr_rca_{action}` (action ≤ 2 words).

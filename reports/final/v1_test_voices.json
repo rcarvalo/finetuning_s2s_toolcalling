@@ -1,0 +1,258 @@
+{
+  "context": {
+    "checkpoint": "LiquidAI/LFM2.5-Audio-1.5B",
+    "backend": "liquid",
+    "adapter": "Rcarvalo/lfm25-tc-en-adapter",
+    "tool_definitions": "en",
+    "question_set": "data/tc_en_v1/test_voices.jsonl",
+    "cases": 12,
+    "positives": 8,
+    "scorers": [
+      "tool_call"
+    ]
+  },
+  "cases": 12,
+  "metrics": [
+    {
+      "scorer": "tool_call",
+      "mean": 0.75,
+      "median": 1.0,
+      "higher_is_better": true,
+      "measured": 12,
+      "skipped": 0,
+      "unavailable": 0,
+      "failed": 0,
+      "coverage": 1.0
+    }
+  ],
+  "samples": [
+    {
+      "sample_id": "bench_ws_01",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"weather Tokyo\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_ws_02",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"who won Champions League last year\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_ws_03",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"latest price of Bitcoin\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_ws_04",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"vegetarian lasagna recipes\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_db_01",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"How many open orders do we have?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_db_02",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Which customer placed the largest order?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_db_03",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"List the products that are out of stock.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_db_04",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Who was hired most recently by the sales team?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_neg_01",
+      "predicted_text": "I'm doing well, thank you for asking! How can I help you?<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_neg_02",
+      "predicted_text": "You're welcome. Is there anything else I can help you with?<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_neg_03",
+      "predicted_text": "Did you know that a group of flamingos is called a flamboyance?<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "bench_neg_04",
+      "predicted_text": "I can help with many things, just tell me what you need.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    }
+  ]
+}

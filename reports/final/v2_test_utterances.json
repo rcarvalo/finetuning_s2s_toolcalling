@@ -1,0 +1,3830 @@
+{
+  "context": {
+    "checkpoint": "LiquidAI/LFM2.5-Audio-1.5B",
+    "backend": "liquid",
+    "adapter": "Rcarvalo/lfm25-tc-en-v2-adapter",
+    "tool_definitions": "en",
+    "question_set": "data/tc_en_v1/test_utterances.jsonl",
+    "cases": 200,
+    "positives": 149,
+    "scorers": [
+      "tool_call"
+    ]
+  },
+  "cases": 200,
+  "metrics": [
+    {
+      "scorer": "tool_call",
+      "mean": 0.81,
+      "median": 1.0,
+      "higher_is_better": true,
+      "measured": 200,
+      "skipped": 0,
+      "unavailable": 0,
+      "failed": 0,
+      "coverage": 1.0
+    }
+  ],
+  "samples": [
+    {
+      "sample_id": "tc_002317_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"When did Eleanor Vance join the company?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001872_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Which products are currently out of stock?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000724_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Who is managing the project for the new website?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002143_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"List all past orders from Global Solutions Inc.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001492_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Which products have the highest return rate?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001866_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is Michael Johnson's extension?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000729_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the total number of active clients?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001655_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Who is the dedicated account manager for the client 'Innovate Torp'?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002582_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What events are scheduled for me tomorrow morning?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002314_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Provide a summary of products in the 'Software Solutions' category.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001531_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the price and description for the 'Premium Widget'?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002256_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Who is attending the project review on Wednesday?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000939_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Which products have the longest average order duration?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000145_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Who is the primary contact for the 'Phoenix Project' team?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000555_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What are the current performance metrics for the employee wellness program?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002090_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the current quantity on hand for the Premium Widget A?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001058_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"List all products in the 'Software' category.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000487_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the email address for Sarah Connor?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000891_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"When did Maria Rodriguez join the company?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001501_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the average order value?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000556_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Who on the hiring team is available next Tuesday afternoon?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000730_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What are the details for the meeting titled 'Q3 Budget'?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001706_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the average order value for the last month?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001223_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What action items were discussed in the strategy session held two weeks ago?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001217_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What are the upcoming product releases for Q3?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001426_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Are there any orders currently in processing?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000377_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the internal phone number for Emily White?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000721_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the current status of order number 12345?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002020_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the status of order number 12345?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002882_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the wholesale price for the 'Deluxe Widget'?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002884_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Is there a summary available for the board meeting held on the 15th?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000938_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"List all orders placed by employees in the last seven days.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000762_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the current status of order number 98765?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001870_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Which department does Sarah Chen work in?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000770_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"List my scheduled meetings for next Tuesday.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002871_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the direct line number for Sarah Johnson?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002667_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the status of order number 123456?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001827_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"When did our newest recruit in the HR department start?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000819_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Which customer has the highest total spend in the last quarter?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000759_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the contact information for Acme Corp?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000832_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Who was hired in the marketing department in the last six months?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001918_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Who attended the last all-hands meeting?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001814_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What are the primary contact details for Acme Corporation?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001175_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the inventory level for product code ABC-XYZ?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001178_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the email address for our HR manager, Sarah Connor?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002910_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"List all customers who have not placed an order in the last six months.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001332_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"List all customers located in the Northeast region.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001832_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is John Smith's internal extension number?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000718_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the total revenue from the last quarter?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002677_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the total sales volume for the Eastern region for the current year?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001267_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Provide a summary of all orders processed last Tuesday.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002155_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Which product had the highest sales last month?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002146_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Who attended the last project review meeting?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000419_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What are the contact details for customer 'Tech Solutions Inc.'?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002955_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Have any new orders come in today?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002880_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the location of client Global Solutions Inc.?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002920_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the average quantity per order for product 'Widget X'?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001877_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the wholesale price of the 'Economy Gadget'?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000268_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"List all meetings scheduled for tomorrow afternoon.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002883_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What was the total value of order OPN-6789?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000935_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the status of the recent order by Sarah Johnson?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001645_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Provide a summary of interactions we've had with Global Solutions Inc.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000027_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Are there any pending orders from the past day?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000836_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the manufacturing cost for a single unit of the 'Eco-Friendly Widget'?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001530_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Show all recent orders placed by Acme Corp.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002193_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Are there any products in our inventory that have not had a sale in over 180 days?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001112_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"List all products launched in the last six months.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001324_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the current selling price of product ID P-987?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000728_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Which products are currently backordered?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002730_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the internal phone extension for Maria Rodriguez in Human Resources?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002019_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the email address for Acme Corp?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001054_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Who was present at the project kickoff meeting on Monday?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001713_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"Which employee has been with the company the longest?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000210_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"List all products that are currently out of stock.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002666_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"List all employees in the marketing department and their primary contact email addresses.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001062_db_query",
+      "predicted_text": "<|tool_call_start|>[db_query(question=\"What is the company email address for Emily White?\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001516_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"average lifespan golden retriever\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000924_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"author of To Kill a Mockingbird\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000646_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"how do solar panels work\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001299_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"best smart TVs reviews\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002437_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"average lifespan of giant panda\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001694_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"Premier League standings\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001420_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"who painted Mona Lisa\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001252_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"discovery of penicillin\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001807_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"Taylor Swift concert tickets\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002709_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"first woman to fly solo across Atlantic\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001351_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"new Marvel movie plot\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001101_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"popular science fiction novels released recently\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000971_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"major news headlines today\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001154_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"Mount Kilimanjaro map\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002118_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"sustainable farming methods\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001958_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"easy DIY projects for beginners\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000810_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"Lakers vs Celtics final score yesterday\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000192_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"current Prime Minister of Canada\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001484_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"how to clean cast iron pan\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000072_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"highly-rated recent historical fiction books\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002774_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"symptoms of common cold\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000597_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"latest space mission results\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000644_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"explain quantum entanglement simply\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001414_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"who directed Shark's Jaws\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001466_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"Japanese yen exchange rate\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002344_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"latest advancements space exploration\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002377_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"latest AI breakthroughs\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002712_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"Warsriors game result last night\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002993_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"average lifespan of a cat\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002448_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"tips for growing tomatoes in small garden\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001362_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"how to fix a dripper\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002705_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"best smartphones 2024\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002063_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"what is a black hole in space\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002563_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"who was Martin Luther King Jr.\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002064_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"latest developments in AI ethics\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002287_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"what is a quantum computer\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001409_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"difference between OLED and LCD TV\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000307_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"long-term effects of climate change\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002342_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"quick easy weeknight dinner recipe\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001100_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"tips for improving sleep quality naturally\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002010_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"current inflation rate Eurozone\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002564_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"must-see spots Grand Canyon\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002237_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"average lifespan of domestic cat\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000007_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"current population of Canada\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001098_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"movies playing local cinema\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000311_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"who directed Oppenheimer movie\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001895_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"latest travel restrictions for visiting Japan\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001251_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"distance between Earth and Moon\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000863_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"director of Titanic movie\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002809_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"latest news on stock market today\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002651_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"tips for improving sleep quality\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001197_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"concerts or festivals in London this weekend\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002778_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"capital city of Australia\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001367_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"when was Eiffel Tower built\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002607_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"weather Seattle tomorrow\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000710_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"vegan chocolate chip cookie recipe\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001940_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"recent developments in space exploration\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002443_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"current national average gasoline price\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002988_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"who wrote Bohemian Rhapsody Queen\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000317_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"explain artificial intelligence concept\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001092_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"history of Eiffel Tower\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002137_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"principles of good graphic design\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001040_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"famous historical landmarks in Rome\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002719_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"average adult human body bones count\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002660_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"biography of Leonardo da Vinci\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001474_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"Lakers game result last night\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": false,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002717_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"Mission Impossible movie showtimes local cinema\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001091_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"reviews for new EcoGlow smart thermostat\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000301_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"explain blockchain technology simply\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000408_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"nutritional benefits of avocados\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002296_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"what to kill a mockingbird summary\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002170_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"information about renewable energy sources\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001505_web_search",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"Apple stock price\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": true,
+            "call": true,
+            "expected_call": true,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002413_none",
+      "predicted_text": "Hello! How can I help?<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001233_none",
+      "predicted_text": "I am a large language model, trained by Google.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001840_none",
+      "predicted_text": "Certainly, I'll adjust my speaking pace.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001455_none",
+      "predicted_text": "Great, glad to hear it.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001230_none",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"capital of Canada\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": false,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000173_none",
+      "predicted_text": "Yes, I'm here and ready to help.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000683_none",
+      "predicted_text": "Why don't scientists trust atoms? Because they make up everything!<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002158_none",
+      "predicted_text": "I'm doing well, thank you for asking! How can I assist you?<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001558_none",
+      "predicted_text": "Okay, I'll wait.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000513_none",
+      "predicted_text": "Thank you for the feedback.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001239_none",
+      "predicted_text": "Hello! In French, that would be Bonjour.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001838_none",
+      "predicted_text": "Alright, have a good day!<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000848_none",
+      "predicted_text": "Certainly, I can adjust my volume.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000286_none",
+      "predicted_text": "Yes, I'm listening. How can I help?<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000686_none",
+      "predicted_text": "Eight plus five is thirteen.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001453_none",
+      "predicted_text": "As an AI, I don't experience fatigue.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002754_none",
+      "predicted_text": "No problem at all.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000387_none",
+      "predicted_text": "That's wonderful to hear! I hope you have an even better day ahead.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001555_none",
+      "predicted_text": "My apologies. Could you please rephrase that?<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000223_none",
+      "predicted_text": "I repeated that.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000226_none",
+      "predicted_text": "I don't have feelings, but I'm ready to help.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001446_none",
+      "predicted_text": "Alright, let me know if anything else comes up.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002758_none",
+      "predicted_text": "Yes, I am active and ready to assist you.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002281_none",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"primary function of voice assistant\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": false,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001084_none",
+      "predicted_text": "No problem at all.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000691_none",
+      "predicted_text": "<|tool_call_start|>[web_search(query=\"capital of Canada\")]<|tool_call_end|><|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 0.0,
+          "details": {
+            "parse": true,
+            "relevance": false,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": true
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002891_none",
+      "predicted_text": "You're very welcome.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000517_none",
+      "predicted_text": "Did you know that a group of flamingos is called a flamboyance?<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000281_none",
+      "predicted_text": "Stopping now.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001020_none",
+      "predicted_text": "Alright, I'll be here if you need me again.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002535_none",
+      "predicted_text": "I'm here to listen if you'd like to share what's on your mind.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001616_none",
+      "predicted_text": "Yes, I understood.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001787_none",
+      "predicted_text": "I understand. Would you like to try a new search or ask a question about our company?<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000291_none",
+      "predicted_text": "You're very welcome! I'm glad I could assist.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000102_none",
+      "predicted_text": "Yes, I can help with that. What do you need assistance with?<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002701_none",
+      "predicted_text": "I can help with web searches and database queries. What would you like to do?<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000622_none",
+      "predicted_text": "Yes, I heard you clearly.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002932_none",
+      "predicted_text": "Hello! How can I assist you today?<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002546_none",
+      "predicted_text": "Alright, I'll be here if you need anything else.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002543_none",
+      "predicted_text": "I hope you have a relaxing evening!<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001133_none",
+      "predicted_text": "I'm here and ready to help. What can I do for you?<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002210_none",
+      "predicted_text": "You're very welcome! I'm glad I could assist you.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001023_none",
+      "predicted_text": "Understood. I'll stop what I'm doing.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001559_none",
+      "predicted_text": "I'm glad I could be of assistance.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000397_none",
+      "predicted_text": "Great, thank you for the update.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002273_none",
+      "predicted_text": "Eight multiplied by nine is eighty-two.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000508_none",
+      "predicted_text": "Certainly, I can increase my volume.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001026_none",
+      "predicted_text": "I am fully operational and ready to assist you.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_001677_none",
+      "predicted_text": "Why don't scientists trust atoms? Because they make up everything!<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_000792_none",
+      "predicted_text": "There are seven days in a week.<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    },
+    {
+      "sample_id": "tc_002532_none",
+      "predicted_text": "I'm glad you think so!<|im_end|>",
+      "scores": [
+        {
+          "scorer": "tool_call",
+          "status": "ok",
+          "value": 1.0,
+          "details": {
+            "parse": true,
+            "relevance": true,
+            "name": false,
+            "call": false,
+            "expected_call": false,
+            "predicted_call": false
+          }
+        }
+      ]
+    }
+  ]
+}

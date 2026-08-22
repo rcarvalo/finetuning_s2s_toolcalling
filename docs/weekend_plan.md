@@ -11,8 +11,8 @@ push, pre-commit green on a clean test run.
 | 3 | Inventory `Rcarvalo/*` private datasets | `lfm2-dataset-inventory` (notebook cell or any logged-in machine) → `docs/dataset_inventory.md` | **done** — 50 repos, 3 on-topic (`docs/dataset_selection.md`) |
 | 4 | Curated dataset repo + enrichment pipeline | `lfm2-dataset-curate` (dedup + leakage guard) | **tooling done** — 5788 dialogues merged, 0 leakage |
 | 5 | Preprocessing + push CLI to the curated repo | `lfm2-dataset-repack` → `Rcarvalo/tc-en-voice-agent-v1` | **done** — 2729/200/12 pushed |
-| 6 | Training CLI from the baseline (steps/epochs sweeps) | `num_epochs` + `configs/training/tc_en_voice_agent_v1.yaml` | **v2 running on L4** — curve visible, checkpoints every 250 |
-| 7 | Re-evaluate, compare to baselines, decide next steps | `lfm2-eval-compare` (built) + same two campaigns as 1–2 | tooling ready |
+| 6 | Training CLI from the baseline (steps/epochs sweeps) | `num_epochs` + `configs/training/tc_en_voice_agent_v1.yaml` | **done** — v2@500 on the Hub, curve measured |
+| 7 | Re-evaluate, compare to baselines, decide next steps | `lfm2-eval-compare` (built) + same two campaigns as 1–2 | **done** — v2 passes all thresholds (`docs/v2_report.md`) |
 
 ## Step 1–2 how-to
 
