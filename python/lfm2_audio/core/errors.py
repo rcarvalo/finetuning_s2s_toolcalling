@@ -34,3 +34,7 @@ class RemoteInferenceError(Lfm2AudioError):
 
 class ExportError(Lfm2AudioError):
     """Export de checkpoint impossible : clés inattendues, adaptateur non fusionné."""
+
+
+class TrainingConfigError(Lfm2AudioError):
+    """Training recipe cannot be turned into a runnable configuration."""

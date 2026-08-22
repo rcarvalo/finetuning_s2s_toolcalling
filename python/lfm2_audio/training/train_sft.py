@@ -31,6 +31,7 @@ from lfm2_audio.training.freeze import FreezePolicy, apply_freeze_policy
 from lfm2_audio.training.instrumented_trainer import InstrumentedTrainer
 from lfm2_audio.training.lora import inject_lora
 from lfm2_audio.training.lora_settings import LoraSettings
+from lfm2_audio.training.step_budget import resolve_max_steps
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +94,8 @@ def build_trainer(config: TrainingConfig, *, generator_factory: Any = None) -> I
     train_data = LFM2DataLoader(config.train_dataset, context_length=config.context_length)
     val_data = LFM2DataLoader(config.val_dataset, context_length=config.context_length) if config.val_dataset else None
 
+    max_steps = resolve_max_steps(config, train_data)
+
     with model_construction_hook(config):
         trainer = InstrumentedTrainer(
             grad_clip=config.grad_clip,
@@ -102,7 +105,7 @@ def build_trainer(config: TrainingConfig, *, generator_factory: Any = None) -> I
             lr=config.lr,
             weight_decay=config.weight_decay,
             min_ratio=config.min_lr_ratio,
-            max_steps=config.max_steps,
+            max_steps=max_steps,
             warmup_steps=config.warmup_steps,
             batch_size=config.batch_size,
             dataloader_num_workers=config.dataloader_num_workers,

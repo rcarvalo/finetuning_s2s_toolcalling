@@ -73,6 +73,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   `test_voices` 12 (the original held-out voices — generalization). Tool
   distribution preserved within one point.
 
+### Added (step 6 — training recipe)
+- `TrainingConfig.num_epochs` + `training/step_budget.py`: a recipe can state
+  its length in passes over the data; the step count is derived when the corpus
+  size is known, and a loader without a length raises `TrainingConfigError`
+  instead of a guessed budget. Kept out of `train_sft` so the policy stays
+  testable without torch. 11 tests.
+- `configs/training/tc_en_voice_agent_v1.yaml`: Phase A LoRA recipe on the
+  curated corpus (3 epochs ≈ 1023 steps), encoder and audio heads frozen,
+  adapter pushed every 250 steps (Colab reclaims sessions), tool_call scoring
+  during training with the same objects as the final campaign.
+
 ### Conventions (from 2026-08-22)
 - New and modified code comments are written in English.
 - Work branches are named `rd/pr_rca_{action}` (action ≤ 2 words).

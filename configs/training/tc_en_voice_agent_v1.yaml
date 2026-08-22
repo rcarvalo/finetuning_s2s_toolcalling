@@ -1,0 +1,60 @@
+# Phase A fine-tune on the curated corpus (weekend step 6).
+#
+# Goal, set by the baseline: the vanilla model emits ZERO tool calls on the 8
+# positive benchmark cases while abstaining correctly on all 4 negatives
+# (docs/baseline_en.md). Teach emission WITHOUT losing abstention — relevance
+# is currently perfect and is the easiest thing to break.
+#
+# Data: Rcarvalo/tc-en-voice-agent-v1 (train 2729, test_utterances 200,
+# test_voices 12), packed by lfm2-preprocess-sft.
+#
+#   accelerate launch -m lfm2_audio.cli.train.sft \
+#       --config configs/training/tc_en_voice_agent_v1.yaml
+
+model_id: LiquidAI/LFM2.5-Audio-1.5B
+train_dataset: datasets/tc_en_v1_train
+val_dataset: datasets/tc_en_v1_val
+context_length: 1024
+
+# LoRA on the backbone only; encoder and audio heads frozen. Phase A never asks
+# the model to SPEAK a tool call — the decision lives in the text stream — so
+# training the audio heads would only risk the DNSMOS 3.33 baseline for nothing.
+lora:
+  enabled: true
+  r: 16
+  alpha: 32
+  dropout: 0.05
+
+freeze:
+  freeze_encoder: true
+  freeze_audio_heads: true
+
+lr: 1.0e-4
+num_epochs: 3          # ~1023 steps at batch 8 over 2729 examples
+batch_size: 8
+warmup_steps: 100
+dataloader_num_workers: 4
+grad_clip: 1.0
+
+logging_interval: 10
+save_interval: 250
+val_interval: 100
+output_dir: outputs/tc_en_voice_agent_v1
+
+# Colab reclaims GPU sessions without warning: push the adapter regularly so a
+# lost VM costs minutes, not the whole run.
+hub_repo: Rcarvalo/lfm25-tc-en-v1-adapter
+push_interval: 250
+
+wandb_project: lfm25-toolcalling-en
+wandb_run_name: tc_en_v1_phaseA
+
+# Score during training with the SAME objects as the final campaign, so the
+# curve and the report are comparable rather than two implementations of the
+# same idea.
+evaluation:
+  max_questions: 32
+  max_new_tokens: 200
+  scoring:
+    scorers:
+      - name: tool_call

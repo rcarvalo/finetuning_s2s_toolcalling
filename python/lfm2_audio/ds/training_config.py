@@ -71,6 +71,13 @@ class TrainingConfig(BaseModel):
     weight_decay: float = Field(default=0.1, ge=0)
     min_lr_ratio: float = Field(default=0.1, ge=0, le=1)
     max_steps: int = Field(default=2000, gt=0)
+    num_epochs: float | None = Field(default=None, gt=0)
+    """Passes over the training set. Overrides ``max_steps`` via :meth:`steps_for`.
+
+    Steps are what the trainer counts, but epochs are what a recipe reasons in:
+    "two passes" stays meaningful when the corpus grows, a step count does not.
+    """
+
     warmup_steps: int = Field(default=100, ge=0)
     batch_size: int = Field(default=2, gt=0)
     dataloader_num_workers: int = Field(default=2, ge=0)
@@ -90,6 +97,19 @@ class TrainingConfig(BaseModel):
     lora: LoraConfig = Field(default_factory=LoraConfig)
     freeze: FreezeConfig = Field(default_factory=FreezeConfig)
     evaluation: EvaluationScheduleConfig = Field(default_factory=EvaluationScheduleConfig)
+
+    def steps_for(self, dataset_size: int) -> int:
+        """Number of optimizer steps to run over ``dataset_size`` examples.
+
+        ``num_epochs`` wins when set; otherwise ``max_steps`` is taken as-is.
+        Always at least one step, so a tiny smoke-test corpus still trains.
+        """
+        if self.num_epochs is None:
+            return self.max_steps
+        if dataset_size <= 0:
+            message = f"dataset_size must be > 0 to derive steps, got {dataset_size}"
+            raise ValueError(message)
+        return max(1, int(self.num_epochs * dataset_size / self.batch_size))
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> TrainingConfig:

@@ -65,9 +65,7 @@ def main() -> int:
             unique.append(row)
     duplicates = len(train_rows) - len(unique)
 
-    train, test, report = stratified_split(
-        unique, test_size=args.test_size, seed=args.seed, target=_target_of_row
-    )
+    train, test, report = stratified_split(unique, test_size=args.test_size, seed=args.seed, target=_target_of_row)
     print(f"source {args.source}: {len(train_rows)} rows, {duplicates} duplicate utterance(s) dropped")
     print(report.summary())
 
