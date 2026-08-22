@@ -97,16 +97,27 @@ class LiquidAudioBackend(LFM2Audio):
         logger.info("adaptateur LoRA fusionné depuis %s", adapter)
 
     def _warmup_detokenizer(self) -> None:
-        """Chauffe le détokeniseur Mimi en mode streaming.
+        """Warm the Mimi detokenizer in streaming mode — best effort.
 
-        Comme la démo officielle : décoder frame par frame pendant la génération
-        rend la première frame audible en ~80 ms, au lieu d'attendre un décodage
-        en bloc à la fin du tour.
+        Decoding frame by frame during generation makes the first frame audible
+        in ~80 ms instead of waiting for a block decode at the end of the turn.
+
+        Deliberately non-fatal. This is a latency optimisation, and it reaches
+        code that torch.compile may need to build kernels for — on an image
+        without a C compiler that raises, and letting it propagate turned a
+        slower first frame into a worker that would not boot at all. A model
+        that answers slowly beats a model that does not answer.
         """
-
-        with self._mimi.streaming(1), torch.no_grad():
-            for _ in range(_MIMI_WARMUP_STEPS):
-                self._mimi.decode(torch.randint(_END_OF_AUDIO_CODE, (1, 8, 1), device="cuda"))
+        try:
+            with self._mimi.streaming(1), torch.no_grad():
+                for _ in range(_MIMI_WARMUP_STEPS):
+                    self._mimi.decode(torch.randint(_END_OF_AUDIO_CODE, (1, 8, 1), device="cuda"))
+        except Exception as error:
+            logger.warning(
+                "detokenizer warmup skipped (%s: %s) — the first audio frame will be slower, generation is unaffected",
+                type(error).__name__,
+                error,
+            )
 
     # ------------------------------------------------------------------ #
     # Génération
