@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Fixed
+- `Dockerfile.serve` (vLLM worker) carried the same missing-C-compiler defect as
+  the liquid one: `build-essential` added before it cost another 20-minute build.
 - Serverless worker crashed at generation time with "Failed to find C compiler".
   `python:*-slim` ships none, and LFM2's causal convolution calls a Triton kernel
   that is JIT-compiled on first use — so `TORCHDYNAMO_DISABLE=1` does not help,
