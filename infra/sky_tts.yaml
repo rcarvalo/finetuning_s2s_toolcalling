@@ -1,0 +1,83 @@
+# Voxtral TTS batch on RunPod — synthesize the fresh test set (and later the
+# conversational corpus) with the STACK THAT MATCHES.
+#
+# Why not Colab: five documented attempts died on the CUDA-13 vllm wheel vs the
+# CUDA-12.8 Python-3.13 Colab image (libcudart shimmed, flash-attn/triton
+# backends still abort in C++). The official vllm/vllm-openai:v0.22.0 image
+# ships the exact CUDA stack its wheels were built for; vllm-omni 0.22.0 pairs
+# with it. That is the whole trick.
+#
+#   set -a; source .env; set +a
+#   sky launch -c voxtral-tts infra/sky_tts.yaml --down --env HF_TOKEN
+#
+# Produces data/test_fresh.jsonl + WAVs, pushed to the Hub as the `test_fresh`
+# split of Rcarvalo/tc-en-voice-agent-v1.
+
+name: voxtral-tts
+
+resources:
+  cloud: runpod
+  accelerators: RTX4090:1      # Voxtral 4B bf16 fits easily in 24 GB
+  image_id: docker:vllm/vllm-openai:v0.22.0
+  disk_size: 60
+
+workdir: .
+
+envs:
+  HF_TOKEN: ""
+
+setup: |
+  pip install -q vllm-omni==0.22.0 mistral_common
+  pip install -q -e ".[serving-liquid]" kokoro pyarrow
+
+run: |
+  set -e
+  nohup vllm serve mistralai/Voxtral-4B-TTS-2603 --omni \
+      --gpu-memory-utilization 0.85 > voxtral.log 2>&1 &
+  for i in $(seq 1 120); do
+    curl -sf http://localhost:8000/health >/dev/null 2>&1 && break
+    sleep 5
+  done
+  curl -sf http://localhost:8000/health >/dev/null || { tail -30 voxtral.log; exit 1; }
+  echo "Voxtral up"
+
+  # Held-out voices only: this set measures generalization.
+  lfm2-synthesize-audio --engine voxtral \
+      --dialogues data/test_fresh_src.jsonl --audio-root data/audio_test_fresh \
+      --out data/test_fresh.jsonl --split test \
+      --voices neutral_male,neutral_female --concurrency 8
+
+  python - <<'PY'
+  # Push as a split of the curated dataset repo (audio bytes, same layout).
+  import io, json
+  import pyarrow as pa, pyarrow.parquet as pq
+  from huggingface_hub import HfApi
+
+  rows = []
+  for line in open("data/test_fresh.jsonl", encoding="utf-8"):
+      d = json.loads(line)
+      user = next(t for t in d["turns"] if t["role"] == "user")
+      calls = next((t.get("tool_calls") for t in d["turns"] if t["role"] == "assistant"), None)
+      call = (calls or [None])[0]
+      rows.append({
+          "id": d["id"],
+          "audio": {"bytes": open(f"data/audio_test_fresh/{user['audio']}", "rb").read(),
+                    "path": user["audio"]},
+          "utterance": user.get("text", ""),
+          "has_tool_call": bool(call),
+          "tool_name": (call or {}).get("name"),
+          "arguments": json.dumps((call or {}).get("arguments")) if call else None,
+          "assistant_text": next((t.get("text") for t in d["turns"]
+                                  if t["role"] == "assistant" and t.get("text")), None),
+          "expected_calls": json.dumps(calls or []),
+          "voice": user.get("voice"),
+          "target": (d.get("meta") or {}).get("target"),
+          "style": (d.get("meta") or {}).get("style"),
+          "depth": (d.get("meta") or {}).get("depth"),
+      })
+  pq.write_table(pa.Table.from_pylist(rows), "test_fresh.parquet")
+  HfApi().upload_file(path_or_fileobj="test_fresh.parquet",
+                      path_in_repo="data/test_fresh.parquet",
+                      repo_id="Rcarvalo/tc-en-voice-agent-v1", repo_type="dataset")
+  print(f"pushed {len(rows)} fresh test cases")
+  PY

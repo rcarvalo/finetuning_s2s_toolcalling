@@ -142,3 +142,15 @@ Verified along the way:
 Nothing here blocks the *training* work: the corpus we already have (2729 train,
 200 + 12 held out) is enough to run rung 1 of the ladder and learn where the
 model actually fails.
+
+### Update (same day): options 1–3 closed, option 4 packaged
+
+The Colab route died deeper than cudart: with `libcudart.so.13` shimmed from
+the NVIDIA apt repo (`cuda-cudart-13-0` — that part works), the vLLM stage
+engine still aborts in C++ during model load, under FLASH_ATTN and TRITON_ATTN
+alike, eager or compiled. The CUDA-13 wheel expects the full CUDA-13 userland,
+not just cudart. **The way out is owning the image**: `infra/sky_tts.yaml`
+runs Voxtral on RunPod inside `vllm/vllm-openai:v0.22.0` — the exact stack the
+wheel was built for — synthesizes `data/test_fresh_src.jsonl` (300 unseen
+utterances, held-out voices, committed) and pushes the `test_fresh` split to
+the Hub. One `sky launch` away.
