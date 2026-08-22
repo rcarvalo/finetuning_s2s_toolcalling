@@ -1664,21 +1664,6 @@ http = [
 ]
 
 [[package]]
-name = "gguf"
-version = "0.19.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-    { name = "pyyaml" },
-    { name = "requests" },
-    { name = "tqdm" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/48/ae/17f1308ae45cd7b08ebb521747d5b23f4efc4d172038a4e228dd5106c3ff/gguf-0.19.0.tar.gz", hash = "sha256:dbadcd6cc7ccd44256f2229fe7c2dff5e8aa5cf0612ab987fd2b1a57e428923f", size = 111220, upload-time = "2026-05-06T13:04:03.667Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b3/bb/d71d6da82763528c2c2ed6b59a9d6142c6595545a4c448e2085d155e88c2/gguf-0.19.0-py3-none-any.whl", hash = "sha256:70bcd10edfe697fb2dad6e40af2234b9d8ece9a41a99761405121ebda1c3c1cd", size = 118475, upload-time = "2026-05-06T13:04:02.588Z" },
-]
-
-[[package]]
 name = "google-auth"
 version = "2.56.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2556,7 +2541,7 @@ requires-dist = [
     { name = "transformers", marker = "extra == 'serving-liquid'", specifier = ">=4.55" },
     { name = "transformers", marker = "extra == 'train'", specifier = ">=4.55" },
     { name = "uvicorn", marker = "extra == 'serve'", specifier = ">=0.30" },
-    { name = "vllm-omni", marker = "extra == 'serving'", specifier = ">=0.22.0" },
+    { name = "vllm-omni", marker = "extra == 'serving'", specifier = ">=0.22,<0.23" },
     { name = "wandb", marker = "extra == 'train'", specifier = ">=0.18" },
     { name = "websockets", marker = "extra == 'serve'", specifier = ">=13.0" },
 ]
@@ -6084,7 +6069,7 @@ wheels = [
 
 [[package]]
 name = "transformers"
-version = "5.15.1"
+version = "5.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "huggingface-hub" },
@@ -6097,9 +6082,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/92/c50c61da7046bbb59a4d011291aeadcfb4d7980ab36fdb31e93823a3fb93/transformers-5.15.1.tar.gz", hash = "sha256:27c996bd9075ddc82d40f8590dfdc81ea45f611bfca477e0db5d7fd257a482f7", size = 9378434, upload-time = "2026-08-19T11:28:20.33Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e7/e6/4134ea2fbea322cddc7ffc94a0d8ee47fe32ce8e876b320cd37d88edfc4d/transformers-5.8.1.tar.gz", hash = "sha256:4dd5b6de4105725104d84fd6abd74b305f4debfc251b38c648ee5dd087cf543b", size = 8532019, upload-time = "2026-05-13T03:21:57.234Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/c4/a12e1d9b387fb0c40a57116db82b457e8c771cb419163cda29204d74a595/transformers-5.15.1-py3-none-any.whl", hash = "sha256:b7cdf238ff583e3a58dbc7fa34da1aaf091ce063141f65a30538160bd5afe93f", size = 11749582, upload-time = "2026-08-19T11:28:16.726Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/b1/8be7e7ef0b5200491312201918b6125ef9c9df9dd0f0240ccef9ac824e6b/transformers-5.8.1-py3-none-any.whl", hash = "sha256:5340fb95962162cdfdae5cc91d7f8fedd92ed75216c1154c5e1f590fcf56dd0e", size = 10632882, upload-time = "2026-05-13T03:21:52.876Z" },
 ]
 
 [[package]]
@@ -6270,7 +6255,7 @@ wheels = [
 
 [[package]]
 name = "vllm-omni"
-version = "0.26.0"
+version = "0.22.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "accelerate" },
@@ -6280,16 +6265,13 @@ dependencies = [
     { name = "diffusers" },
     { name = "einops" },
     { name = "fa3-fwd" },
-    { name = "gguf" },
     { name = "imageio", extra = ["ffmpeg"] },
     { name = "janus" },
-    { name = "msgpack" },
     { name = "omegaconf" },
     { name = "onnxruntime" },
     { name = "openai-whisper" },
     { name = "prettytable" },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
+    { name = "pydub" },
     { name = "pyzmq" },
     { name = "safetensors" },
     { name = "soundfile" },
@@ -6299,7 +6281,7 @@ dependencies = [
     { name = "x-transformers" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5b/db/9e3b4a2717848f55a7a7253cd8ad5421e8e681302ad0902f57f6f0637991/vllm_omni-0.26.0-py3-none-any.whl", hash = "sha256:ed12206b31a64685511854bd7cba18efe91d0dbfdbc8433beda718dcf556f601", size = 5858045, upload-time = "2026-08-03T16:08:00.756Z" },
+    { url = "https://files.pythonhosted.org/packages/14/14/c8a98aa4395ada474a0a1808d26cbfe5c640f814f056e65bd3331332fd8f/vllm_omni-0.22.0-py3-none-any.whl", hash = "sha256:df3c95a5834ce99f6d532a07883e34874bd8044d2f4ee890b4a5c512810d4ace", size = 3323049, upload-time = "2026-06-08T01:14:23.266Z" },
 ]
 
 [[package]]
