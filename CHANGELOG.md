@@ -33,6 +33,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 - `lfm2-dataset-inventory` CLI + `data_prep/hub_inventory.py`: Markdown inventory
   of a Hub author's datasets (step 3).
 - `docs/weekend_plan.md`: 7-step plan, status and comparability rules.
+- `docs/colab.md`: verified remote-execution procedure via `google-colab-cli`
+  (`colab new --gpu L4` + `colab exec -f`), which the MCP browser bridge cannot do
+  (it has no runtime-management tool). Confirmed on an L4 (23034 MiB, Python 3.13.15)
+  that vLLM 0.22.x and vllm-omni 0.22.0 still resolve — the versions the plugin targets.
 
 ### Conventions (from 2026-08-22)
 - New and modified code comments are written in English.

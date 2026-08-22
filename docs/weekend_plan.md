@@ -16,7 +16,9 @@ push, pre-commit green on a clean test run.
 
 ## Step 1–2 how-to
 
-Open `notebooks/colab_baseline_eval.ipynb` on an L4 runtime and run top to
+Automated path (preferred): `colab new -s baseline --gpu L4` then
+`colab exec -s baseline --timeout 900 -f <script>` — see [colab.md](colab.md).
+Manual path: open `notebooks/colab_baseline_eval.ipynb` on an L4 runtime and run top to
 bottom. Reports land in `reports/baseline_en_audio.json` and
 `reports/baseline_en_toolcalling.json`; download them and commit them to the
 branch. NISQA weights are optional (`NISQA_MODEL_PATH`); without them the
