@@ -32,6 +32,12 @@ chroma_db/
 *.ckpt
 
 # Données — brut jamais dans git (cf. docs/data.md)
+# Artefacts produits par les CLIs de dataset (repack, rehydratation, curation) :
+# volumineux et reproductibles, ils vivent sur le Hub, pas ici.
+data/repack/
+data/curated/
+data/tc_en_hub/
+*.parquet
 data/raw/
 data/interim/
 data/processed/

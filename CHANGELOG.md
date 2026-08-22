@@ -64,6 +64,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   deduplicate on the normalized user utterance (contractions folded) and refuse
   anything present in the held-out split; exit 1 on leakage. 15 tests.
 
+### Added (step 4b — trustworthy evaluation)
+- `data_prep/splitting.py` + `lfm2-dataset-repack`: carve a stratified held-out
+  split, deduplicated on the utterance so copies never straddle the boundary.
+  Generic over a target reader, deterministic per seed. 11 tests.
+- Curated dataset `Rcarvalo/tc-en-voice-agent-v1` (private): train 2729,
+  `test_utterances` 200 (unseen wording, seen voices — statistical power),
+  `test_voices` 12 (the original held-out voices — generalization). Tool
+  distribution preserved within one point.
+
 ### Conventions (from 2026-08-22)
 - New and modified code comments are written in English.
 - Work branches are named `rd/pr_rca_{action}` (action ≤ 2 words).
