@@ -10,9 +10,11 @@ import argparse
 import json
 import sys
 from pathlib import Path
+
 from liquid_audio import LFM2AudioProcessor
 from liquid_audio.data.mapper import LFM2AudioChatMapper
 from liquid_audio.data.preprocess import preprocess_dataset
+
 from lfm2_audio.core.chat_format import verify_special_tokens
 from lfm2_audio.data_prep.liquid_adapter import DialogueChatMessages
 from lfm2_audio.tools.schemas import RECEPTION_TOOL_DEFINITIONS
@@ -37,12 +39,9 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
 
-
-
     if args.tool_definitions:
         tool_definitions = json.loads(Path(args.tool_definitions).read_text(encoding="utf-8"))
     else:
-
         tool_definitions = RECEPTION_TOOL_DEFINITIONS
 
     processor = LFM2AudioProcessor.from_pretrained(args.model_id, device=args.device).eval()

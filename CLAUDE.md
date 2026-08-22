@@ -8,6 +8,21 @@ Fine-tuning, serving vLLM et orchestration tool-calling de LFM2.5-Audio-1.5B
 Python 3.12 · uv · pydantic · pytest · ruff + mypy · vLLM-Omni 0.22 (GPU) ·
 liquid-audio (référence)
 
+## Conventions de ce repo
+
+- **Un fichier = une classe.** Tolérance : les petites classes annexes (< 20
+  lignes) d'un même concept — protocole + implémentation triviale, erreur de
+  domaine, événements d'un même flux.
+- **Imports en tête de fichier, toujours.** La légèreté vient du **découpage**,
+  pas d'imports différés : un module qui a besoin de torch l'importe en tête et
+  n'est chargé que par qui l'utilise. La résolution par chaîne
+  (`core.lazy_component.LazyComponent`, les registres) fait le reste.
+  Deux exceptions, et deux seulement :
+  `lfm2_audio/__init__.py::__getattr__` (le mécanisme PEP 562 lui-même) et
+  `vllm_plugin/__init__.py::register` (protocole d'entry point vLLM).
+- **Les CLIs vivent uniquement dans `cli/`**, et n'y portent que l'argparse.
+  Toute logique testable descend dans le paquet métier correspondant.
+
 ## Écarts assumés avec les règles globales
 
 - **Layout `python/` et non `src/`** — choix explicite : sous-paquets par
@@ -17,10 +32,18 @@ liquid-audio (référence)
   `orchestrator`, `tools`, `data_prep`, `rag`, `cli`) sont vérifiés en mode
   relâché ; la liste est dans `pyproject.toml` avec sa justification.
 
+## Conventions de travail
+
+- **Commentaires et docstrings en ANGLAIS** pour tout code nouveau ou modifié
+  (l'existant en français migre au fil des retouches, pas en masse).
+- **Branches** : `rd/pr_rca_{action}` (action ≤ 2 mots, ex. `rd/pr_rca_eval_baseline`).
+- **CHANGELOG.md** tenu à jour à chaque push ; pre-commit vert sur tests propres.
+
 ## Commandes
 
 ```bash
 make install / install-serving / hooks
+uv sync --extra eval    # métriques audio (Whisper, DNSMOS, NISQA) + juge LLM
 make check        # lint-check + typecheck + test — ce que vérifie la CI
 make test         # pytest -m "not gpu"
 uv run pytest tests/test_waveform.py -q          # un seul fichier
@@ -44,6 +67,13 @@ vérifie sur Colab / pod. Dire explicitement ce qui n'a pas pu être exécuté.
   `ChatMLRenderer` refuse d'en rendre deux. C'était le bug multi-tours : N
   placeholders pour un seul signal → l'audio scatte sur une position périmée et
   le modèle n'entend plus rien au-delà du tour 1.
+- **Les scorers sont partagés entre éval et entraînement.** `BaseScorer` sert la
+  pipeline d'évaluation *et* le `ScoringCallback` : le WER du pas 500 et celui du
+  rapport final sortent du même code, donc ils sont comparables. Réimplémenter
+  une métrique dans un des deux contextes casse cette propriété.
+- **`ScoreStatus` distingue `UNAVAILABLE` de `FAILED`.** Le premier est une
+  absence de dépendance et ne dit rien du modèle ; le second est un échec réel.
+  Les confondre ferait passer une éval partielle pour une éval complète.
 - **`Waveform` transporte toujours sa fréquence.** L'encodeur mel est calibré
   16 kHz, le détokeniseur Mimi sort du 24 kHz ; un mélange ne lève aucune erreur,
   il dégrade juste les réponses. Ne jamais revenir à `tuple[ndarray, int]` nu.

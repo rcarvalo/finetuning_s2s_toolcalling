@@ -27,14 +27,15 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+import anthropic
+from google import genai
+
 from lfm2_audio.data_prep import synth_dialogues as sd
 from lfm2_audio.tools.schemas import (
     TOOLCALLING_EN_TOOL_DEFINITIONS,
     TOOLCALLING_EN_TOOL_NAMES,
 )
 from lfm2_audio.tools.toolcalling_en import build_toolcalling_en_registry
-from google import genai
-import anthropic
 
 # Modèle par défaut par fournisseur. Gemini Flash = très bon marché pour la
 # génération en volume (cf. estimation de coût en tête de notebook).

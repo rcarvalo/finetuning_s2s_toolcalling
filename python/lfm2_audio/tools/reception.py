@@ -121,7 +121,7 @@ class InMemoryReceptionBackend:
         }
         self.guest_wifi = {
             "ssid": "Entreprise-Guest",
-            "password": "Bienvenue2026!",
+            "password": "Bienvenue2026!",  # pragma: allowlist secret — fake demo DB
             "valid_until": f"{today}T23:59:59",
         }
         self.notifications: list[dict] = []

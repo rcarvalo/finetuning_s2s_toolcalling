@@ -56,28 +56,27 @@ GPU y tourne, y compris sur un Mac.
 
 ```
 python/lfm2_audio/
-├── core/          # abstractions transverses — erreurs, environnement, prompt ChatML
+├── core/          # transverse — erreurs, environnement, ChatML, résolution paresseuse
 ├── ds/            # structures de données — pydantic aux frontières, value objects
-│   ├── audio.py         Waveform (signal + fréquence, indissociables)
-│   ├── conversation.py  Conversation — garante de « un seul audio par prompt »
-│   ├── config.py        EngineConfig / GenerationConfig (pydantic)
-│   ├── dialogue.py      schéma JSONL d'entraînement (pydantic)
-│   └── reply.py         Reply + TurnMetrics
+├── scorer/        # métriques réutilisables — BaseScorer + une classe par métrique
+│   ├── audio/          wer.py · dnsmos.py · nisqa.py · whisper_transcriber.py
+│   └── text/           tool_call.py · reasoning.py · rubric.py · gemini_judge.py
+├── evaluation/    # pipeline d'éval — jeu de questions, génération, rapport
 ├── serving/       # chargement du modèle et backends d'inférence
-│   ├── model.py         LFM2Audio — ABC + fabrique `from_pretrained`
-│   ├── registry.py      catalogue des backends (import paresseux)
-│   ├── checkpoint/      sources → détection de layout → préparation
-│   └── backends/        vllm_omni.py · liquid.py · omni_engine.py
+│   ├── checkpoint/     sources → détection de layout → préparation (Strategy)
+│   └── backends/       vllm_omni.py · liquid.py · omni_engine.py
+├── training/      # wrapper du Trainer officiel + callbacks configurables
+│   └── callbacks/      console · wandb · checkpoint · hub_push · scoring
 ├── vllm_plugin/   # plugin out-of-tree vLLM-Omni (chargé dans chaque worker)
-├── training/      # SFT LoRA, gel encodeur / têtes audio, export de checkpoint
 ├── data_prep/     # génération, packing et conversion des datasets
 ├── tools/         # outils métier appelables par le modèle
 ├── orchestrator/  # boucle agent tool-calling, fillers, transport temps réel
 ├── rag/           # base de connaissances ChromaDB
-├── evaluation/    # scoring BFCL-style des tool calls, métriques de latence
-└── cli/          # points d.entrée `lfm2-*` (argparse seulement)
+├── remote/        # client de l'endpoint serverless
+└── cli/           # points d'entrée `lfm2-*` — argparse seulement
+    └── data/ · eval/ · serve/ · train/
 
-configs/{serving,training,sql}/   tests/   docs/   notebooks/   data/
+configs/{serving,training,sql}/   tests/   docs/   notebooks/   benchmark/
 ```
 
 Trois patterns structurent le serving, chacun justifié par une pluralité réelle
@@ -116,9 +115,28 @@ accelerate launch -m lfm2_audio.cli.train.sft --config configs/training/phase_en
 lfm2-eval-audio --backend vllm --checkpoint exports/tc_en --cases ... --arg-match token_f1
 ```
 
+## Évaluer
+
+```bash
+lfm2-evaluate --checkpoint exports/tc_en --questions benchmark/toolcalling_en/cases.sample.jsonl
+lfm2-evaluate --list-scorers     # ce qui est mesurable sur cette machine
+```
+
+Cinq métriques derrière un contrat unique (`BaseScorer`) : **WER** (audio
+re-transcrit), **DNSMOS** et **NISQA** (MOS prédit sans référence), **tool
+calling** (BFCL-style), **raisonnement** (juge LLM sur rubrique versionnée).
+Celles dont les dépendances manquent sont reportées `unavailable` avec la marche
+à suivre — la campagne n'échoue pas pour autant.
+
+Ce sont **les mêmes objets** qui tournent pendant l'entraînement, tous les N pas
+(`evaluation:` dans la recette YAML) : les chiffres du pas 500 et ceux du rapport
+final sont donc comparables. Voir [docs/evaluation.md](docs/evaluation.md).
+
 ## Documentation
 
 - [docs/serving.md](docs/serving.md) — charger un modèle, choisir un backend, régler la latence
+- [docs/evaluation.md](docs/evaluation.md) — les métriques, leurs dépendances, écrire un scorer
+- [docs/training.md](docs/training.md) — le wrapper du Trainer officiel et ses callbacks
 - [docs/architecture.md](docs/architecture.md) — découpage du paquet et pourquoi
 - [docs/vllm_omni_integration.md](docs/vllm_omni_integration.md) — design du plugin out-of-tree
 - [docs/optimization_audit.md](docs/optimization_audit.md) — leviers de latence mesurés

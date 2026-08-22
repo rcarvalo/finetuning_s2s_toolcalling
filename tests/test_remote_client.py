@@ -34,7 +34,7 @@ def _final_event(text: str = "bonjour") -> dict[str, Any]:
 def _client(handler: Any) -> LiquidAudioClient:
     return LiquidAudioClient(
         ENDPOINT,
-        api_key="rp_test",
+        api_key="rp_test",  # pragma: allowlist secret — test fixture
         poll_interval_s=0.0,
         transport=httpx.MockTransport(handler),
     )

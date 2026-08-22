@@ -1,0 +1,24 @@
+{"id": "base_en_01", "tools": [], "turns": [{"role": "user", "text": "Hi there! How are you doing today?"}]}
+{"id": "base_en_02", "tools": [], "turns": [{"role": "user", "text": "Can you explain in simple words what photosynthesis is?"}]}
+{"id": "base_en_03", "tools": [], "turns": [{"role": "user", "text": "Tell me a short story about a robot learning to cook."}]}
+{"id": "base_en_04", "tools": [], "turns": [{"role": "user", "text": "What are three tips for sleeping better at night?"}]}
+{"id": "base_en_05", "tools": [], "turns": [{"role": "user", "text": "Describe the taste of a fresh strawberry to someone who has never eaten one."}]}
+{"id": "base_en_06", "tools": [], "turns": [{"role": "user", "text": "How does a rainbow form after the rain?"}]}
+{"id": "base_en_07", "tools": [], "turns": [{"role": "user", "text": "Give me a quick recipe idea using eggs, tomatoes and cheese."}]}
+{"id": "base_en_08", "tools": [], "turns": [{"role": "user", "text": "What is the difference between weather and climate?"}]}
+{"id": "base_en_09", "tools": [], "turns": [{"role": "user", "text": "Could you suggest a fun weekend activity for a family with two kids?"}]}
+{"id": "base_en_10", "tools": [], "turns": [{"role": "user", "text": "Why do cats purr? Keep it short please."}]}
+{"id": "base_en_11", "tools": [], "turns": [{"role": "user", "text": "Summarize the plot of Romeo and Juliet in two sentences."}]}
+{"id": "base_en_12", "tools": [], "turns": [{"role": "user", "text": "What should I pack for a three day hiking trip in the mountains?"}]}
+{"id": "base_en_13", "tools": [], "turns": [{"role": "user", "text": "Explain the rules of rock paper scissors to a five year old."}]}
+{"id": "base_en_14", "tools": [], "turns": [{"role": "user", "text": "What makes the ocean salty?"}]}
+{"id": "base_en_15", "tools": [], "turns": [{"role": "user", "text": "Give me a motivational quote and explain what it means."}]}
+{"id": "base_en_16", "tools": [], "turns": [{"role": "user", "text": "How do airplanes stay in the air?"}]}
+{"id": "base_en_17", "tools": [], "turns": [{"role": "user", "text": "What is a good first instrument to learn for an adult beginner?"}]}
+{"id": "base_en_18", "tools": [], "turns": [{"role": "user", "text": "Describe your ideal morning routine in a few sentences."}]}
+{"id": "base_en_19", "tools": [], "turns": [{"role": "user", "text": "Why is the sky blue during the day and orange at sunset?"}]}
+{"id": "base_en_20", "tools": [], "turns": [{"role": "user", "text": "Can you count from one to ten and then say the alphabet from A to E?"}]}
+{"id": "base_en_21", "tools": [], "turns": [{"role": "user", "text": "What are the main differences between coffee and tea?"}]}
+{"id": "base_en_22", "tools": [], "turns": [{"role": "user", "text": "Tell me an interesting fact about the planet Jupiter."}]}
+{"id": "base_en_23", "tools": [], "turns": [{"role": "user", "text": "How would you explain what the internet is to someone from the year eighteen hundred?"}]}
+{"id": "base_en_24", "tools": [], "turns": [{"role": "user", "text": "What is a healthy breakfast that takes less than five minutes to prepare?"}]}

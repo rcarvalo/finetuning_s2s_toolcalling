@@ -33,11 +33,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
+import httpx
 import numpy as np
+import soundfile as sf
 import torch
 import torchaudio
-import soundfile as sf
-import httpx
 from kokoro import KPipeline
 
 SAMPLE_RATE = 16_000

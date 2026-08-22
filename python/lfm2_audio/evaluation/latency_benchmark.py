@@ -5,12 +5,8 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 
-from lfm2_audio.evaluation.latency import (
-    DEFAULT_PROMPTS,
-    LatencyReport,
-    LatencySample,
-    format_ms,
-)
+from lfm2_audio.evaluation.latency import DEFAULT_PROMPTS, LatencyReport, format_ms
+from lfm2_audio.evaluation.latency_sample import LatencySample
 from lfm2_audio.serving.model import LFM2Audio
 
 logger = logging.getLogger(__name__)

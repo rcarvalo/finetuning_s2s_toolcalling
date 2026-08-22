@@ -18,26 +18,21 @@ pas sûr de tes droits de redistribution.
 
 from __future__ import annotations
 
+import argparse
+from pathlib import Path
 from typing import Any
 
-import argparse
-import json
-import sys
-from pathlib import Path
-
-from datasets import Audio, Dataset
+from datasets import Audio, Dataset, DatasetDict
+from huggingface_hub import HfApi
 
 from lfm2_audio.data_prep.hf_dataset import (
     DEFAULT_LICENSE,
     dataset_card,
-    dialogue_to_row,
     load_rows,
 )
-from datasets import DatasetDict
-from huggingface_hub import HfApi
 
 
-def build_split(jsonl: str | Path, audio_root: str | Path) -> Any:  # noqa: ANN401 — Dataset HF non typé
+def build_split(jsonl: str | Path, audio_root: str | Path) -> Any:
 
     ds = Dataset.from_list(load_rows(jsonl, audio_root))
     return ds.cast_column("audio", Audio(sampling_rate=16_000))
@@ -53,7 +48,6 @@ def main() -> None:
     ap.add_argument("--public", dest="private", action="store_false")
     ap.add_argument("--license", default=DEFAULT_LICENSE)
     args = ap.parse_args()
-
 
     splits = {"train": build_split(args.train, args.audio_root)}
     if args.test:

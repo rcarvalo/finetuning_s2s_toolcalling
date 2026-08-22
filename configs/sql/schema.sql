@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'agent_ro') THEN
-        CREATE ROLE agent_ro LOGIN PASSWORD 'CHANGE_ME';
+        CREATE ROLE agent_ro LOGIN PASSWORD 'CHANGE_ME';  -- pragma: allowlist secret (placeholder)
     END IF;
 END $$;
 -- GRANT CONNECT ON DATABASE reception TO agent_ro;  -- adapter au nom de la base
