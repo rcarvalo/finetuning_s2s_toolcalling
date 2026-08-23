@@ -4,6 +4,12 @@
 # reason this runs on RunPod and not Colab — see docs/pre_training_review.md §5).
 set -euo pipefail
 
+# In-image runs have /repo baked; a bare-pod run clones it.
+if [ ! -d /repo ]; then
+    git clone --branch "${REPO_BRANCH:-rd/pr_rca_eval_baseline}" --depth 1 \
+        https://github.com/rcarvalo/finetuning_s2s_toolcalling /repo
+fi
+
 echo "=== deps ==="
 pip install -q vllm-omni==0.22.0 mistral_common soundfile httpx pyarrow \
     numpy pydantic pydantic-settings pyyaml huggingface-hub

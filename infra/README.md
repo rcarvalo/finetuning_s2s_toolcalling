@@ -1,11 +1,18 @@
 # Infra RunPod — inférence serverless + entraînement batch
 
-Deux chemins indépendants :
+Un Docker par tâche, et Colab (crédits) partout où c'est possible :
 
-| Besoin | Entrée | Coût |
-|---|---|---|
-| Inférence S2S depuis le poste local / le Reachy Mini | endpoint **serverless** (scale-to-zero) | à la seconde d'exécution |
-| Batch d'entraînement lancé depuis le poste local | **pod** éphémère via SkyPilot | durée du job, pod détruit ensuite |
+| Tâche | Où | Image | Coût |
+|---|---|---|---|
+| Inférence S2S (poste local / Reachy) | RunPod **serverless** | `Dockerfile.serve*` (build GitHub→RunPod) | à la seconde |
+| **Entraînement** (LoRA, itérations vN) | **Colab L4** | aucune — `pip install -e .[train]` | crédits Colab |
+| **Évaluation** (campagnes tool_call, WER…) | **Colab L4** | aucune — `pip install -e .[serving-liquid,eval]` | crédits Colab |
+| **TTS Voxtral** (production de données) | RunPod **pod** éphémère | `Dockerfile.tts` (build GitHub Actions → GHCR) | ~1 $/batch |
+
+Le TTS est la seule tâche impossible sur Colab (pile CUDA vLLM auto-cohérente
+requise — cinq tentatives documentées dans `docs/pre_training_review.md` §5).
+L'image `ghcr.io/rcarvalo/lfm2-tts:latest` se rebuild automatiquement quand
+`infra/Dockerfile.tts` ou les scripts du job changent.
 
 ## 1. Inférence serverless (façon NIM)
 

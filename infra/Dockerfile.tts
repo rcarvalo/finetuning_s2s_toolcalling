@@ -1,0 +1,25 @@
+# TTS batch image — Voxtral via vLLM-Omni, self-consistent CUDA stack.
+#
+# One image per job (see infra/README.md): this one only produces DATA
+# (speech synthesis). Training and evaluation run on Colab; serverless
+# inference has its own images (Dockerfile.serve*).
+#
+# Base = the official vLLM image for the exact version vllm-omni 0.22 pairs
+# with. Its CUDA userland matches its wheels by construction — the whole class
+# of libcudart/driver failures that killed five Colab attempts does not exist
+# here (CUDA 12.x minor-version compatibility covers the host driver).
+#
+# Built by .github/workflows/tts-image.yml → ghcr.io/<owner>/lfm2-tts:latest
+
+FROM vllm/vllm-openai:v0.22.0
+
+RUN pip install -q vllm-omni==0.22.0 mistral_common soundfile httpx pyarrow \
+    numpy pydantic pydantic-settings pyyaml huggingface-hub
+
+COPY . /repo
+
+# The base image's entrypoint is the OpenAI API server; this image is a batch
+# job, so neutralize it and let the job script own the lifecycle (it starts
+# the server itself, waits for health, synthesizes, pushes to the Hub).
+ENTRYPOINT []
+CMD ["bash", "/repo/infra/pod_tts_job.sh"]
