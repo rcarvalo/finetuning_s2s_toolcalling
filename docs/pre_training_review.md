@@ -154,3 +154,23 @@ runs Voxtral on RunPod inside `vllm/vllm-openai:v0.22.0` — the exact stack the
 wheel was built for — synthesizes `data/test_fresh_src.jsonl` (300 unseen
 utterances, held-out voices, committed) and pushes the `test_fresh` split to
 the Hub. One `sky launch` away.
+
+### Final update: the fresh test set ships with Kokoro, not Voxtral
+
+The RunPod route also collapsed, differently: the official
+`vllm/vllm-openai:v0.22.0` image declares `cuda>=13.0`, RunPod assigns hosts
+semi-randomly (12.2/12.4/12.6/12.8 drew four times), and the one datacenter
+with CUDA-13 hosts (EUR-IS-1) sits behind an IP that Hugging Face rate-limits
+(429 on authenticated metadata calls, twice, 15 minutes apart). Two hours,
+no artifact — stopped.
+
+Kokoro was the pragmatic exit, and it is scientifically *stronger* for a test
+set: the repo already reserves held-out Kokoro voices (`af_sarah`, `bm_lewis`),
+and evaluating on a **different TTS engine** than training measures
+voice/engine transfer — closer to a real user than same-engine held-out voices.
+The trade-off is honest: fresh-set scores are not directly comparable to the
+Voxtral-voiced splits (harsher distribution shift), which is exactly what we
+want from a generalization probe. Voxtral synthesis remains the right tool for
+*training* data (matching the existing corpus); when needed, run it where the
+image's CUDA stack is native — or accept the EUR-IS-1 rate-limit with patient
+retries.
