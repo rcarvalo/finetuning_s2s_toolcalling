@@ -16,8 +16,9 @@ import os
 import threading
 from typing import Any
 
-os.environ.setdefault("TORCHDYNAMO_DISABLE", "1")
-
+# TORCHDYNAMO_DISABLE was set here historically (all-eager era). It is fatal
+# now: the deploy config compiles stage 0, and disabling dynamo kills that
+# stage at boot with 'aot_compile is not supported' (verified on L4, 08-23).
 import gradio as gr
 import numpy as np
 import soundfile as sf

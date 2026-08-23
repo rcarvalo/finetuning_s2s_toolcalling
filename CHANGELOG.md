@@ -6,6 +6,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Fixed
+- vLLM backend proven end-to-end on an L4: engine boots with the per-stage
+  deploy config (piecewise CUDA graphs on stage 0), steady-state **TTFA 0.28 s,
+  RTF 0.57** — the Colab-experience numbers. Two boot-killers found and fixed on
+  the way: vLLM 0.22.1's AOT-compile default is incompatible with the torch it
+  pins (`VLLM_USE_AOT_COMPILE=0` now baked into `Dockerfile.serve`), and the
+  tool-calling demo's module-level `TORCHDYNAMO_DISABLE=1` kills any compiled
+  stage (removed). First generation after boot pays ~6.5 s of warmup.
 - The vLLM serverless image would have run in eager mode: `Dockerfile.serve`
   never copied `configs/`, and the package's deploy-config default only resolves
   inside a repo checkout — so the engine silently fell back to no CUDA graphs

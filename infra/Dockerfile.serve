@@ -47,6 +47,12 @@ ENV LFM2_CHECKPOINT=${LFM2_CHECKPOINT} \
     LFM2_ADAPTER=${LFM2_ADAPTER} \
     LFM2_BACKEND=vllm \
     LFM2_DEPLOY_CONFIG=/app/configs/serving/vllm_omni.yaml \
+    # vLLM 0.22.1 defaults its AOT-compile path on, but the torch it pins
+    # (2.11) lacks the attribute that path requires — the compiled stage dies
+    # at boot with 'aot_compile is not supported'. Verified on an L4:
+    # disabling AOT boots the engine; piecewise CUDA graphs do not need it
+    # (measured TTFA 0.28s, RTF 0.57 with this exact configuration).
+    VLLM_USE_AOT_COMPILE=0 \
     LFM2_SERVE_CACHE=/models/cache \
     HF_HOME=/models/hf \
     PYTHONUNBUFFERED=1
