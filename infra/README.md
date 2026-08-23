@@ -118,3 +118,60 @@ sky down liquid-train                                       # détruire maintena
 
 Autre config d'entraînement : `--env TRAIN_CONFIG=configs/training/<fichier>.yaml`.
 Autre GPU : éditer `accelerators:` (`sky show-gpus --cloud runpod`).
+
+## Creating a serverless endpoint — verified recipe
+
+Settled on 2026-08-22 after four failed deployments. Every value below cost one.
+
+| Field | Value | Why |
+|---|---|---|
+| Branch | the working branch | not `main` — the Dockerfiles live on the feature branch |
+| Dockerfile path | `infra/Dockerfile.serve.liquid` or `infra/Dockerfile.serve` | the console scans the repo root and finds nothing |
+| Container disk | **30 GB** (liquid) / **45 GB** (vLLM) | default is 5 GB; the images are 8-12 GB |
+| Max workers | 1 | one listener does not need three model loads |
+| FlashBoot | on | keeps the worker warm between turns |
+| Idle timeout | 5-10 s | longer bills an idle worker after the last turn |
+
+### The four traps, in the order they bite
+
+**1. The endpoint is created before its image exists.** The GitHub build runs
+after creation, so the first worker waits on nothing. `INITIALIZING` with no
+container logs and `unhealthy: 0` is that, not a slow pull. Check
+`list-endpoint-releases`: no `GIT_BUILD` entry means no image.
+
+**2. The container disk is too small.** The image cannot be unpacked, and the
+symptom is identical to trap 1 — the container never reaches the point where it
+could log anything.
+
+**3. `python:*-slim` has no C compiler.** torch routes some ops to Triton kernels
+JIT-compiled on first use. The worker pulls its image, loads the model, then dies
+on the first generation. It fails *after* the pull, which reads as slowness.
+`build-essential` is the only fix — no environment variable disables this, since
+the kernel is reached through `torch._native`, not `torch.compile`.
+
+**4. Floating dependency bounds.** `vllm-omni>=0.22` resolves to the latest,
+which demands a newer vLLM than the wheel pinned by URL above it, and the build
+fails on the conflict. Pin the range.
+
+### Validate an install without paying for a build
+
+A failed image build costs twenty minutes; reproducing the same install on a
+Colab L4 costs three, and yields the resolver's actual error:
+
+```bash
+colab new -s deps-check --gpu L4
+colab exec -s deps-check --timeout 900 -f scripts/check_deps.py   # dry-run installs
+colab stop -s deps-check
+```
+
+### Reading a stuck worker
+
+`get-job-status` names the failing worker and says whether the queue is a
+capacity problem or a crash loop — `endpoint-health` alone does not.
+
+```bash
+# workers, their image tag, and their state
+mcp: list-endpoint-workers <endpoint>
+# what the container actually printed
+mcp: stream-worker-logs <endpoint> <workerId> --source container
+```
