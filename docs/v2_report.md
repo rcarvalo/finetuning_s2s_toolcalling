@@ -59,3 +59,27 @@ step 0: 0.281 (vanilla ref) → 100: 0.719 → 200: 0.688 → 300: 0.812 →
    the conversational corpus once synthesized (Phase B, real capability).
 3. The fresh Voxtral test set (300 unseen utterances, held-out voices) remains
    the missing measurement piece — blocked on the Voxtral server environment.
+
+## Final clean verdict — the fresh set (added 2026-08-23)
+
+300 cases the training corpus has **never seen in any form**: unseen wording
+(drawn from the conversational source, deduplicated against every training
+utterance) *and* an unseen TTS engine (Kokoro `af_sarah`/`bm_lewis` — training
+audio is entirely Voxtral). This measures voice/engine transfer, the closest
+proxy we have to a real user.
+
+| model | mean | emission | name | args (F1 ≥ 0.7) | abstention | parse |
+|---|---:|---|---|---|---|---|
+| vanilla | 0.250 | 0/225 | 0/225 | 0/225 | 75/75 | 300/300 |
+| v1 (June) | 0.827 | 224/225 | 222/225 | 176/225 | 72/75 | 300/300 |
+| **v2 @500** | **0.833** | **224/225 (99.6%)** | **222/225 (98.7%)** | **178/225 (79.1%)** | **72/75 (96%)** | **300/300** |
+
+Every acceptance threshold passes on fully held-out data: name 98.7% (>90),
+relevance ≈ 97% (>85), tolerant args 79.1% (>75), parse 100% (>98). The
+adapters transfer across TTS engines almost losslessly — emission and routing
+barely move from the seen-voice numbers.
+
+**v1 vs v2 on clean ground: a tie** (0.827 vs 0.833; the 2-case argument edge
+is noise at n=225). The June contamination accounted for v1's apparent
+advantage. v2 remains the deployable candidate on provenance: trained with
+zero test overlap, curve measured, adapter on the Hub.

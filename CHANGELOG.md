@@ -179,6 +179,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   12-voice set both adapters tie at 0.750. Full table: `docs/v2_report.md`.
 - First measured training curve: val 0.281 → 0.844 over 500 steps.
 
+### Results (clean verdict, 2026-08-23)
+- Fresh 300-case set (unseen wording + unseen TTS engine, Kokoro held-out
+  voices) synthesized LOCALLY in 4.7 min and pushed as the `test_fresh` split.
+- Clean scores: vanilla 0.250 → v1 0.827 ≈ v2 0.833. Emission 99.6%, name
+  98.7%, tolerant args 79.1%, abstention 96%, parse 100% — every acceptance
+  threshold passed on fully held-out data. v1 and v2 tie once contamination is
+  removed; v2 stays the deployable candidate on provenance.
+
 ### Conventions (from 2026-08-22)
 - New and modified code comments are written in English.
 - Work branches are named `rd/pr_rca_{action}` (action ≤ 2 words).
