@@ -27,6 +27,11 @@ WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
 COPY python ./python
 COPY infra/handler.py infra/bake_checkpoint.py ./infra/
+# The per-stage deploy config is what turns "vLLM" into "fast vLLM": stage-0
+# CUDA graphs and a short initial codec chunk are worth ~750ms → ~300ms TTFA.
+# The package default only finds it in a repo checkout, so the image must both
+# ship the file and point at it explicitly (see LFM2_DEPLOY_CONFIG below).
+COPY configs/serving ./configs/serving
 
 # vLLM 0.22 sur PyPI est buildé CUDA 13 ; les hôtes RunPod sont en CUDA 12 →
 # wheel cu129 officiel (même diagnostic que lfm2_audio/core/env.py). vllm-omni
@@ -41,6 +46,7 @@ ARG LFM2_ADAPTER=""
 ENV LFM2_CHECKPOINT=${LFM2_CHECKPOINT} \
     LFM2_ADAPTER=${LFM2_ADAPTER} \
     LFM2_BACKEND=vllm \
+    LFM2_DEPLOY_CONFIG=/app/configs/serving/vllm_omni.yaml \
     LFM2_SERVE_CACHE=/models/cache \
     HF_HOME=/models/hf \
     PYTHONUNBUFFERED=1

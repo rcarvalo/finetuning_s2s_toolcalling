@@ -6,6 +6,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Fixed
+- The vLLM serverless image would have run in eager mode: `Dockerfile.serve`
+  never copied `configs/`, and the package's deploy-config default only resolves
+  inside a repo checkout — so the engine silently fell back to no CUDA graphs
+  (~750 ms TTFA instead of ~300 ms). The image now ships
+  `configs/serving/vllm_omni.yaml` and the handler honours `LFM2_DEPLOY_CONFIG`,
+  failing loudly at boot if the file is missing. Caught before paying the build.
 - `Dockerfile.serve` (vLLM worker) carried the same missing-C-compiler defect as
   the liquid one: `build-essential` added before it cost another 20-minute build.
 - Serverless worker crashed at generation time with "Failed to find C compiler".

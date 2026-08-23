@@ -22,6 +22,7 @@ import functools
 import logging
 import os
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import runpod
@@ -29,6 +30,7 @@ from pydantic import ValidationError
 
 from lfm2_audio.core.prompt import DEFAULT_SYSTEM
 from lfm2_audio.ds.audio import Waveform
+from lfm2_audio.ds.inference_config import EngineConfig
 from lfm2_audio.remote.protocol import (
     AudioChunkEvent,
     ErrorEvent,
@@ -43,6 +45,21 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("lfm2_audio.handler")
 
 
+def _engine_config() -> EngineConfig | None:
+    """Engine settings from LFM2_DEPLOY_CONFIG, when the image ships one.
+
+    The per-stage deploy YAML is the difference between ~750 ms and ~300 ms of
+    TTFA on the vLLM backend (stage-0 CUDA graphs, short initial codec chunk).
+    The package's own default only resolves inside a repo checkout, so the
+    worker must be pointed at the baked file explicitly. A missing file fails
+    loudly at boot — a silently eager engine would look like "vLLM is slow".
+    """
+    deploy = os.environ.get("LFM2_DEPLOY_CONFIG")
+    if not deploy:
+        return None
+    return EngineConfig(deploy_config=Path(deploy))
+
+
 @functools.cache
 def get_model() -> LFM2Audio:
     """Charge le modèle au premier appel puis le réutilise (un par worker)."""
@@ -53,6 +70,7 @@ def get_model() -> LFM2Audio:
         checkpoint,
         backend=backend,
         system=os.environ.get("LFM2_SYSTEM", DEFAULT_SYSTEM),
+        engine=_engine_config(),
     )
 
 
