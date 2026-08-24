@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -72,3 +73,13 @@ def test_should_discard_silence_without_calling_the_endpoint(fake_client: _FakeC
 
     assert chunks == []
     assert fake_client.calls == []
+
+
+def test_should_save_user_and_reply_wavs_when_save_dir_set(fake_client: _FakeClient, tmp_path: Path) -> None:
+    handler = VoiceTurnHandler(fake_client, save_dir=tmp_path)  # type: ignore[arg-type]
+
+    list(handler.respond(_speech()))
+
+    saved = sorted(p.name for p in tmp_path.glob("*.wav"))
+    assert len(saved) == 1  # fake client has no last_reply → user WAV only
+    assert saved[0].endswith("_user.wav")

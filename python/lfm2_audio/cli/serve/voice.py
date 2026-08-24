@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+from pathlib import Path
 
 from fastrtc import ReplyOnPause, Stream
 
@@ -23,10 +24,20 @@ def main() -> None:
     parser.add_argument("--endpoint", required=True, help="RunPod serverless endpoint id")
     parser.add_argument("--max-tokens", type=int, default=None, help="cap on generated tokens per turn")
     parser.add_argument("--share", action="store_true", help="expose a public Gradio link")
+    parser.add_argument(
+        "--save-turns",
+        type=Path,
+        default=Path("reports/voice_turns"),
+        help="save each turn's user/reply WAVs here (listen to what the model heard); '' disables",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(name)s %(message)s")
-    handler = VoiceTurnHandler(LiquidAudioClient(args.endpoint), max_tokens=args.max_tokens)
+    handler = VoiceTurnHandler(
+        LiquidAudioClient(args.endpoint),
+        max_tokens=args.max_tokens,
+        save_dir=args.save_turns if str(args.save_turns) else None,
+    )
     stream = Stream(ReplyOnPause(handler.respond), modality="audio", mode="send-receive")
     stream.ui.launch(share=args.share)
 
