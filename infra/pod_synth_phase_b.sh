@@ -10,7 +10,18 @@
 # of the WAVs, under Rcarvalo/tc-en-voice-agent-v1 (phase_b/).
 set -euo pipefail
 
+# Container restarts re-run this script from scratch (a reclone even wipes the
+# audio). Once the corpus is on the Hub there is nothing left to do: park.
+if [ -f /phase_b_done ]; then
+    echo "ALREADY_DONE — corpus pushed; delete this pod."
+    sleep infinity
+fi
+
 cd /repo
+# A previous cycle may have pip-installed the package editable; that
+# registration SURVIVES restarts and its vllm_omni entry point kills the
+# server (it imports liquid_audio, absent here). Purge it.
+python3 -m pip uninstall -q -y lfm2-audio 2>/dev/null || true
 # NOT `pip install -e .`: that registers our vllm_omni.general_plugins entry
 # point, the Voxtral server then loads OUR plugin, which imports liquid_audio
 # — absent here — and the orchestrator dies. PYTHONPATH keeps the package
@@ -65,4 +76,6 @@ for local, remote in (
                     repo_id="Rcarvalo/tc-en-voice-agent-v1", repo_type="dataset")
     print(f"pushed {remote}")
 PY
+touch /phase_b_done
 echo PHASE_B_DONE
+sleep infinity
