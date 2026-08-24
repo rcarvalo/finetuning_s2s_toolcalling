@@ -2586,7 +2586,6 @@ train = [
 voice = [
     { name = "fastrtc", extra = ["vad"] },
     { name = "httpx" },
-    { name = "torchaudio" },
 ]
 
 [package.dev-dependencies]
@@ -2647,7 +2646,6 @@ requires-dist = [
     { name = "torchaudio", marker = "extra == 'serving-liquid'", specifier = ">=2.4" },
     { name = "torchaudio", marker = "extra == 'tooldata'", specifier = ">=2.4" },
     { name = "torchaudio", marker = "extra == 'train'", specifier = ">=2.4" },
-    { name = "torchaudio", marker = "extra == 'voice'", specifier = ">=2.4" },
     { name = "transformers", marker = "extra == 'eval'", specifier = ">=4.55" },
     { name = "transformers", marker = "extra == 'serving-liquid'", specifier = ">=4.55" },
     { name = "transformers", marker = "extra == 'train'", specifier = ">=4.55" },

@@ -40,9 +40,15 @@ class VoiceTurnHandler:
     def respond(
         self, audio: tuple[int, npt.NDArray[np.int16]]
     ) -> Generator[tuple[int, npt.NDArray[np.float32]], None, None]:
-        """One turn: mic PCM in, reply chunks out as they are generated."""
+        """One turn: mic PCM in, reply chunks out as they are generated.
+
+        The capture is sent at its native rate: the WAV payload carries the
+        sample rate and the worker resamples for the encoder on the GPU
+        (``vllm_omni.py``). Resampling here would drag torch into an app
+        meant to run on a torch-less client (laptop, Reachy Mini).
+        """
         sample_rate, samples = audio
-        question = Waveform.from_pcm16(np.asarray(samples), int(sample_rate)).for_encoder()
+        question = Waveform.from_pcm16(np.asarray(samples), int(sample_rate))
         if question.rms < _MIN_RMS:
             logger.info("utterance discarded (rms=%.5f): silence or echo", question.rms)
             return

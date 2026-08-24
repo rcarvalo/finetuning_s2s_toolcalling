@@ -44,14 +44,15 @@ def test_should_stream_chunks_as_they_arrive(fake_client: _FakeClient) -> None:
     assert [samples.size for _, samples in chunks] == [240, 480]
 
 
-def test_should_send_mono_16k_to_the_endpoint(fake_client: _FakeClient) -> None:
+def test_should_send_native_rate_mono_to_the_endpoint(fake_client: _FakeClient) -> None:
+    """No client-side resampling: the worker resamples on the GPU."""
     handler = VoiceTurnHandler(fake_client)  # type: ignore[arg-type]
 
     list(handler.respond(_speech(sample_rate=48_000)))
 
     sent = fake_client.calls[0]["audio"]
     assert isinstance(sent, Waveform)
-    assert sent.sample_rate == 16_000
+    assert sent.sample_rate == 48_000
     assert sent.samples.ndim == 1
 
 

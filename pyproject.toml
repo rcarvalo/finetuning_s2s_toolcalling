@@ -78,12 +78,11 @@ client = [
     "httpx>=0.27",
 ]
 # Assistant vocal mains-libres (lfm2-voice) : WebRTC + VAD côté client.
+# Torch-free on purpose: the mic capture is sent at its native rate and the
+# worker resamples on the GPU, so the app runs on a laptop or a Reachy Mini.
 voice = [
     "lfm2-audio[client]",
     "fastrtc[vad]>=0.0.20",
-    # Waveform.for_encoder resamples the 48 kHz mic capture to 16 kHz through
-    # torchaudio — the one heavy dependency this otherwise-light extra needs.
-    "torchaudio>=2.4",
 ]
 # App Gradio de test de l'endpoint serverless (app/gradio_app.py).
 app = [
