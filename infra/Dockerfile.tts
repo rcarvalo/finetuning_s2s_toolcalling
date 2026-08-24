@@ -13,6 +13,10 @@
 
 FROM vllm/vllm-openai:v0.22.0
 
+# git: the job refreshes /repo to the branch tip at boot (one image, many jobs).
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install -q vllm-omni==0.22.0 mistral_common soundfile httpx pyarrow \
     numpy pydantic pydantic-settings pyyaml huggingface-hub
 

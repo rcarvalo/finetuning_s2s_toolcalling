@@ -11,8 +11,16 @@ if [ ! -d /repo ]; then
     git clone --branch "$BRANCH" --depth 1 \
         https://github.com/rcarvalo/finetuning_s2s_toolcalling /repo
 fi
-git -C /repo fetch --depth 1 origin "$BRANCH" && git -C /repo checkout -f FETCH_HEAD
-git -C /repo log --oneline -1
+# Tolerant refresh: a missing git or an offline registry must not kill the
+# job — the baked /repo is at worst a few commits old.
+if command -v git >/dev/null 2>&1; then
+    git -C /repo fetch --depth 1 origin "$BRANCH" \
+        && git -C /repo checkout -f FETCH_HEAD \
+        && git -C /repo log --oneline -1 \
+        || echo "repo refresh failed — running the baked revision"
+else
+    echo "git absent — running the baked revision"
+fi
 
 # One image, several jobs: TTS_JOB selects what this pod produces.
 if [ "${TTS_JOB:-fresh}" = "phase_b" ]; then
