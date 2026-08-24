@@ -54,6 +54,12 @@ ENV LFM2_CHECKPOINT=${LFM2_CHECKPOINT} \
     # disabling AOT boots the engine; piecewise CUDA graphs do not need it
     # (measured TTFA 0.28s, RTF 0.57 with this exact configuration).
     VLLM_USE_AOT_COMPILE=0 \
+    # FlashInfer's sampler JIT-compiles CUDA kernels at engine boot and needs
+    # nvcc; this image has a C compiler but no CUDA toolkit, so stage 0 died
+    # during READY with "Could not find nvcc" (seen on RunPod 4090 workers;
+    # Colab masked it because its VMs ship the full toolkit). The PyTorch
+    # native sampler needs no JIT and is equivalent at batch size 1.
+    VLLM_USE_FLASHINFER_SAMPLER=0 \
     LFM2_SERVE_CACHE=/models/cache \
     HF_HOME=/models/hf \
     PYTHONUNBUFFERED=1

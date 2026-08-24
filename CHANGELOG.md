@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 
 ## [Unreleased]
 
+### Fixed
+- Serverless vLLM workers crash-looped at boot: FlashInfer's sampler JIT
+  needs `nvcc` and the serve image ships no CUDA toolkit ("Could not find
+  nvcc", StageEngineCoreProc dies during READY). Colab masked the issue —
+  its VMs carry the full toolkit. `VLLM_USE_FLASHINFER_SAMPLER=0` is now
+  baked into `Dockerfile.serve` (and set on the endpoint), falling back to
+  vLLM's native sampler — no JIT, equivalent at batch size 1.
+
 ### Added
 - GitHub Actions workflow `build-serve-image`: builds `infra/Dockerfile.serve`
   and pushes it to `ghcr.io/rcarvalo/lfm2-serve-vllm` on every push to the
