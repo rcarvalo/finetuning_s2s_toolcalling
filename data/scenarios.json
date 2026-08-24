@@ -1,0 +1,55 @@
+[
+  {
+    "id": "s1_weather_followup",
+    "turns": [
+      "Hey, what's the weather like in Paris right now?",
+      "Great, and should I bring an umbrella tomorrow?"
+    ]
+  },
+  {
+    "id": "s2_db_orders",
+    "turns": [
+      "How many orders do we have in the system?",
+      "And which customer placed the most recent one?"
+    ]
+  },
+  {
+    "id": "s3_chitchat_then_search",
+    "turns": [
+      "Good morning! How are you doing today?",
+      "Nice! Can you look up who won the last Ballon d'Or?"
+    ]
+  },
+  {
+    "id": "s4_inference_depth",
+    "turns": [
+      "I'm trying to figure out which of our products just isn't selling."
+    ]
+  },
+  {
+    "id": "s5_disfluent",
+    "turns": [
+      "Um, so, like, could you, uh, check the, you know, the current price of gold?"
+    ]
+  },
+  {
+    "id": "s6_db_employee",
+    "turns": [
+      "What's the email address of our employee Sarah, from the engineering team?"
+    ]
+  },
+  {
+    "id": "s7_no_tool_boundary",
+    "turns": [
+      "What's the capital of Italy?"
+    ]
+  },
+  {
+    "id": "s8_mixed_long",
+    "turns": [
+      "Search for the latest news about humanoid robots.",
+      "Interesting. Do we have any robotics products in our own catalog?",
+      "Thanks, you've been really helpful today!"
+    ]
+  }
+]

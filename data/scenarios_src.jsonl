@@ -1,0 +1,13 @@
+{"id": "s1_weather_followup__t0", "tools": ["web_search", "db_query"], "turns": [{"role": "user", "text": "Hey, what's the weather like in Paris right now?"}, {"role": "assistant", "text": "placeholder"}]}
+{"id": "s1_weather_followup__t1", "tools": ["web_search", "db_query"], "turns": [{"role": "user", "text": "Great, and should I bring an umbrella tomorrow?"}, {"role": "assistant", "text": "placeholder"}]}
+{"id": "s2_db_orders__t0", "tools": ["web_search", "db_query"], "turns": [{"role": "user", "text": "How many orders do we have in the system?"}, {"role": "assistant", "text": "placeholder"}]}
+{"id": "s2_db_orders__t1", "tools": ["web_search", "db_query"], "turns": [{"role": "user", "text": "And which customer placed the most recent one?"}, {"role": "assistant", "text": "placeholder"}]}
+{"id": "s3_chitchat_then_search__t0", "tools": ["web_search", "db_query"], "turns": [{"role": "user", "text": "Good morning! How are you doing today?"}, {"role": "assistant", "text": "placeholder"}]}
+{"id": "s3_chitchat_then_search__t1", "tools": ["web_search", "db_query"], "turns": [{"role": "user", "text": "Nice! Can you look up who won the last Ballon d'Or?"}, {"role": "assistant", "text": "placeholder"}]}
+{"id": "s4_inference_depth__t0", "tools": ["web_search", "db_query"], "turns": [{"role": "user", "text": "I'm trying to figure out which of our products just isn't selling."}, {"role": "assistant", "text": "placeholder"}]}
+{"id": "s5_disfluent__t0", "tools": ["web_search", "db_query"], "turns": [{"role": "user", "text": "Um, so, like, could you, uh, check the, you know, the current price of gold?"}, {"role": "assistant", "text": "placeholder"}]}
+{"id": "s6_db_employee__t0", "tools": ["web_search", "db_query"], "turns": [{"role": "user", "text": "What's the email address of our employee Sarah, from the engineering team?"}, {"role": "assistant", "text": "placeholder"}]}
+{"id": "s7_no_tool_boundary__t0", "tools": ["web_search", "db_query"], "turns": [{"role": "user", "text": "What's the capital of Italy?"}, {"role": "assistant", "text": "placeholder"}]}
+{"id": "s8_mixed_long__t0", "tools": ["web_search", "db_query"], "turns": [{"role": "user", "text": "Search for the latest news about humanoid robots."}, {"role": "assistant", "text": "placeholder"}]}
+{"id": "s8_mixed_long__t1", "tools": ["web_search", "db_query"], "turns": [{"role": "user", "text": "Interesting. Do we have any robotics products in our own catalog?"}, {"role": "assistant", "text": "placeholder"}]}
+{"id": "s8_mixed_long__t2", "tools": ["web_search", "db_query"], "turns": [{"role": "user", "text": "Thanks, you've been really helpful today!"}, {"role": "assistant", "text": "placeholder"}]}
