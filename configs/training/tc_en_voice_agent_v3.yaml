@@ -1,0 +1,64 @@
+# v3 — Phase A + Phase B mixed: the decision AND the grounded spoken answer.
+#
+# What v2's end-to-end scenarios proved (docs/scenario_findings.md): routing,
+# argument extraction and real tool round-trips all work; the spoken answer
+# AFTER a tool result is babble, because the corpus never contained that turn.
+# v3 trains on the conversational corpus (user → call → tool result → SPOKEN
+# answer, interleaved 6:12 per the Phase B recipe) MIXED with the single-turn
+# corpus (more decision practice, three more voices).
+#
+#   Phase B source: 2679 curated dialogues (leak-free, Kokoro voices — engine
+#   transfer is proven: v2 scores 0.833 on unseen-engine audio)
+#   Phase A source: the 2729-row curated split (Voxtral voices)
+#
+# Acceptance test = the 8 scenarios (infra/pod_scenarios.py): post-tool answers
+# must ground in the payload, where v2 said "to you, to you, to you…".
+
+model_id: LiquidAI/LFM2.5-Audio-1.5B
+train_dataset: datasets/tc_en_v3_train
+val_dataset: datasets/tc_en_v3_val
+context_length: 2048          # multi-turn + interleaved audio needs the room
+
+# v2's capacity (it passed every threshold); heads stay frozen — the model
+# already speaks at DNSMOS 3.33, Phase B teaches content, not voice. If the
+# post-tool speech still degrades, unfreezing the heads is the next rung.
+lora:
+  enabled: true
+  r: 32
+  alpha: 64
+  dropout: 0.05
+
+freeze:
+  freeze_encoder: true
+  freeze_audio_heads: true
+
+lr: 1.0e-4
+num_epochs: 1.5               # ~2000 steps at batch 4 over ~5400 dialogues
+batch_size: 4                 # longer multi-turn samples than Phase A
+warmup_steps: 150
+dataloader_num_workers: 4
+grad_clip: 1.0
+
+logging_interval: 10
+save_interval: 400
+val_interval: 100
+output_dir: outputs/tc_en_voice_agent_v3
+
+hub_repo: Rcarvalo/lfm25-tc-en-v3-adapter
+push_interval: 400            # Colab reclaims sessions; a lost VM costs minutes
+
+wandb_project: lfm25-toolcalling-en
+wandb_run_name: tc_en_v3_phaseAB
+
+evaluation:
+  enabled: true
+  question_set: data/tc_en_v3/val.jsonl
+  audio_root: data/tc_en_v3/audio_val
+  interval: 100
+  at_start: true
+  max_questions: 24
+  max_new_tokens: 200
+  tool_definitions: en
+  scoring:
+    scorers:
+      - name: tool_call
