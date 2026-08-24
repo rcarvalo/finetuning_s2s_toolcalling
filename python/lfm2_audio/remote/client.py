@@ -112,6 +112,11 @@ class LiquidAudioClient:
                     yield chunk
                 elif event.get("kind") == "final":
                     final = event
+                elif event.get("kind") == "error":
+                    # A swallowed worker error reads as "the model said
+                    # nothing" — the least debuggable failure there is.
+                    message = f"worker : {event.get('error', 'erreur sans détail')}"
+                    raise RemoteInferenceError(message)
             status = str(page.get("status", ""))
             if status == "COMPLETED":
                 break
@@ -167,6 +172,10 @@ class LiquidAudioClient:
         return job_input
 
     def _parse_events(self, events: list[dict[str, Any]]) -> Reply:
+        error = next((e for e in events if e.get("kind") == "error"), None)
+        if error is not None:
+            message = f"worker : {error.get('error', 'erreur sans détail')}"
+            raise RemoteInferenceError(message)
         chunks = [waveform_from_wav_b64(e["audio_b64"]) for e in events if e.get("kind") == "audio"]
         final = next((e for e in events if e.get("kind") == "final"), {})
         return self._assemble(final, Waveform.concat(chunks))

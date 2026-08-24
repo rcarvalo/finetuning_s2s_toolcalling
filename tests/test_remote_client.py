@@ -154,3 +154,54 @@ def test_should_yield_chunks_then_expose_last_reply_on_stream() -> None:
     assert client.last_reply.text == "streamé"
     assert client.last_reply.audio is not None
     assert client.last_reply.audio.samples.shape == (320,)
+
+
+def test_should_raise_on_worker_error_event_in_stream() -> None:
+    client = _client(
+        _routes(
+            {
+                "/run": {"id": "job5", "status": "IN_QUEUE"},
+                "/stream/job5": {
+                    "status": "COMPLETED",
+                    "stream": [{"output": {"kind": "error", "error": "champ inconnu : history"}}],
+                },
+            }
+        )
+    )
+
+    with pytest.raises(RemoteInferenceError, match="champ inconnu"):
+        list(client.invoke_stream(text="salut"))
+
+
+def test_should_raise_on_worker_error_event_in_runsync() -> None:
+    client = _client(
+        _routes(
+            {
+                "/runsync": {
+                    "id": "job6",
+                    "status": "COMPLETED",
+                    "output": [{"kind": "error", "error": "boom"}],
+                }
+            }
+        )
+    )
+
+    with pytest.raises(RemoteInferenceError, match="boom"):
+        client.invoke(text="salut")
+
+
+def test_should_send_history_in_input_payload() -> None:
+    seen: dict[str, Any] = {}
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        seen.update(json.loads(request.content))
+        return httpx.Response(200, json={"id": "job7", "status": "COMPLETED", "output": [_final_event("ok")]})
+
+    client = _client(handle)
+
+    client.invoke(text="hello", history=[("user", ""), ("assistant", "earlier reply")])
+
+    assert seen["input"]["history"] == [
+        {"role": "user", "text": ""},
+        {"role": "assistant", "text": "earlier reply"},
+    ]
