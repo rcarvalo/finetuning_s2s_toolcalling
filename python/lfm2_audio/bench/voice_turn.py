@@ -20,6 +20,10 @@ logger = logging.getLogger(__name__)
 # model would answer to nothing.
 _MIN_RMS = 5e-4
 
+# Replayed context is capped so the prompt does not grow without bound over a
+# long session; a dozen turns is plenty for a spoken back-and-forth.
+_MAX_HISTORY_TURNS = 12
+
 
 class VoiceTurnHandler:
     """Bridge between a push-to-talk-free UI and the serverless endpoint.
@@ -51,6 +55,11 @@ class VoiceTurnHandler:
         self._client = client
         self._max_tokens = max_tokens
         self._save_dir = save_dir
+        # Session memory, replayed with every request so the stateless worker
+        # has the thread. User audio turns are stored as empty text (the
+        # one-audio-per-conversation invariant forbids replaying them) — the
+        # assistant's own past replies are what carries the context.
+        self._history: list[tuple[str, str]] = []
 
     def respond(
         self, audio: tuple[int, npt.NDArray[np.int16]]
@@ -75,7 +84,9 @@ class VoiceTurnHandler:
             question.sample_rate,
             question.rms,
         )
-        for chunk in self._client.invoke_stream(audio=question, max_tokens=self._max_tokens):
+        for chunk in self._client.invoke_stream(
+            audio=question, max_tokens=self._max_tokens, history=self._history[-_MAX_HISTORY_TURNS:]
+        ):
             yield chunk.sample_rate, chunk.samples
         self._log_reply(stamp)
 
@@ -89,6 +100,8 @@ class VoiceTurnHandler:
         reply = self._client.last_reply
         if reply is None:
             return
+        self._history.append(("user", ""))
+        self._history.append(("assistant", reply.text))
         if reply.audio is not None:
             self._save(reply.audio, f"{stamp}_reply")
         metrics = reply.metrics

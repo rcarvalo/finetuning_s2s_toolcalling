@@ -15,6 +15,20 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
 
 
+class HistoryTurnPayload(BaseModel):
+    """A past turn, replayed to give the stateless worker its context.
+
+    Text only: the one-audio-per-conversation invariant means past user audio
+    cannot be replayed anyway — the model's own past replies carry the thread,
+    exactly as they do in the local multi-turn path.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    role: Literal["user", "assistant"]
+    text: str = ""
+
+
 class TurnRequest(BaseModel):
     """Ce que le client place dans ``input`` — un tour de dialogue à générer."""
 
@@ -23,6 +37,7 @@ class TurnRequest(BaseModel):
     text: str | None = None
     audio_b64: str | None = None
     max_tokens: int | None = Field(default=None, gt=0)
+    history: list[HistoryTurnPayload] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _require_text_or_audio(self) -> TurnRequest:

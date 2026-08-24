@@ -83,7 +83,11 @@ def handler(job: dict[str, Any]) -> Iterator[dict[str, Any]]:
         return
 
     model = get_model()
-    model.reset()  # v1 stateless : pas d'historique entre jobs
+    model.reset()  # stateless worker: context, if any, arrives with the request
+    # Replay the client-held history so any worker can serve any turn — the
+    # session lives on the client, which is what keeps serverless scaling free.
+    for past in request.history:
+        model.conversation.add(past.role, text=past.text)
     audio: Waveform | None = waveform_from_wav_b64(request.audio_b64) if request.audio_b64 else None
 
     for chunk in model.stream(text=request.text, audio=audio, max_tokens=request.max_tokens):

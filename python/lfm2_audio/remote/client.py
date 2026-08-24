@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import os
 import time
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -72,9 +72,15 @@ class LiquidAudioClient:
         text: str | None = None,
         audio: AudioInput | None = None,
         max_tokens: int | None = None,
+        history: Sequence[tuple[str, str]] | None = None,
     ) -> Reply:
-        """Un tour complet : bloque jusqu'à la réponse (texte + audio concaténé)."""
-        payload = {"input": self._build_input(text=text, audio=audio, max_tokens=max_tokens)}
+        """Un tour complet : bloque jusqu'à la réponse (texte + audio concaténé).
+
+        ``history`` — past ``(role, text)`` turns replayed on the worker so a
+        stateless endpoint can hold a conversation (the session lives here,
+        on the client).
+        """
+        payload = {"input": self._build_input(text=text, audio=audio, max_tokens=max_tokens, history=history)}
         job = self._post("/runsync", payload)
         job = self._wait_terminal(job)
         reply = self._parse_events(self._output_events(job))
@@ -87,9 +93,10 @@ class LiquidAudioClient:
         text: str | None = None,
         audio: AudioInput | None = None,
         max_tokens: int | None = None,
+        history: Sequence[tuple[str, str]] | None = None,
     ) -> Iterator[Waveform]:
         """Un tour en streaming : yield chaque chunk audio dès sa génération."""
-        payload = {"input": self._build_input(text=text, audio=audio, max_tokens=max_tokens)}
+        payload = {"input": self._build_input(text=text, audio=audio, max_tokens=max_tokens, history=history)}
         job = self._post("/run", payload)
         job_id = str(job["id"])
         deadline = time.monotonic() + self.timeout_s
@@ -143,6 +150,7 @@ class LiquidAudioClient:
         text: str | None,
         audio: AudioInput | None,
         max_tokens: int | None,
+        history: Sequence[tuple[str, str]] | None = None,
     ) -> dict[str, Any]:
         if text is None and audio is None:
             message = "il faut au moins text= ou audio="
@@ -154,6 +162,8 @@ class LiquidAudioClient:
             job_input["audio_b64"] = waveform_to_wav_b64(_coerce_audio(audio))
         if max_tokens is not None:
             job_input["max_tokens"] = max_tokens
+        if history:
+            job_input["history"] = [{"role": role, "text": turn} for role, turn in history]
         return job_input
 
     def _parse_events(self, events: list[dict[str, Any]]) -> Reply:

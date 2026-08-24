@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 
 import numpy as np
@@ -10,19 +10,28 @@ import pytest
 
 from lfm2_audio.bench.voice_turn import VoiceTurnHandler
 from lfm2_audio.ds.audio import Waveform
+from lfm2_audio.ds.reply import Reply
 
 
 class _FakeClient:
-    """Records invoke_stream calls and streams two canned 24 kHz chunks."""
+    """Records invoke_stream calls, streams two canned 24 kHz chunks, then
+    exposes a completed reply — mirroring ``LiquidAudioClient``'s contract."""
 
     def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
-        self.last_reply = None
+        self.last_reply: Reply | None = None
 
-    def invoke_stream(self, *, audio: Waveform, max_tokens: int | None = None) -> Iterator[Waveform]:
-        self.calls.append({"audio": audio, "max_tokens": max_tokens})
+    def invoke_stream(
+        self,
+        *,
+        audio: Waveform,
+        max_tokens: int | None = None,
+        history: Sequence[tuple[str, str]] | None = None,
+    ) -> Iterator[Waveform]:
+        self.calls.append({"audio": audio, "max_tokens": max_tokens, "history": list(history or [])})
         yield Waveform.of(np.full(240, 0.1, dtype=np.float32), 24_000)
         yield Waveform.of(np.full(480, 0.2, dtype=np.float32), 24_000)
+        self.last_reply = Reply(text=f"reply {len(self.calls)}")
 
 
 @pytest.fixture
@@ -75,11 +84,28 @@ def test_should_discard_silence_without_calling_the_endpoint(fake_client: _FakeC
     assert fake_client.calls == []
 
 
+def test_should_start_the_session_without_history(fake_client: _FakeClient) -> None:
+    handler = VoiceTurnHandler(fake_client)  # type: ignore[arg-type]
+
+    list(handler.respond(_speech()))
+
+    assert fake_client.calls[0]["history"] == []
+
+
+def test_should_replay_past_turns_on_the_next_request(fake_client: _FakeClient) -> None:
+    handler = VoiceTurnHandler(fake_client)  # type: ignore[arg-type]
+
+    list(handler.respond(_speech()))
+    list(handler.respond(_speech()))
+
+    assert fake_client.calls[1]["history"] == [("user", ""), ("assistant", "reply 1")]
+
+
 def test_should_save_user_and_reply_wavs_when_save_dir_set(fake_client: _FakeClient, tmp_path: Path) -> None:
     handler = VoiceTurnHandler(fake_client, save_dir=tmp_path)  # type: ignore[arg-type]
 
     list(handler.respond(_speech()))
 
     saved = sorted(p.name for p in tmp_path.glob("*.wav"))
-    assert len(saved) == 1  # fake client has no last_reply → user WAV only
+    assert len(saved) == 1  # the fake reply carries no audio → user WAV only
     assert saved[0].endswith("_user.wav")

@@ -36,9 +36,19 @@ class TestTurnRequest:
             TurnRequest(text="hi", max_tokens=0)
 
     def test_should_omit_none_fields_when_serialized(self) -> None:
-        payload = TurnRequest(text="hi").model_dump(exclude_none=True)
+        payload = TurnRequest(text="hi").model_dump(exclude_none=True, exclude_defaults=True)
 
         assert payload == {"text": "hi"}
+
+    def test_should_accept_history_turns(self) -> None:
+        request = TurnRequest.model_validate({"text": "hi", "history": [{"role": "assistant", "text": "earlier"}]})
+
+        assert request.history[0].role == "assistant"
+        assert request.history[0].text == "earlier"
+
+    def test_should_reject_unknown_history_role(self) -> None:
+        with pytest.raises(ValidationError):
+            TurnRequest.model_validate({"text": "hi", "history": [{"role": "system", "text": "x"}]})
 
 
 class TestTurnEvent:

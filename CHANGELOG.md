@@ -19,6 +19,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   vLLM's native sampler — no JIT, equivalent at batch size 1.
 
 ### Added
+- Multi-turn conversation over the serverless endpoint: `TurnRequest` gains a
+  `history` field (past `{role, text}` turns), the handler replays it into the
+  model's conversation before generating, and `lfm2-voice` accumulates the
+  session (assistant replies as text; past user audio cannot be replayed — the
+  one-audio-per-conversation invariant — so user turns are empty markers).
+  The session lives on the client: any worker can serve any turn, which is
+  what keeps serverless scaling and FlashBoot free. Capped at 12 turns.
 - `lfm2-voice` (extra `voice`): hands-free voice assistant over the serverless
   endpoint, ChatGPT-voice style — open mic, Silero VAD detects the end of the
   utterance, the reply audio plays as it streams out of the endpoint (first
