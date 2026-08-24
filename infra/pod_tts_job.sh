@@ -4,10 +4,19 @@
 # reason this runs on RunPod and not Colab — see docs/pre_training_review.md §5).
 set -euo pipefail
 
-# In-image runs have /repo baked; a bare-pod run clones it.
+# In-image runs have /repo baked; a bare-pod run clones it. Either way,
+# refresh to the branch tip: the image predates the job it is asked to run.
+BRANCH="${REPO_BRANCH:-rd/pr_rca_eval_baseline}"
 if [ ! -d /repo ]; then
-    git clone --branch "${REPO_BRANCH:-rd/pr_rca_eval_baseline}" --depth 1 \
+    git clone --branch "$BRANCH" --depth 1 \
         https://github.com/rcarvalo/finetuning_s2s_toolcalling /repo
+fi
+git -C /repo fetch --depth 1 origin "$BRANCH" && git -C /repo checkout -f FETCH_HEAD
+git -C /repo log --oneline -1
+
+# One image, several jobs: TTS_JOB selects what this pod produces.
+if [ "${TTS_JOB:-fresh}" = "phase_b" ]; then
+    exec bash /repo/infra/pod_synth_phase_b.sh
 fi
 
 echo "=== deps ==="

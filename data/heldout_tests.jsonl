@@ -1,0 +1,212 @@
+{"id": "tc_002317_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you find out when 'Eleanor Vance' joined the company?"}]}
+{"id": "tc_001872_db_query", "tools": [], "turns": [{"role": "user", "text": "Do you happen to know which products are currently out of stock?"}]}
+{"id": "tc_000724_db_query", "tools": [], "turns": [{"role": "user", "text": "Who's, uh, managing the, like, project for the new website, I mean?"}]}
+{"id": "tc_002143_db_query", "tools": [], "turns": [{"role": "user", "text": "Can I, like, see a list of, uh, all the past orders from, uh, 'Global Solutions Inc.'?"}]}
+{"id": "tc_001492_db_query", "tools": [], "turns": [{"role": "user", "text": "We're, uh, seeing a lot of returns this month. Can you, like, pull up the products that have the highest return rate so we can investigate?"}]}
+{"id": "tc_001866_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you possibly let me know what Michael Johnson's extension is?"}]}
+{"id": "tc_000729_db_query", "tools": [], "turns": [{"role": "user", "text": "What's the, um, total number of, like, active clients we have, you know, right now?"}]}
+{"id": "tc_001655_db_query", "tools": [], "turns": [{"role": "user", "text": "Who is the dedicated account manager for the client 'Innovate Corp.'?"}]}
+{"id": "tc_002582_db_query", "tools": [], "turns": [{"role": "user", "text": "I need to see what's on my calendar for tomorrow morning."}]}
+{"id": "tc_002314_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you provide a summary of products within the 'Software Solutions' category?"}]}
+{"id": "tc_001531_db_query", "tools": [], "turns": [{"role": "user", "text": "Can you give me the price and description for the 'Premium Widget'?"}]}
+{"id": "tc_002256_db_query", "tools": [], "turns": [{"role": "user", "text": "Can you show me who is attending the project review on Wednesday?"}]}
+{"id": "tc_000939_db_query", "tools": [], "turns": [{"role": "user", "text": "Can you identify our slowest-moving products?"}]}
+{"id": "tc_000145_db_query", "tools": [], "turns": [{"role": "user", "text": "Who's the, um, primary contact for the 'Phoenix Project' team, I can't, like, remember their name?"}]}
+{"id": "tc_000555_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you help me track the current performance metrics of our 'Employee Wellness Program'?"}]}
+{"id": "tc_002090_db_query", "tools": [], "turns": [{"role": "user", "text": "What's the current quantity on hand for the 'Premium Widget A'?"}]}
+{"id": "tc_001058_db_query", "tools": [], "turns": [{"role": "user", "text": "I need a list of all products belonging to the 'Software' category."}]}
+{"id": "tc_000487_db_query", "tools": [], "turns": [{"role": "user", "text": "Provide the email address for Sarah Connor."}]}
+{"id": "tc_000891_db_query", "tools": [], "turns": [{"role": "user", "text": "When did, uh, Maria Rodriguez, um, join the company? Like, her hire date?"}]}
+{"id": "tc_001501_db_query", "tools": [], "turns": [{"role": "user", "text": "What's the, uh, the average value of an order? I'm, like, trying to get a sense of our, uh, typical transaction size."}]}
+{"id": "tc_000556_db_query", "tools": [], "turns": [{"role": "user", "text": "We have a new candidate, and I need to schedule their interview. Who on the hiring team is available next Tuesday afternoon?"}]}
+{"id": "tc_000730_db_query", "tools": [], "turns": [{"role": "user", "text": "Can you, uh, get me the, um, details for the meeting, like, about the Q3 budget?"}]}
+{"id": "tc_001706_db_query", "tools": [], "turns": [{"role": "user", "text": "What's the average order value for the last month?"}]}
+{"id": "tc_001223_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you help me find the action items from our strategy session two weeks ago?"}]}
+{"id": "tc_001217_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you find details about our upcoming product releases for Q3?"}]}
+{"id": "tc_001426_db_query", "tools": [], "turns": [{"role": "user", "text": "Show me any orders that are currently stalled in processing."}]}
+{"id": "tc_000377_db_query", "tools": [], "turns": [{"role": "user", "text": "Find out the internal phone number for Emily White."}]}
+{"id": "tc_000721_db_query", "tools": [], "turns": [{"role": "user", "text": "I need to know, um, what's the, like, current status of order number, uh, 12345?"}]}
+{"id": "tc_002020_db_query", "tools": [], "turns": [{"role": "user", "text": "Would it be possible to check the status of order number 12345?"}]}
+{"id": "tc_002882_db_query", "tools": [], "turns": [{"role": "user", "text": "Can you tell me the wholesale price for the 'Deluxe Widget'?"}]}
+{"id": "tc_002884_db_query", "tools": [], "turns": [{"role": "user", "text": "Is there a summary available for the board meeting held on the 15th?"}]}
+{"id": "tc_000938_db_query", "tools": [], "turns": [{"role": "user", "text": "I'd like to see a list of all orders from the past week."}]}
+{"id": "tc_000762_db_query", "tools": [], "turns": [{"role": "user", "text": "What is the current status of order number 98765?"}]}
+{"id": "tc_001870_db_query", "tools": [], "turns": [{"role": "user", "text": "I'm curious to know which department Sarah Chen works in."}]}
+{"id": "tc_000770_db_query", "tools": [], "turns": [{"role": "user", "text": "List my scheduled meetings for next Tuesday."}]}
+{"id": "tc_002871_db_query", "tools": [], "turns": [{"role": "user", "text": "I need to get in touch with Sarah Johnson from sales. What's her direct line?"}]}
+{"id": "tc_002667_db_query", "tools": [], "turns": [{"role": "user", "text": "Please inform me about the status of order number 123456. Is it still pending or has it shipped?"}]}
+{"id": "tc_001827_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you inform me when our newest recruit in the HR department started?"}]}
+{"id": "tc_000819_db_query", "tools": [], "turns": [{"role": "user", "text": "Uh, which customer, I mean, you know, like, which customer has spent the most with us over the last, uh, quarter?"}]}
+{"id": "tc_000759_db_query", "tools": [], "turns": [{"role": "user", "text": "Show me the contact information for 'Acme Corp'."}]}
+{"id": "tc_000832_db_query", "tools": [], "turns": [{"role": "user", "text": "Who, um, was hired in the marketing department, uh, in the last six months? I need to see new additions."}]}
+{"id": "tc_001918_db_query", "tools": [], "turns": [{"role": "user", "text": "Who, uh, was at the, like, last all-hands meeting? I need to follow up on some points."}]}
+{"id": "tc_001814_db_query", "tools": [], "turns": [{"role": "user", "text": "I was hoping you could retrieve the primary contact details for 'Acme Corporation'."}]}
+{"id": "tc_001175_db_query", "tools": [], "turns": [{"role": "user", "text": "What's the inventory level for product code ABC-XYZ?"}]}
+{"id": "tc_001178_db_query", "tools": [], "turns": [{"role": "user", "text": "Find the email for our HR manager, Sarah Connor."}]}
+{"id": "tc_002910_db_query", "tools": [], "turns": [{"role": "user", "text": "May I have a list of all customers who have not placed an order in the last six months?"}]}
+{"id": "tc_001332_db_query", "tools": [], "turns": [{"role": "user", "text": "Do you have a list of all our customers located in the Northeast region?"}]}
+{"id": "tc_001832_db_query", "tools": [], "turns": [{"role": "user", "text": "I need to get in touch with John Smith; do you have his internal extension number?"}]}
+{"id": "tc_000718_db_query", "tools": [], "turns": [{"role": "user", "text": "Uh, what's, like, the total revenue from the last quarter?"}]}
+{"id": "tc_002677_db_query", "tools": [], "turns": [{"role": "user", "text": "Please give me a rundown of the total sales volume for the Eastern region for the current year to date."}]}
+{"id": "tc_001267_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you please show me a summary of all orders processed last Tuesday?"}]}
+{"id": "tc_002155_db_query", "tools": [], "turns": [{"role": "user", "text": "Which, um, product had the, you know, highest sales last month?"}]}
+{"id": "tc_002146_db_query", "tools": [], "turns": [{"role": "user", "text": "Who, uh, attended the last, like, project review meeting, do you know?"}]}
+{"id": "tc_000419_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you please tell me the contact details for our customer, Tech Solutions Inc.?"}]}
+{"id": "tc_002955_db_query", "tools": [], "turns": [{"role": "user", "text": "So, I'm just wondering, uhm, have we had any new orders come in today, you know, since the morning?"}]}
+{"id": "tc_002880_db_query", "tools": [], "turns": [{"role": "user", "text": "Where is our client Global Solutions Inc. located?"}]}
+{"id": "tc_002920_db_query", "tools": [], "turns": [{"role": "user", "text": "What is the average quantity per order for the product 'Widget X'?"}]}
+{"id": "tc_001877_db_query", "tools": [], "turns": [{"role": "user", "text": "Would you mind checking the wholesale price of the 'Economy Gadget'?"}]}
+{"id": "tc_000268_db_query", "tools": [], "turns": [{"role": "user", "text": "List my meetings scheduled for tomorrow afternoon."}]}
+{"id": "tc_002883_db_query", "tools": [], "turns": [{"role": "user", "text": "How much was the total value of order #OPN-6789?"}]}
+{"id": "tc_000935_db_query", "tools": [], "turns": [{"role": "user", "text": "I need to check the status of a recent order by Sarah Johnson."}]}
+{"id": "tc_001645_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you retrieve a summary of interactions we've had with 'Global Solutions Inc.' over the past year?"}]}
+{"id": "tc_000027_db_query", "tools": [], "turns": [{"role": "user", "text": "I was curious if there are any pending orders from the past day."}]}
+{"id": "tc_000836_db_query", "tools": [], "turns": [{"role": "user", "text": "What's the, um, manufacturing cost for, like, a single unit of our, uh, 'Eco-Friendly' widget? I need the internal number."}]}
+{"id": "tc_001530_db_query", "tools": [], "turns": [{"role": "user", "text": "Show me all recent orders placed by Acme Corp."}]}
+{"id": "tc_002193_db_query", "tools": [], "turns": [{"role": "user", "text": "Are there any products in our inventory that have not had a sale in over 180 days?"}]}
+{"id": "tc_001112_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you provide me with a list of all products launched in the last six months?"}]}
+{"id": "tc_001324_db_query", "tools": [], "turns": [{"role": "user", "text": "I need to find out the current selling price of product ID P987."}]}
+{"id": "tc_000728_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you, uh, tell me which, like, products are currently, um, backordered?"}]}
+{"id": "tc_002730_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you find the internal phone extension for Maria Rodriguez in human resources?"}]}
+{"id": "tc_002019_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you please retrieve the email address for our client, Acme Corp?"}]}
+{"id": "tc_001054_db_query", "tools": [], "turns": [{"role": "user", "text": "I'd like to know who was present at the project kickoff meeting on Monday."}]}
+{"id": "tc_001713_db_query", "tools": [], "turns": [{"role": "user", "text": "Which employee has been with the company the longest?"}]}
+{"id": "tc_000210_db_query", "tools": [], "turns": [{"role": "user", "text": "Display all products that are currently out of stock."}]}
+{"id": "tc_002666_db_query", "tools": [], "turns": [{"role": "user", "text": "Could you provide me with a list of all employees in the marketing department and their primary contact email addresses?"}]}
+{"id": "tc_001062_db_query", "tools": [], "turns": [{"role": "user", "text": "I'm looking for 'Emily White's' company email address."}]}
+{"id": "tc_001516_web_search", "tools": [], "turns": [{"role": "user", "text": "Can you, uh, tell me, like, what's the average, um, lifespan of a, you know, a golden retriever?"}]}
+{"id": "tc_000924_web_search", "tools": [], "turns": [{"role": "user", "text": "Who is the author of the novel 'To Kill a Mockingbird'?"}]}
+{"id": "tc_000646_web_search", "tools": [], "turns": [{"role": "user", "text": "How do solar panels work?"}]}
+{"id": "tc_001299_web_search", "tools": [], "turns": [{"role": "user", "text": "So, I'm thinking of, uh, buying a new smart TV, what should I, you know, consider?"}]}
+{"id": "tc_002437_web_search", "tools": [], "turns": [{"role": "user", "text": "Please, what is the average lifespan of a giant panda?"}]}
+{"id": "tc_001694_web_search", "tools": [], "turns": [{"role": "user", "text": "I'm interested in the current standings for the premier soccer league."}]}
+{"id": "tc_001420_web_search", "tools": [], "turns": [{"role": "user", "text": "Who painted the Mona Lisa, uhm, again?"}]}
+{"id": "tc_001252_web_search", "tools": [], "turns": [{"role": "user", "text": "Please tell me a bit about the discovery of penicillin."}]}
+{"id": "tc_001807_web_search", "tools": [], "turns": [{"role": "user", "text": "Where can I buy tickets for the next Taylor Swift concert?"}]}
+{"id": "tc_002709_web_search", "tools": [], "turns": [{"role": "user", "text": "Who was, uhm, like, the first woman to, uh, fly solo across the Atlantic?"}]}
+{"id": "tc_001351_web_search", "tools": [], "turns": [{"role": "user", "text": "Can you um tell me the plot of the new Marvel movie, you know, the one that just came out?"}]}
+{"id": "tc_001101_web_search", "tools": [], "turns": [{"role": "user", "text": "Might you be able to suggest some popular science fiction novels released recently?"}]}
+{"id": "tc_000971_web_search", "tools": [], "turns": [{"role": "user", "text": "Could you please tell me about any major news headlines from today?"}]}
+{"id": "tc_001154_web_search", "tools": [], "turns": [{"role": "user", "text": "Where is Mount Kilimanjaro located on a map?"}]}
+{"id": "tc_002118_web_search", "tools": [], "turns": [{"role": "user", "text": "I'm interested in learning about sustainable farming methods."}]}
+{"id": "tc_001958_web_search", "tools": [], "turns": [{"role": "user", "text": "What are some easy DIY projects I can do at home?"}]}
+{"id": "tc_000810_web_search", "tools": [], "turns": [{"role": "user", "text": "What was the final score of yesterday's basketball game between the Lakers and the Celtics?"}]}
+{"id": "tc_000192_web_search", "tools": [], "turns": [{"role": "user", "text": "Who's, uhm, you know, the current Prime Minister of Canada? I always forget his name."}]}
+{"id": "tc_001484_web_search", "tools": [], "turns": [{"role": "user", "text": "How do I, um, like, properly clean a, uh, cast iron pan?"}]}
+{"id": "tc_000072_web_search", "tools": [], "turns": [{"role": "user", "text": "What are some highly-rated historical fiction books published recently?"}]}
+{"id": "tc_002774_web_search", "tools": [], "turns": [{"role": "user", "text": "What are the symptoms of a common cold?"}]}
+{"id": "tc_000597_web_search", "tools": [], "turns": [{"role": "user", "text": "I'm curious, what were the results of the latest space mission?"}]}
+{"id": "tc_000644_web_search", "tools": [], "turns": [{"role": "user", "text": "Explain quantum entanglement simply."}]}
+{"id": "tc_001414_web_search", "tools": [], "turns": [{"role": "user", "text": "Who directed that, uh, movie about the, like, sharks? Jaws, I think?"}]}
+{"id": "tc_001466_web_search", "tools": [], "turns": [{"role": "user", "text": "Can you, uh, tell me what's, like, the current, you know, exchange rate for, uh, Japanese Yen?"}]}
+{"id": "tc_002344_web_search", "tools": [], "turns": [{"role": "user", "text": "I'm curious about the latest advancements in space exploration."}]}
+{"id": "tc_002377_web_search", "tools": [], "turns": [{"role": "user", "text": "Tell me about the latest breakthroughs in AI."}]}
+{"id": "tc_002712_web_search", "tools": [], "turns": [{"role": "user", "text": "Did the, uh, Warriors, you know, win their game last night?"}]}
+{"id": "tc_002993_web_search", "tools": [], "turns": [{"role": "user", "text": "What's the, uh, you know, the average lifespan of a, uhm, a cat?"}]}
+{"id": "tc_002448_web_search", "tools": [], "turns": [{"role": "user", "text": "What are some good tips for growing tomatoes in a small garden?"}]}
+{"id": "tc_001362_web_search", "tools": [], "turns": [{"role": "user", "text": "So, like, how do you fix a dripping faucet? Mine's been making noise all night."}]}
+{"id": "tc_002705_web_search", "tools": [], "turns": [{"role": "user", "text": "I'm, uh, thinking about getting a new phone, but like, what are the best, uh, smartphones, um, out there right now?"}]}
+{"id": "tc_002063_web_search", "tools": [], "turns": [{"role": "user", "text": "What exactly is a 'black hole' in space?"}]}
+{"id": "tc_002563_web_search", "tools": [], "turns": [{"role": "user", "text": "Who was Martin Luther King Jr.?"}]}
+{"id": "tc_002064_web_search", "tools": [], "turns": [{"role": "user", "text": "Could you tell me about the latest developments in AI ethics?"}]}
+{"id": "tc_002287_web_search", "tools": [], "turns": [{"role": "user", "text": "Could you clarify what a 'quantum computer' actually is?"}]}
+{"id": "tc_001409_web_search", "tools": [], "turns": [{"role": "user", "text": "What's the, uhm, difference between, like, an OLED and an LCD TV?"}]}
+{"id": "tc_000307_web_search", "tools": [], "turns": [{"role": "user", "text": "What are the long-term effects of climate change?"}]}
+{"id": "tc_002342_web_search", "tools": [], "turns": [{"role": "user", "text": "I need a recipe for a quick and easy weeknight dinner."}]}
+{"id": "tc_001100_web_search", "tools": [], "turns": [{"role": "user", "text": "I'd appreciate it if you could share some tips for improving sleep quality naturally."}]}
+{"id": "tc_002010_web_search", "tools": [], "turns": [{"role": "user", "text": "I'm curious about the current inflation rate in the Eurozone."}]}
+{"id": "tc_002564_web_search", "tools": [], "turns": [{"role": "user", "text": "I'm planning a visit to the Grand Canyon; what are the must-see spots?"}]}
+{"id": "tc_002237_web_search", "tools": [], "turns": [{"role": "user", "text": "I'm wondering, like, what's the average lifespan of a, you know, domestic cat?"}]}
+{"id": "tc_000007_web_search", "tools": [], "turns": [{"role": "user", "text": "What's the, uh, you know, current population of, like, Canada?"}]}
+{"id": "tc_001098_web_search", "tools": [], "turns": [{"role": "user", "text": "I'm curious to know which movies are currently playing at the local cinema."}]}
+{"id": "tc_000311_web_search", "tools": [], "turns": [{"role": "user", "text": "Who directed the movie 'Oppenheimer'?"}]}
+{"id": "tc_001895_web_search", "tools": [], "turns": [{"role": "user", "text": "I'd like to know what the latest travel restrictions are for visiting Japan."}]}
+{"id": "tc_001251_web_search", "tools": [], "turns": [{"role": "user", "text": "How far is the moon from Earth?"}]}
+{"id": "tc_000863_web_search", "tools": [], "turns": [{"role": "user", "text": "Look up the director of the movie Titanic."}]}
+{"id": "tc_002809_web_search", "tools": [], "turns": [{"role": "user", "text": "What's the, uh, latest news on the stock market today?"}]}
+{"id": "tc_002651_web_search", "tools": [], "turns": [{"role": "user", "text": "What are some effective tips for improving sleep quality?"}]}
+{"id": "tc_001197_web_search", "tools": [], "turns": [{"role": "user", "text": "Is there, uhm, anything, you know, like, interesting happening in London this weekend? Like, a concert or a festival?"}]}
+{"id": "tc_002778_web_search", "tools": [], "turns": [{"role": "user", "text": "What is the capital city of Australia?"}]}
+{"id": "tc_001367_web_search", "tools": [], "turns": [{"role": "user", "text": "I need to know, actually, when was the Eiffel Tower constructed? For a quiz."}]}
+{"id": "tc_002607_web_search", "tools": [], "turns": [{"role": "user", "text": "So, like, can you find out, uh, what the weather's gonna be like in, um, Seattle tomorrow?"}]}
+{"id": "tc_000710_web_search", "tools": [], "turns": [{"role": "user", "text": "I'm trying to find a good recipe for vegan chocolate chip cookies. Do you have any suggestions?"}]}
+{"id": "tc_001940_web_search", "tools": [], "turns": [{"role": "user", "text": "Could you please inform me about the recent developments in space exploration?"}]}
+{"id": "tc_002443_web_search", "tools": [], "turns": [{"role": "user", "text": "Could you please find the current national average for gasoline prices?"}]}
+{"id": "tc_002988_web_search", "tools": [], "turns": [{"role": "user", "text": "Who, uh, who wrote, uhm, 'Bohemian Rhapsody' by Queen?"}]}
+{"id": "tc_000317_web_search", "tools": [], "turns": [{"role": "user", "text": "Explain the concept of artificial intelligence."}]}
+{"id": "tc_001092_web_search", "tools": [], "turns": [{"role": "user", "text": "Would you be able to inform me about the history of the Eiffel Tower?"}]}
+{"id": "tc_002137_web_search", "tools": [], "turns": [{"role": "user", "text": "Can you tell me about the principles of good graphic design?"}]}
+{"id": "tc_001040_web_search", "tools": [], "turns": [{"role": "user", "text": "Tell me about famous historical landmarks in Rome."}]}
+{"id": "tc_002719_web_search", "tools": [], "turns": [{"role": "user", "text": "How many, um, like, bones are in the average adult human body?"}]}
+{"id": "tc_002660_web_search", "tools": [], "turns": [{"role": "user", "text": "Could you provide a brief biography of Leonardo da Vinci?"}]}
+{"id": "tc_001474_web_search", "tools": [], "turns": [{"role": "user", "text": "Did the, uh, Lakers, like, win their, uh, game, uh, the night before last?"}]}
+{"id": "tc_002717_web_search", "tools": [], "turns": [{"role": "user", "text": "What time is, um, the new, uh, Mission Impossible movie playing at, like, the local cinema?"}]}
+{"id": "tc_001091_web_search", "tools": [], "turns": [{"role": "user", "text": "I was wondering if you could help me find some reviews for the new EcoGlow smart thermostat?"}]}
+{"id": "tc_000301_web_search", "tools": [], "turns": [{"role": "user", "text": "Explain the concept of blockchain technology simply."}]}
+{"id": "tc_000408_web_search", "tools": [], "turns": [{"role": "user", "text": "Could you look up the nutritional benefits of avocados?"}]}
+{"id": "tc_002296_web_search", "tools": [], "turns": [{"role": "user", "text": "I'd like to know what 'To Kill a Mockingbird' is generally about."}]}
+{"id": "tc_002170_web_search", "tools": [], "turns": [{"role": "user", "text": "Please, can you search for information about renewable energy sources?"}]}
+{"id": "tc_001505_web_search", "tools": [], "turns": [{"role": "user", "text": "Uh, hey, what's the, um, current stock price for, you know, Apple?"}]}
+{"id": "tc_002413_none", "tools": [], "turns": [{"role": "user", "text": "Hey there, um, I just wanted to say hi."}]}
+{"id": "tc_001233_none", "tools": [], "turns": [{"role": "user", "text": "Could you tell me a little bit about yourself?"}]}
+{"id": "tc_001840_none", "tools": [], "turns": [{"role": "user", "text": "Could you please speak a little slower?"}]}
+{"id": "tc_001455_none", "tools": [], "turns": [{"role": "user", "text": "So, uh, I think I, like, understand now what you meant."}]}
+{"id": "tc_001230_none", "tools": [], "turns": [{"role": "user", "text": "I was hoping you could tell me the capital of Canada."}]}
+{"id": "tc_000173_none", "tools": [], "turns": [{"role": "user", "text": "Just checking in, are you active?"}]}
+{"id": "tc_000683_none", "tools": [], "turns": [{"role": "user", "text": "Hey, uh, tell me a joke, will ya?"}]}
+{"id": "tc_002158_none", "tools": [], "turns": [{"role": "user", "text": "How are you doing today?"}]}
+{"id": "tc_001558_none", "tools": [], "turns": [{"role": "user", "text": "Hold on a moment."}]}
+{"id": "tc_000513_none", "tools": [], "turns": [{"role": "user", "text": "Good job."}]}
+{"id": "tc_001239_none", "tools": [], "turns": [{"role": "user", "text": "Would you be able to translate 'hello' into French for me?"}]}
+{"id": "tc_001838_none", "tools": [], "turns": [{"role": "user", "text": "Alright, I'm good for now."}]}
+{"id": "tc_000848_none", "tools": [], "turns": [{"role": "user", "text": "Could you perhaps speak a little louder, please?"}]}
+{"id": "tc_000286_none", "tools": [], "turns": [{"role": "user", "text": "Hello? Are, uh, are you even listening to me?"}]}
+{"id": "tc_000686_none", "tools": [], "turns": [{"role": "user", "text": "What's, like, eight plus five?"}]}
+{"id": "tc_001453_none", "tools": [], "turns": [{"role": "user", "text": "Do you, like, ever, you know, feel tired or anything?"}]}
+{"id": "tc_002754_none", "tools": [], "turns": [{"role": "user", "text": "Oh, um, excuse me, sorry."}]}
+{"id": "tc_000387_none", "tools": [], "turns": [{"role": "user", "text": "I'm feeling quite good today."}]}
+{"id": "tc_001555_none", "tools": [], "turns": [{"role": "user", "text": "That is incorrect."}]}
+{"id": "tc_000223_none", "tools": [], "turns": [{"role": "user", "text": "Repeat what you said."}]}
+{"id": "tc_000226_none", "tools": [], "turns": [{"role": "user", "text": "How do you feel?"}]}
+{"id": "tc_001446_none", "tools": [], "turns": [{"role": "user", "text": "Oh, okay, I think I, you know, got it now. Thanks."}]}
+{"id": "tc_002758_none", "tools": [], "turns": [{"role": "user", "text": "Are you, uh, are you active right now?"}]}
+{"id": "tc_002281_none", "tools": [], "turns": [{"role": "user", "text": "What is generally considered the primary function of a voice assistant?"}]}
+{"id": "tc_001084_none", "tools": [], "turns": [{"role": "user", "text": "Please don't mind me, I'm just thinking out loud for a moment."}]}
+{"id": "tc_000691_none", "tools": [], "turns": [{"role": "user", "text": "What's, you know, the capital of Canada?"}]}
+{"id": "tc_002891_none", "tools": [], "turns": [{"role": "user", "text": "I appreciate your help with that last request, thank you very much."}]}
+{"id": "tc_000517_none", "tools": [], "turns": [{"role": "user", "text": "Tell me something interesting."}]}
+{"id": "tc_000281_none", "tools": [], "turns": [{"role": "user", "text": "Uh, could you, like, actually stop for a moment?"}]}
+{"id": "tc_001020_none", "tools": [], "turns": [{"role": "user", "text": "I believe our conversation has reached its conclusion for now."}]}
+{"id": "tc_002535_none", "tools": [], "turns": [{"role": "user", "text": "I'm just reflecting on some recent events."}]}
+{"id": "tc_001616_none", "tools": [], "turns": [{"role": "user", "text": "Just confirming that you understood everything."}]}
+{"id": "tc_001787_none", "tools": [], "turns": [{"role": "user", "text": "I'm a bit bored right now."}]}
+{"id": "tc_000291_none", "tools": [], "turns": [{"role": "user", "text": "Thank you, that, uh, that was really helpful, actually."}]}
+{"id": "tc_000102_none", "tools": [], "turns": [{"role": "user", "text": "Are you able to help me with something right now?"}]}
+{"id": "tc_002701_none", "tools": [], "turns": [{"role": "user", "text": "How do I, um, how do I actually use you?"}]}
+{"id": "tc_000622_none", "tools": [], "turns": [{"role": "user", "text": "I hope you heard what I just said."}]}
+{"id": "tc_002932_none", "tools": [], "turns": [{"role": "user", "text": "Define 'hello'."}]}
+{"id": "tc_002546_none", "tools": [], "turns": [{"role": "user", "text": "I think I've reached a good stopping point now."}]}
+{"id": "tc_002543_none", "tools": [], "turns": [{"role": "user", "text": "I'm looking forward to a relaxing evening."}]}
+{"id": "tc_001133_none", "tools": [], "turns": [{"role": "user", "text": "Speak up a bit."}]}
+{"id": "tc_002210_none", "tools": [], "turns": [{"role": "user", "text": "Thank you, that was very helpful."}]}
+{"id": "tc_001023_none", "tools": [], "turns": [{"role": "user", "text": "I think you can discontinue what you're doing at this point."}]}
+{"id": "tc_001559_none", "tools": [], "turns": [{"role": "user", "text": "That information is helpful."}]}
+{"id": "tc_000397_none", "tools": [], "turns": [{"role": "user", "text": "Everything looks fine here."}]}
+{"id": "tc_002273_none", "tools": [], "turns": [{"role": "user", "text": "Could you calculate what is eight multiplied by nine?"}]}
+{"id": "tc_000508_none", "tools": [], "turns": [{"role": "user", "text": "Speak louder please."}]}
+{"id": "tc_001026_none", "tools": [], "turns": [{"role": "user", "text": "I was wondering what your current operational status is."}]}
+{"id": "tc_001677_none", "tools": [], "turns": [{"role": "user", "text": "Could you maybe tell me a joke to lighten the mood?"}]}
+{"id": "tc_000792_none", "tools": [], "turns": [{"role": "user", "text": "Could you tell me how many days are in a week?"}]}
+{"id": "tc_002532_none", "tools": [], "turns": [{"role": "user", "text": "This technology is truly impressive."}]}
+{"id": "bench_ws_01", "tools": [], "turns": [{"role": "user", "text": "What's the weather like in Tokyo right now?"}]}
+{"id": "bench_ws_02", "tools": [], "turns": [{"role": "user", "text": "Can you look up who won the Champions League last year?"}]}
+{"id": "bench_ws_03", "tools": [], "turns": [{"role": "user", "text": "I need the latest price of Bitcoin."}]}
+{"id": "bench_ws_04", "tools": [], "turns": [{"role": "user", "text": "search for vegetarian lasagna recipes"}]}
+{"id": "bench_db_01", "tools": [], "turns": [{"role": "user", "text": "How many open orders do we have right now?"}]}
+{"id": "bench_db_02", "tools": [], "turns": [{"role": "user", "text": "Which customer placed the largest order?"}]}
+{"id": "bench_db_03", "tools": [], "turns": [{"role": "user", "text": "List the products that are out of stock."}]}
+{"id": "bench_db_04", "tools": [], "turns": [{"role": "user", "text": "Who on the sales team was hired most recently?"}]}
+{"id": "bench_neg_01", "tools": [], "turns": [{"role": "user", "text": "Good morning! How are you today?"}]}
+{"id": "bench_neg_02", "tools": [], "turns": [{"role": "user", "text": "Thanks, that's all I needed."}]}
+{"id": "bench_neg_03", "tools": [], "turns": [{"role": "user", "text": "Can you tell me a fun fact?"}]}
+{"id": "bench_neg_04", "tools": [], "turns": [{"role": "user", "text": "What can you help me with?"}]}

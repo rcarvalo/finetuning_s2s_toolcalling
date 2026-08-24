@@ -53,3 +53,4 @@ data/audio*/
 .idea/
 .DS_Store
 Thumbs.db
+data/phase_b_train_src.jsonl
