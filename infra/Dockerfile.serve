@@ -39,6 +39,7 @@ COPY configs/serving ./configs/serving
 RUN uv pip install --system \
         "vllm @ https://github.com/vllm-project/vllm/releases/download/v0.22.1/vllm-0.22.1+cu129-cp38-abi3-manylinux_2_28_x86_64.whl" \
         --extra-index-url https://download.pytorch.org/whl/cu129 \
+        --index-strategy unsafe-best-match \
     && uv pip install --system ".[serving,client]" "runpod>=1.7"
 
 ARG LFM2_CHECKPOINT=LiquidAI/LFM2.5-Audio-1.5B
