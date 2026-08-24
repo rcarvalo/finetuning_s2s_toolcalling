@@ -13,11 +13,12 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Iterator, Sequence
-from typing import Any, Self
+from typing import Any, Self, cast
 
 from transformers import AutoTokenizer
 
 from lfm2_audio.core.prompt import ChatMLRenderer, strip_special_tokens
+from lfm2_audio.core.tokenizer import Tokenizer
 from lfm2_audio.ds.audio import OUTPUT_SAMPLE_RATE, Waveform
 from lfm2_audio.ds.checkpoint import ResolvedCheckpoint
 from lfm2_audio.ds.conversation import Conversation, ConversationTurn
@@ -68,7 +69,9 @@ class VllmOmniBackend(LFM2Audio):
         generation: GenerationConfig | None,
     ) -> Self:
 
-        tokenizer = AutoTokenizer.from_pretrained(str(checkpoint.path))
+        # transformers' return type union does not structurally match our
+        # Tokenizer protocol, but every HF tokenizer satisfies it at runtime.
+        tokenizer = cast("Tokenizer", AutoTokenizer.from_pretrained(str(checkpoint.path)))
         return cls(
             checkpoint,
             engine=OmniEngine(checkpoint, engine),

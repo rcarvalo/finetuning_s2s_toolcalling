@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import os
 
-from google import genai
+from google.genai.client import Client
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class GeminiJudge:
     def __init__(self, model_id: str = DEFAULT_MODEL_ID, *, api_key: str | None = None) -> None:
         self._model_id = model_id
         self._api_key = api_key or os.environ.get(API_KEY_ENV_VAR, "")
-        self._client: genai.Client | None = None
+        self._client: Client | None = None
 
     @property
     def model_id(self) -> str:
@@ -40,9 +40,9 @@ class GeminiJudge:
         response = self._gemini().models.generate_content(model=self._model_id, contents=prompt)
         return str(response.text or "")
 
-    def _gemini(self) -> genai.Client:
+    def _gemini(self) -> Client:
         """Client Gemini, construit au premier usage puis conservé."""
         if self._client is None:
             logger.info("juge LLM : %s", self._model_id)
-            self._client = genai.Client(api_key=self._api_key)
+            self._client = Client(api_key=self._api_key)
         return self._client

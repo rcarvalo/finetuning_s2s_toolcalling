@@ -14,6 +14,9 @@ from typing import Any
 import pytest
 
 torch = pytest.importorskip("torch")
+# stage_input_processors imports vllm.inputs at module top: torch alone is not
+# enough to run these tests (a torch-only env used to unmask this as failures).
+pytest.importorskip("vllm")
 
 
 @dataclass

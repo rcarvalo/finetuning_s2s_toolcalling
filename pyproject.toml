@@ -77,6 +77,14 @@ serve = [
 client = [
     "httpx>=0.27",
 ]
+# Assistant vocal mains-libres (lfm2-voice) : WebRTC + VAD côté client.
+voice = [
+    "lfm2-audio[client]",
+    "fastrtc[vad]>=0.0.20",
+    # Waveform.for_encoder resamples the 48 kHz mic capture to 16 kHz through
+    # torchaudio — the one heavy dependency this otherwise-light extra needs.
+    "torchaudio>=2.4",
+]
 # App Gradio de test de l'endpoint serverless (app/gradio_app.py).
 app = [
     "gradio>=5.0",
@@ -107,6 +115,7 @@ lfm2-bench = "lfm2_audio.cli.eval.latency:main"
 lfm2-smoke = "lfm2_audio.cli.serve.smoke_vllm:main"
 lfm2-evaluate = "lfm2_audio.cli.eval.suite:main"
 lfm2-bench-app = "lfm2_audio.cli.serve.bench:main"
+lfm2-voice = "lfm2_audio.cli.serve.voice:main"
 lfm2-eval-audio = "lfm2_audio.cli.eval.audio_toolcall:main"
 lfm2-eval-toolcalling = "lfm2_audio.cli.eval.toolcall:main"
 lfm2-eval-compare = "lfm2_audio.cli.eval.compare:main"
@@ -256,6 +265,14 @@ disallow_untyped_decorators = false
 warn_return_any = false
 # Hériter de `nn.Module`, `Trainer` ou d'une classe vLLM non typée.
 disallow_subclassing_any = false
+
+# Le plugin manipule des attributs torch que les stubs ne savent pas exprimer
+# (`nn.Module` rangé dans un attribut typé Tensor, overrides de classes vLLM
+# non publiées). Ces codes ne sont fiables ici qu'avec torch installé — ce que
+# l'env de dev local n'avait pas jusqu'ici — et signalent surtout du bruit.
+[[tool.mypy.overrides]]
+module = ["lfm2_audio.vllm_plugin.*"]
+disable_error_code = ["operator", "assignment", "arg-type", "union-attr", "override"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

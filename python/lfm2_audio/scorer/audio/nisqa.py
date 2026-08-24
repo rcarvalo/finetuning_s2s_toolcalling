@@ -82,6 +82,8 @@ class NisqaScorer(BaseScorer):
     def _nisqa(self) -> Any:  # noqa: ANN401 — modèle tiers non typé
         """Modèle NISQA, chargé au premier usage puis conservé."""
         if self._model is None:
+            if self._model_path is None:  # BaseScorer guards via unavailable_reason()
+                raise FileNotFoundError(f"checkpoint NISQA non configuré (${MODEL_ENV_VAR})")
             logger.info("chargement du checkpoint NISQA : %s", self._model_path)
             checkpoint = torch.load(self._model_path, map_location=self._torch_device())
             self._model = checkpoint["model"] if isinstance(checkpoint, dict) else checkpoint

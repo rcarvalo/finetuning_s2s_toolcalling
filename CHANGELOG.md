@@ -19,6 +19,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   vLLM's native sampler — no JIT, equivalent at batch size 1.
 
 ### Added
+- `lfm2-voice` (extra `voice`): hands-free voice assistant over the serverless
+  endpoint, ChatGPT-voice style — open mic, Silero VAD detects the end of the
+  utterance, the reply audio plays as it streams out of the endpoint (first
+  sound ≈ TTFA + one poll, instead of the bench app's wait-for-full-answer
+  6-7 s). fastrtc WebRTC UI; turn logic in `bench/voice_turn.py`, tested
+  without WebRTC. v1 endpoint is stateless → each utterance is single-turn.
 - GitHub Actions workflow `build-serve-image`: builds `infra/Dockerfile.serve`
   and pushes it to `ghcr.io/rcarvalo/lfm2-serve-vllm` on every push to the
   serving branch (or manually via workflow_dispatch). Motivation: RunPod's
