@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 
 ## [Unreleased]
 
+### Changed
+- `infra/colab_qwen_tts.py` batches Qwen3-TTS generation (`TTS_BATCH`, default
+  8): the unitary loop measured ~4.5 wav/min on an L4 (~10 h for the Phase B
+  assistant turns); batch 16 measures ~44/min (~1 h). Resumable as before.
+
 ### Fixed
 - Serverless vLLM workers crash-looped at boot: FlashInfer's sampler JIT
   needs `nvcc` and the serve image ships no CUDA toolkit ("Could not find

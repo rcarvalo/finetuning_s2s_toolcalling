@@ -60,10 +60,21 @@ def main() -> None:
     model = Qwen3TTSModel.from_pretrained(MODEL_ID, device_map="cuda:0", dtype=torch.bfloat16)
     speaker = os.environ.get("ASSISTANT_VOICE", "Aiden")
 
-    for done, (dialogue_id, index, text) in enumerate(pending, 1):
-        wavs, rate = model.generate_custom_voice(text=text, language="English", speaker=speaker, instruct=INSTRUCT)
-        sf.write(str(AUDIO / f"{dialogue_id}_a{index}.wav"), wavs[0], rate, subtype="PCM_16")
-        if done % 100 == 0 or done == len(pending):
+    batch_size = int(os.environ.get("TTS_BATCH", "8"))
+    done = 0
+    for start in range(0, len(pending), batch_size):
+        batch = pending[start : start + batch_size]
+        texts = [text for _, _, text in batch]
+        wavs, rate = model.generate_custom_voice(
+            text=texts,
+            language=["English"] * len(texts),
+            speaker=[speaker] * len(texts),
+            instruct=[INSTRUCT] * len(texts),
+        )
+        for (dialogue_id, index, _), wav in zip(batch, wavs, strict=True):
+            sf.write(str(AUDIO / f"{dialogue_id}_a{index}.wav"), wav, rate, subtype="PCM_16")
+        done += len(batch)
+        if done % 96 < batch_size or done == len(pending):
             print(f"  {done}/{len(pending)}", flush=True)
 
     tarball = "/tmp/phase_b_assistant_audio.tar.gz"
