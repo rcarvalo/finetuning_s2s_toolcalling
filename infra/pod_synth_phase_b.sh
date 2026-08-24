@@ -11,17 +11,17 @@
 set -euo pipefail
 
 cd /repo
-python -m pip install -q soundfile torchaudio kokoro 2>&1 | tail -1
+python3 -m pip install -q soundfile torchaudio kokoro 2>&1 | tail -1
 
 # The curated source is regenerated, not versioned (2.7 MB): the curator is
 # deterministic and both inputs are committed (the s2s corpus + every held-out
 # test utterance). Exit code 1 on leakage stops the pod before it spends GPU.
-python -m lfm2_audio.cli.data.curate \
+python3 -m lfm2_audio.cli.data.curate \
     --source data/tc_en_s2s.jsonl \
     --held-out data/test_fresh_src.jsonl --held-out data/heldout_tests.jsonl \
     --out data/phase_b_train_src.jsonl --allow-leakage
 
-python -m lfm2_audio.cli.data.synthesize --engine voxtral --split train \
+python3 -m lfm2_audio.cli.data.synthesize --engine voxtral --split train \
     --voices casual_male,casual_female,cheerful_female \
     --assistant-voice neutral_female \
     --dialogues data/phase_b_train_src.jsonl \
@@ -30,7 +30,7 @@ python -m lfm2_audio.cli.data.synthesize --engine voxtral --split train \
     --concurrency 8
 
 tar -czf /tmp/phase_b_audio.tar.gz -C data audio_phase_b
-python - <<'PY'
+python3 - <<'PY'
 import os
 from huggingface_hub import HfApi
 

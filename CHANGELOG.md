@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Added
+- GitHub Actions workflow `build-serve-image`: builds `infra/Dockerfile.serve`
+  and pushes it to `ghcr.io/rcarvalo/lfm2-serve-vllm` on every push to the
+  serving branch (or manually via workflow_dispatch). Motivation: RunPod's
+  GitHub builder is console-only and its queue stalled for 1h40+ with no way
+  to observe or retry it; the endpoint now points at the GHCR image instead.
 - `infra/handler.py`: the ~6.5 s first-generation warmup is now absorbed at
   worker boot (a tiny throwaway turn before `serverless.start`), so the first
   real job after a cold start sees steady-state TTFA (~0.3 s on vLLM) instead

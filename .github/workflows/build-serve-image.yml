@@ -1,0 +1,59 @@
+# Build the vLLM serverless image and push it to GHCR.
+#
+# Why this exists: RunPod's GitHub builder is console-only, unobservable via
+# API, and its queue can stall for hours. This workflow gives us a build we
+# can trigger, watch, and retry from anywhere; the endpoint then points at
+# the GHCR image directly (public package — no registry auth needed).
+name: build-serve-image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [rd/pr_rca_eval_baseline]
+    paths:
+      - infra/**
+      - configs/serving/**
+      - python/**
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/build-serve-image.yml
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  vllm-image:
+    runs-on: ubuntu-latest
+    steps:
+      # The image holds ~9 GB of CUDA wheels plus ~3 GB of baked weights;
+      # stock runners only have ~14 GB free, so drop the preinstalled
+      # toolchains we never use.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune -af
+          df -h /
+
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # HF_TOKEN is optional: the base checkpoint is public. The secret is
+      # mounted, never written into a layer (see Dockerfile.serve).
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/Dockerfile.serve
+          push: true
+          tags: |
+            ghcr.io/rcarvalo/lfm2-serve-vllm:${{ github.sha }}
+            ghcr.io/rcarvalo/lfm2-serve-vllm:latest
+          secrets: |
+            hf_token=${{ secrets.HF_TOKEN }}  # pragma: allowlist secret
