@@ -49,8 +49,25 @@ def spoken_assistant_turns() -> list[tuple[str, int, str]]:
     return jobs
 
 
+def restore_checkpoint() -> None:
+    """On a fresh VM, resume from the last partial tarball pushed to the Hub."""
+    if any(AUDIO.glob("*.wav")):
+        return
+    from huggingface_hub import hf_hub_download
+    from huggingface_hub.errors import EntryNotFoundError
+
+    try:
+        tarball = hf_hub_download(HUB_REPO, "phase_b/assistant_audio.tar.gz", repo_type="dataset")
+    except EntryNotFoundError:
+        return
+    with tarfile.open(tarball) as archive:
+        archive.extractall(AUDIO.parent, filter="data")
+    print(f"restored {len(list(AUDIO.glob('*.wav')))} wavs from Hub checkpoint", flush=True)
+
+
 def main() -> None:
     AUDIO.mkdir(parents=True, exist_ok=True)
+    restore_checkpoint()
     jobs = spoken_assistant_turns()
     pending = [(d, i, t) for d, i, t in jobs if not (AUDIO / f"{d}_a{i}.wav").exists()]
     print(f"{len(jobs)} spoken assistant turns, {len(pending)} to synthesize", flush=True)
@@ -61,6 +78,10 @@ def main() -> None:
     speaker = os.environ.get("ASSISTANT_VOICE", "Aiden")
 
     batch_size = int(os.environ.get("TTS_BATCH", "8"))
+    # A VM reclaim mid-run must never cost the accumulated audio again: the
+    # partial tarball goes to the Hub every CHECKPOINT_EVERY files, and resume
+    # starts from the last checkpoint instead of zero.
+    checkpoint_every = int(os.environ.get("TTS_CHECKPOINT_EVERY", "600"))
     done = 0
     for start in range(0, len(pending), batch_size):
         batch = pending[start : start + batch_size]
@@ -76,7 +97,16 @@ def main() -> None:
         done += len(batch)
         if done % 96 < batch_size or done == len(pending):
             print(f"  {done}/{len(pending)}", flush=True)
+        if done % checkpoint_every < batch_size:
+            push_tarball()
+            print(f"  checkpoint pushed at {done}", flush=True)
 
+    push_tarball()
+    print("QWEN_TTS_DONE", flush=True)
+
+
+def push_tarball() -> None:
+    """Tar the WAVs synthesized so far and upload to the Hub (idempotent)."""
     tarball = "/tmp/phase_b_assistant_audio.tar.gz"
     with tarfile.open(tarball, "w:gz") as archive:
         archive.add(str(AUDIO), arcname=AUDIO.name)
@@ -85,7 +115,6 @@ def main() -> None:
     HfApi(token=os.environ["HF_TOKEN"]).upload_file(
         path_or_fileobj=tarball, path_in_repo="phase_b/assistant_audio.tar.gz", repo_id=HUB_REPO, repo_type="dataset"
     )
-    print("QWEN_TTS_DONE", flush=True)
 
 
 if __name__ == "__main__":
