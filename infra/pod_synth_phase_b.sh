@@ -43,7 +43,12 @@ for _ in $(seq 1 180); do
     curl -sf http://localhost:8000/health >/dev/null 2>&1 && break
     sleep 5
 done
-curl -sf http://localhost:8000/health >/dev/null || { echo "SERVER_DEAD"; tail -40 /voxtral.log; exit 1; }
+curl -sf http://localhost:8000/health >/dev/null || {
+    echo "SERVER_DEAD — full server log follows (the stage engine's own"
+    echo "traceback sits far above the API wrapper's, a tail always missed it)"
+    cat /voxtral.log
+    exit 1
+}
 echo "server healthy"
 
 # The curated source is regenerated, not versioned (2.7 MB): the curator is
