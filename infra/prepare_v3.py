@@ -51,20 +51,24 @@ def fetch_phase_b() -> list[dict[str, Any]]:
     from huggingface_hub import hf_hub_download
 
     jsonl = hf_hub_download("Rcarvalo/tc-en-voice-agent-v1", "phase_b/train.jsonl", repo_type="dataset")
-    tarball = hf_hub_download("Rcarvalo/tc-en-voice-agent-v1", "phase_b/audio.tar.gz", repo_type="dataset")
+    tarballs = [
+        hf_hub_download("Rcarvalo/tc-en-voice-agent-v1", "phase_b/audio.tar.gz", repo_type="dataset"),
+        hf_hub_download("Rcarvalo/tc-en-voice-agent-v1", "phase_b/assistant_audio.tar.gz", repo_type="dataset"),
+    ]
 
     marker = AUDIO / ".phase_b_extracted"
     if not marker.exists():
-        with tarfile.open(tarball) as archive:
-            for member in archive.getmembers():
-                if not member.isfile():
-                    continue
-                target = AUDIO / f"pb_{Path(member.name).name}"
-                if not target.exists():
-                    extracted = archive.extractfile(member)
-                    assert extracted is not None
-                    target.write_bytes(extracted.read())
-        marker.touch()
+        for tarball in tarballs:
+            with tarfile.open(tarball) as archive:
+                for member in archive.getmembers():
+                    if not member.isfile():
+                        continue
+                    target = AUDIO / f"pb_{Path(member.name).name}"
+                    if not target.exists():
+                        extracted = archive.extractfile(member)
+                        assert extracted is not None
+                        target.write_bytes(extracted.read())
+            marker.touch()
 
     dialogues = []
     with Path(jsonl).open(encoding="utf-8") as handle:

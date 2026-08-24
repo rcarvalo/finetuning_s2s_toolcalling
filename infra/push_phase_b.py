@@ -13,7 +13,7 @@ from pathlib import Path
 
 from huggingface_hub import HfApi
 
-JSONL = Path("data/phase_b_train.jsonl")
+JSONL = Path("data/phase_b_train_users.jsonl")
 AUDIO = Path("data/audio_phase_b")
 TARBALL = Path("/tmp/phase_b_audio.tar.gz")
 REPO = "Rcarvalo/tc-en-voice-agent-v1"
@@ -28,7 +28,7 @@ def main() -> None:
     print(f"tarball: {TARBALL.stat().st_size / 1e6:.0f} MB")
 
     api = HfApi(token=os.environ.get("HF_TOKEN"))
-    for local, remote in ((str(JSONL), "phase_b/train.jsonl"), (str(TARBALL), "phase_b/audio.tar.gz")):
+    for local, remote in ((str(JSONL), "phase_b/train_users.jsonl"), (str(TARBALL), "phase_b/audio.tar.gz")):
         api.upload_file(path_or_fileobj=local, path_in_repo=remote, repo_id=REPO, repo_type="dataset")
         print(f"pushed {remote}")
 
