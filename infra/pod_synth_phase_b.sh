@@ -11,7 +11,25 @@
 set -euo pipefail
 
 cd /repo
-python3 -m pip install -q soundfile torchaudio kokoro 2>&1 | tail -1
+# The package itself (light core deps), plus what the synthesize CLI imports.
+# torchaudio is pinned to the image's torch (same minor) with --no-deps: a
+# floating install would drag a NEW torch in and break the vLLM server.
+python3 -m pip install -q -e . 2>&1 | tail -1
+TORCH_V=$(python3 -c "import torch; print(torch.__version__.split('+')[0])")
+python3 -m pip install -q --no-deps "torchaudio==${TORCH_V}" 2>&1 | tail -1 || \
+    python3 -m pip install -q --no-deps torchaudio 2>&1 | tail -1
+python3 -m pip install -q soundfile kokoro httpx 2>&1 | tail -1
+
+# Voxtral server — the fresh-set job starts it after the dispatcher, so this
+# path must start its own.
+nohup vllm serve mistralai/Voxtral-4B-TTS-2603 --omni \
+    --gpu-memory-utilization 0.85 > /voxtral.log 2>&1 &
+for _ in $(seq 1 180); do
+    curl -sf http://localhost:8000/health >/dev/null 2>&1 && break
+    sleep 5
+done
+curl -sf http://localhost:8000/health >/dev/null || { echo "SERVER_DEAD"; tail -40 /voxtral.log; exit 1; }
+echo "server healthy"
 
 # The curated source is regenerated, not versioned (2.7 MB): the curator is
 # deterministic and both inputs are committed (the s2s corpus + every held-out
