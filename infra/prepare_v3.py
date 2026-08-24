@@ -3,7 +3,7 @@
 Runs on the training box (needs liquid-audio for packing). Idempotent.
 
 Sources, both on the Hub under Rcarvalo/tc-en-voice-agent-v1:
-  data/train.parquet   — 2729 single-turn rows, Voxtral voices (Phase A)
+  data/train*.parquet  — 2729 single-turn rows, Voxtral voices (Phase A)
   phase_b/train.jsonl + phase_b/audio.tar.gz — 2679 conversational dialogues,
   Kokoro voices, assistant answers voiced (Phase B)
 
@@ -21,9 +21,29 @@ import tarfile
 from pathlib import Path
 from typing import Any
 
+REPO = "Rcarvalo/tc-en-voice-agent-v1"
 OUT = Path("data/tc_en_v3")
 AUDIO = OUT / "audio"
 VAL_SIZE = 150
+
+
+def phase_a_shards() -> list[str]:
+    """Phase A parquet shards, whatever naming the Hub currently carries.
+
+    The corpus was first uploaded as a plain ``data/train.parquet``; pushing
+    the viewer-friendly layout replaced it with datasets' sharded naming
+    (``data/train-00000-of-00001.parquet``). Both must resolve.
+    """
+    from huggingface_hub import HfApi
+
+    shards = sorted(
+        name
+        for name in HfApi().list_repo_files(REPO, repo_type="dataset")
+        if name.startswith("data/train") and name.endswith(".parquet")
+    )
+    if not shards:
+        raise FileNotFoundError(f"no Phase A parquet under data/ in {REPO}")
+    return shards
 
 
 def fetch_phase_a() -> list[dict[str, Any]]:
@@ -35,9 +55,11 @@ def fetch_phase_a() -> list[dict[str, Any]]:
 
     from lfm2_audio.data_prep.hf_rehydrate import row_to_dialogue
 
-    table = pq.read_table(hf_hub_download("Rcarvalo/tc-en-voice-agent-v1", "data/train.parquet", repo_type="dataset"))
+    rows: list[dict[str, Any]] = []
+    for shard in phase_a_shards():
+        rows.extend(pq.read_table(hf_hub_download(REPO, shard, repo_type="dataset")).to_pylist())
     dialogues = []
-    for row in table.to_pylist():
+    for row in rows:
         rel = row["audio"]["path"]
         if not (AUDIO / rel).exists():
             data, rate = sf.read(io.BytesIO(row["audio"]["bytes"]), dtype="float32")
@@ -50,10 +72,10 @@ def fetch_phase_a() -> list[dict[str, Any]]:
 def fetch_phase_b() -> list[dict[str, Any]]:
     from huggingface_hub import hf_hub_download
 
-    jsonl = hf_hub_download("Rcarvalo/tc-en-voice-agent-v1", "phase_b/train.jsonl", repo_type="dataset")
+    jsonl = hf_hub_download(REPO, "phase_b/train.jsonl", repo_type="dataset")
     tarballs = [
-        hf_hub_download("Rcarvalo/tc-en-voice-agent-v1", "phase_b/audio.tar.gz", repo_type="dataset"),
-        hf_hub_download("Rcarvalo/tc-en-voice-agent-v1", "phase_b/assistant_audio.tar.gz", repo_type="dataset"),
+        hf_hub_download(REPO, "phase_b/audio.tar.gz", repo_type="dataset"),
+        hf_hub_download(REPO, "phase_b/assistant_audio.tar.gz", repo_type="dataset"),
     ]
 
     marker = AUDIO / ".phase_b_extracted"
