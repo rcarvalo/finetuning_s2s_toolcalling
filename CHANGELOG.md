@@ -25,7 +25,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   session (assistant replies as text; past user audio cannot be replayed — the
   one-audio-per-conversation invariant — so user turns are empty markers).
   The session lives on the client: any worker can serve any turn, which is
-  what keeps serverless scaling and FlashBoot free. Capped at 12 turns.
+  what keeps serverless scaling and FlashBoot free. Capped at the most recent
+  exchange: replayed history is assistant-only, and stacking several one-sided
+  turns makes the model blend unrelated topics (measured on the endpoint —
+  after a French-word turn and a weather turn, "another one please" answered
+  about weather while mentioning French). Lifting the cap needs the worker to
+  return a transcript of the user's turn.
 - `lfm2-voice` (extra `voice`): hands-free voice assistant over the serverless
   endpoint, ChatGPT-voice style — open mic, Silero VAD detects the end of the
   utterance, the reply audio plays as it streams out of the endpoint (first

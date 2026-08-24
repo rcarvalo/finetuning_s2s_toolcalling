@@ -20,9 +20,16 @@ logger = logging.getLogger(__name__)
 # model would answer to nothing.
 _MIN_RMS = 5e-4
 
-# Replayed context is capped so the prompt does not grow without bound over a
-# long session; a dozen turns is plenty for a spoken back-and-forth.
-_MAX_HISTORY_TURNS = 12
+# Only the most recent exchange is replayed, and that cap is not about prompt
+# size: past user turns cannot be replayed (their audio is gone, and nothing
+# transcribes it client-side), so history is assistant-only. Stacking several
+# such one-sided turns gives the model its own answers on unrelated topics
+# with no idea what was asked, and it blends them — measured on the endpoint:
+# after a French-word turn and a weather turn, "another one please" produced a
+# weather answer mentioning French. One exchange is what a follow-up needs
+# ("which word?" → "hello") without dragging in stale topics. Lifting this cap
+# requires the worker to return a transcript of the user's turn.
+_MAX_HISTORY_TURNS = 2
 
 
 class VoiceTurnHandler:
