@@ -106,14 +106,19 @@ def main() -> None:
 
 
 def push_tarball() -> None:
-    """Tar the WAVs synthesized so far and upload to the Hub (idempotent)."""
+    """Tar the WAVs synthesized so far and upload to the Hub (idempotent).
+
+    TTS_HUB_PATH lets a concurrent hedge run push to its own path instead of
+    clobbering the primary tarball with a partial checkpoint.
+    """
     tarball = "/tmp/phase_b_assistant_audio.tar.gz"
     with tarfile.open(tarball, "w:gz") as archive:
         archive.add(str(AUDIO), arcname=AUDIO.name)
     from huggingface_hub import HfApi
 
+    path_in_repo = os.environ.get("TTS_HUB_PATH", "phase_b/assistant_audio.tar.gz")
     HfApi(token=os.environ["HF_TOKEN"]).upload_file(
-        path_or_fileobj=tarball, path_in_repo="phase_b/assistant_audio.tar.gz", repo_id=HUB_REPO, repo_type="dataset"
+        path_or_fileobj=tarball, path_in_repo=path_in_repo, repo_id=HUB_REPO, repo_type="dataset"
     )
 
 
