@@ -101,6 +101,27 @@ def handler(job: dict[str, Any]) -> Iterator[dict[str, Any]]:
     ).model_dump()
 
 
+def _warm_first_turn(model: LFM2Audio) -> None:
+    """Absorb the first-generation warmup at boot, not on the first job.
+
+    Measured on an L4: the engine reports ready, then the FIRST generation
+    still pays ~6.5s of lazy CUDA-graph/JIT warmup (TTFA 6.8s vs 0.28s steady
+    state). On serverless that cost would land on the user's first question
+    after every cold start, so we spend it here — before the worker starts
+    taking jobs. Best-effort: a warmup failure must not kill a worker whose
+    real jobs might still succeed.
+    """
+    try:
+        for _ in model.stream(text="Hi.", max_tokens=16):
+            pass
+        logger.info("boot warmup done; first job will see steady-state TTFA")
+    except Exception:
+        logger.warning("boot warmup failed; first job pays warmup", exc_info=True)
+    finally:
+        model.reset()
+
+
 if __name__ == "__main__":
-    get_model()  # échec de chargement = échec du worker au boot, pas au 1er job
+    # Échec de chargement = échec du worker au boot, pas au 1er job.
+    _warm_first_turn(get_model())
     runpod.serverless.start({"handler": handler, "return_aggregate_stream": True})

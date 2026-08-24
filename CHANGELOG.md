@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 
 ## [Unreleased]
 
+### Added
+- `infra/handler.py`: the ~6.5 s first-generation warmup is now absorbed at
+  worker boot (a tiny throwaway turn before `serverless.start`), so the first
+  real job after a cold start sees steady-state TTFA (~0.3 s on vLLM) instead
+  of paying the warmup. Best-effort — a warmup failure logs and never kills
+  the worker.
+
 ### Fixed
 - vLLM backend proven end-to-end on an L4: engine boots with the per-stage
   deploy config (piecewise CUDA graphs on stage 0), steady-state **TTFA 0.28 s,
