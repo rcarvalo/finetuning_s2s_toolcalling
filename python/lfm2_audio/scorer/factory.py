@@ -14,6 +14,7 @@ la config demande explicitement l'échec.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from lfm2_audio.core.errors import Lfm2AudioError
@@ -39,6 +40,15 @@ JUDGE = LazyComponent(
     module="lfm2_audio.scorer.text.gemini_judge",
     class_name="GeminiJudge",
     requires=("google.genai",),
+)
+# Repli quand GEMINI_API_KEY est absent : le juge est un Protocol, la source du
+# jugement est donc interchangeable sans toucher scorer ni rubrique. Une
+# campagne enregistre le modèle de juge utilisé — deux campagnes jugées par des
+# modèles différents ne sont pas comparables.
+HF_JUDGE = LazyComponent(
+    module="lfm2_audio.scorer.text.hf_judge",
+    class_name="HfJudge",
+    requires=("huggingface_hub",),
 )
 
 
@@ -87,7 +97,16 @@ class ScorerFactory:
         return self._transcriber
 
     def _shared_judge(self) -> Judge:
-        """Juge LLM, construit une seule fois."""
+        """Juge LLM, construit une seule fois.
+
+        Gemini d'abord (clé historique du projet), repli Hugging Face sinon :
+        sans repli, l'absence de `GEMINI_API_KEY` rend le scorer `reasoning`
+        indisponible et la campagne mesure l'ancrage sans jamais mesurer la
+        pertinence — exactement l'angle mort de la validation v3.
+        """
         if self._judge is None:
-            self._judge = JUDGE.build(model_id=self._config.judge_model_id)
+            if os.environ.get("GEMINI_API_KEY"):
+                self._judge = JUDGE.build(model_id=self._config.judge_model_id)
+            else:
+                self._judge = HF_JUDGE.build()
         return self._judge
