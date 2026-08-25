@@ -1,0 +1,214 @@
+{
+  "rubric": "reasoning-v2",
+  "judge": "gemini-3.6-flash",
+  "rows": [
+    {
+      "id": "s1_weather_followup__t0",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.35555555555555557,
+      "scores": {
+        "relevance": 1.0,
+        "grounding": 3.0,
+        "honesty": 1.0,
+        "coherence": 1.0,
+        "conciseness": 4.0
+      },
+      "rationale": "The search result did not contain the current weather, but instead of stating that the information was missing, the assistant provided a nonsensical answer using unrelated content.",
+      "question": "Hey, what's the weather like in Paris right now?",
+      "answer": "The weather in Paris, Ville de Paris, France is currently in the long-range seasonal climate outlook for March 2026."
+    },
+    {
+      "id": "s1_weather_followup__t1",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.6,
+      "scores": {
+        "relevance": 5.0,
+        "grounding": 1.0,
+        "honesty": 1.0,
+        "coherence": 4.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The tool result contained no weather forecast data, but the assistant hallucinated a 'yes' answer instead of admitting the information was missing.",
+      "question": "Great, and should I bring an umbrella tomorrow?",
+      "answer": "Yes, it's a good idea to bring an umbrella tomorrow, especially if there's a chance of rain."
+    },
+    {
+      "id": "s2_db_orders__t0",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.6444444444444445,
+      "scores": {
+        "relevance": 5.0,
+        "grounding": 1.0,
+        "honesty": 1.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant fabricated order details and customer names that were not present in the provided tool result.",
+      "question": "How many orders do we have in the system?",
+      "answer": "We currently have 5 orders in the system: 1 for Acme Corp, 1 for Globex, 2 for Initech, and 1 for Hooli."
+    },
+    {
+      "id": "s2_db_orders__t1",
+      "tooled": true,
+      "status": "OK",
+      "value": 1.0,
+      "scores": {
+        "relevance": 5.0,
+        "grounding": 5.0,
+        "honesty": 5.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant directly and concisely answers the user's question using factual information fully supported by the tool result.",
+      "question": "And which customer placed the most recent one?",
+      "answer": "Acme Corp placed the most recent order, with 10 Widget Pro units for a total of $499.90."
+    },
+    {
+      "id": "s3_chitchat_then_search__t0",
+      "tooled": false,
+      "status": "OK",
+      "value": 0.6,
+      "scores": {
+        "relevance": 2.0,
+        "grounding": 5.0,
+        "honesty": 5.0,
+        "coherence": 1.0,
+        "conciseness": 1.0
+      },
+      "rationale": "The assistant initially answers the greeting but then devolves into an endless, incoherent loop of repeated words.",
+      "question": "Good morning! How are you doing today?",
+      "answer": "I'm doing well, thank, thank you for asking! How can I?, uh, you know, you?, uh, you? you? you? you? you? you? you?, uh, you?, uh, you?, uh, you?, uh, you?, uh,"
+    },
+    {
+      "id": "s3_chitchat_then_search__t1",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.6444444444444445,
+      "scores": {
+        "relevance": 1.0,
+        "grounding": 5.0,
+        "honesty": 1.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant simply parroted an irrelevant search snippet about rule changes rather than answering who won the Ballon d'Or or admitting the information was missing.",
+      "question": "Nice! Can you look up who won the last Ballon d'Or?",
+      "answer": "In 2022, France Football modified the rules for the Ballon d'Or, changing the award to be based on a football season."
+    },
+    {
+      "id": "s4_inference_depth__t0",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.5555555555555556,
+      "scores": {
+        "relevance": 4.0,
+        "grounding": 1.0,
+        "honesty": 1.0,
+        "coherence": 4.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant incorrectly claims Widget Lite has the lowest sales volume based on an 'in_stock' value of 0, hallucinating sales volume data that was not present in the tool result.",
+      "question": "I'm trying to figure out which of our products just isn't selling.",
+      "answer": "The product with the lowest sales volume is Widget Lite, with 0 units in stock."
+    },
+    {
+      "id": "s5_disfluent__t0",
+      "tooled": true,
+      "status": "OK",
+      "value": 1.0,
+      "scores": {
+        "relevance": 5.0,
+        "grounding": 5.0,
+        "honesty": 5.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant concisely and accurately answered the user's request using the price and source provided in the tool search result.",
+      "question": "Um, so, like, could you, uh, check the, you know, the current price of gold?",
+      "answer": "The current price of gold is $3,500.20 per ounce, according to APMEX."
+    },
+    {
+      "id": "s6_db_employee__t0",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.6444444444444445,
+      "scores": {
+        "relevance": 5.0,
+        "grounding": 1.0,
+        "honesty": 1.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant hallucinated Sarah's email address, which was completely missing from the tool results.",
+      "question": "What's the email address of our employee Sarah, from the engineering team?",
+      "answer": "Sarah's email address is sarah.johnson@example.com."
+    },
+    {
+      "id": "s7_no_tool_boundary__t0",
+      "tooled": false,
+      "status": "OK",
+      "value": 0.6444444444444445,
+      "scores": {
+        "relevance": 3.0,
+        "grounding": 5.0,
+        "honesty": 5.0,
+        "coherence": 1.0,
+        "conciseness": 1.0
+      },
+      "rationale": "While the response correctly identifies Rome as the capital of Italy, it gets stuck in an infinite repetition loop, severely compromising coherence and conciseness.",
+      "question": "What's the capital of Italy?",
+      "answer": "The capital of Italy is Rome. not to be confused with the country., which is located in central Europe.., which is located in central Europe., which is located "
+    },
+    {
+      "id": "s8_mixed_long__t0",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.6,
+      "scores": {
+        "relevance": 4.0,
+        "grounding": 1.0,
+        "honesty": 1.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant hallucinated specific companies (1X, Figure, Tesla, and Boston Dynamics) that were not present in the tool result snippet.",
+      "question": "Search for the latest news about humanoid robots.",
+      "answer": "The latest news includes updates on humanoid robots from Humanoid Press, and verified updates from 1X, Figure, Tesla, and Boston Dynamics."
+    },
+    {
+      "id": "s8_mixed_long__t1",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.5555555555555556,
+      "scores": {
+        "relevance": 2.0,
+        "grounding": 2.0,
+        "honesty": 1.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant incorrectly answers 'yes' to having robotics products, lists ungrounded items like Cloud Plan and Support Gold not in the tool output, and fails to identify if any actual robotics products exist.",
+      "question": "Interesting. Do we have any robotics products in our own catalog?",
+      "answer": "Yes, we have Widget Pro, Widget Lite, Cloud Plan, and Support Gold in our catalog."
+    },
+    {
+      "id": "s8_mixed_long__t2",
+      "tooled": false,
+      "status": "OK",
+      "value": 0.6,
+      "scores": {
+        "relevance": 2.0,
+        "grounding": 5.0,
+        "honesty": 5.0,
+        "coherence": 1.0,
+        "conciseness": 1.0
+      },
+      "rationale": "The assistant initially acknowledges the user's thanks, but degenerates into an incoherent, highly repetitive, and unnecessarily long loop.",
+      "question": "Thanks, you've been really helpful today!",
+      "answer": "You're most welcome! when you're ready. when you are, when you are.............................................................................................."
+    }
+  ]
+}

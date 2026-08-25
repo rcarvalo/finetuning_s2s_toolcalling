@@ -25,6 +25,9 @@ from lfm2_audio.scorer.sample import EvalSample
 from lfm2_audio.scorer.text.hf_judge import HfJudge
 from lfm2_audio.scorer.text.judge import Judge
 from lfm2_audio.scorer.text.reasoning import ReasoningScorer
+from lfm2_audio.scorer.text.rubric import ANSWER_RUBRIC_V2, REASONING_RUBRIC
+
+RUBRICS = {"v1": REASONING_RUBRIC, "v2": ANSWER_RUBRIC_V2}
 
 
 def to_sample(record: dict[str, Any]) -> EvalSample:
@@ -76,10 +79,17 @@ def main() -> None:
         action="store_true",
         help="re-judge turns already present in the output file (default: reuse them)",
     )
+    parser.add_argument(
+        "--rubric",
+        choices=sorted(RUBRICS),
+        default="v2",
+        help="v2 adds the honesty criterion and unweights grounding. Campaigns judged "
+        "with different rubrics are NOT comparable — the version is recorded in the report.",
+    )
     args = parser.parse_args()
 
     judge = build_judge()
-    scorer = ReasoningScorer(judge)
+    scorer = ReasoningScorer(judge, rubric=RUBRICS[args.rubric])
 
     out = args.out or args.transcript.with_name(f"judged_{args.transcript.stem}.json")
     cached: dict[str, dict[str, Any]] = {}
@@ -122,7 +132,9 @@ def main() -> None:
     scored = [r for r in rows if r["value"] is not None]
     if scored:
         print(f"\nnoted {len(scored)}/{len(rows)} — mean {statistics.mean(r['value'] for r in scored):.3f}")
-        for key in ("relevance", "grounding", "coherence", "conciseness"):
+        # Les critères viennent de la rubrique : une liste figée ici masquerait
+        # silencieusement tout critère ajouté (honesty ne s'affichait pas).
+        for key in scorer.rubric.keys:
             values = [r["scores"][key] for r in scored if key in r["scores"]]
             if values:
                 print(f"  {key:12s} {statistics.mean(values):.2f}")
