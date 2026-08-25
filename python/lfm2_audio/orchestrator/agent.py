@@ -45,7 +45,8 @@ from lfm2_audio.orchestrator.events import (
     TurnComplete,
 )
 from lfm2_audio.orchestrator.fillers import FillerBank
-from lfm2_audio.orchestrator.tool_parser import ParsedToolCall, StreamingToolCallParser
+from lfm2_audio.orchestrator.round_result import RoundResult
+from lfm2_audio.orchestrator.tool_parser import StreamingToolCallParser
 from lfm2_audio.tools.registry import ToolRegistry
 
 if TYPE_CHECKING:
@@ -73,6 +74,11 @@ class AgentConfig:
     # latence). hybrid=False → interleaved partout (parole instantanée mais tool
     # calls corrompus, cf. éval).
     hybrid: bool = True
+    # Plafond de la passe de décision. Elle n'existe que pour émettre un tool
+    # call ou rien : un plafond court coupe net les boucles de dégénérescence
+    # (v3 partait à 512 tokens de « uh, you know, you? » sur les tours sans
+    # outil) et rend la passe jetable pour un coût négligeable.
+    decision_max_tokens: int = 64
 
 
 class ReceptionAgent:
@@ -138,13 +144,30 @@ class ReceptionAgent:
             # HYBRIDE : tour tool-call (tool_ran=False) en sequential (texte propre) ;
             # tour réponse (après un outil) en interleaved (parole basse latence).
             speaking = tool_ran or not self.config.hybrid
-            pending_calls, visible_delta_text, audio_frames, interrupted = yield from self._generate_round(
-                chat, should_stop=should_stop, speaking=speaking
+            round_result = yield from self._generate_round(
+                chat,
+                should_stop=should_stop,
+                speaking=speaking,
+                max_new_tokens=None if speaking else self.config.decision_max_tokens,
+                # Une passe de décision jetable ne doit rien streamer : son texte
+                # part à la poubelle si aucun outil n'est appelé, et le span d'un
+                # tool call est de toute façon masqué par le parser.
+                stream_text=speaking,
             )
-            full_text.append(visible_delta_text)
-            total_audio_frames += audio_frames
 
-            if interrupted:
+            if not (speaking or round_result.emitted_tool_call or round_result.interrupted):
+                # La passe de décision n'a appelé aucun outil : ce tour est une
+                # réponse directe. On JETTE son texte — produit en séquentiel,
+                # mode dans lequel le modèle n'a pas appris à répondre depuis la
+                # Phase B — et on régénère en parole, comme après un outil.
+                round_result = yield from self._generate_round(chat, should_stop=should_stop, speaking=True)
+
+            round_result.commit(chat)
+            pending_calls = round_result.pending_calls
+            full_text.append(round_result.visible_text)
+            total_audio_frames += round_result.audio_frames
+
+            if round_result.interrupted:
                 chat.end_turn()
                 break
 
@@ -202,13 +225,20 @@ class ReceptionAgent:
     # ------------------------------------------------------------------ #
 
     def _generate_round(
-        self, chat: ChatState, *, should_stop: Callable[[], bool] | None, speaking: bool = False
-    ) -> Generator[AgentEvent, None, tuple[list[ParsedToolCall], str, int, bool]]:
+        self,
+        chat: ChatState,
+        *,
+        should_stop: Callable[[], bool] | None,
+        speaking: bool = False,
+        max_new_tokens: int | None = None,
+        stream_text: bool = True,
+    ) -> Generator[AgentEvent, None, RoundResult]:
         """Une passe de génération ; s'arrête sur tool call complet, im_end ou barge-in.
 
         ``speaking`` : tour réponse → generate_interleaved (parole S2S) ; sinon
-        tour tool-call → generate_sequential (texte propre). Yield les événements ;
-        retourne (pending_calls, visible_text, audio_frames, interrupted).
+        tour tool-call → generate_sequential (texte propre). Yield les événements
+        et retourne un :class:`RoundResult` **non committé** : c'est l'appelant
+        qui décide de l'intégrer au contexte ou de le jeter.
         """
 
         cfg = self.config
@@ -226,7 +256,7 @@ class ReceptionAgent:
         with torch.no_grad(), stream_ctx:
             for t in gen_fn(
                 **chat,
-                max_new_tokens=cfg.max_new_tokens,
+                max_new_tokens=max_new_tokens or cfg.max_new_tokens,
                 text_temperature=cfg.text_temperature,
                 text_top_k=cfg.text_top_k,
                 audio_temperature=cfg.audio_temperature,
@@ -243,7 +273,7 @@ class ReceptionAgent:
                     completed = parser.feed(piece)
 
                     visible = parser.visible_text.replace(TEXT_END, "")
-                    if len(visible) > emitted:
+                    if stream_text and len(visible) > emitted:
                         yield TextDelta(text=visible[emitted:])
                         emitted = len(visible)
 
@@ -265,16 +295,12 @@ class ReceptionAgent:
                 else:
                     raise RuntimeError(f"unexpected token shape from generate_interleaved: {tuple(t.shape)}")
 
-        # Réintègre les tokens générés dans le contexte (cf. demo/chat.py).
-        if out_text or out_audio:
-            device = chat.device
-            text_t = torch.stack(out_text, 1) if out_text else torch.empty((1, 0), dtype=torch.long, device=device)
-            audio_t = (
-                torch.stack(out_audio, 1)
-                if out_audio
-                else torch.empty((chat.codebooks, 0), dtype=torch.long, device=device)
-            )
-            chat.append(text=text_t, audio_out=audio_t, modality_flag=torch.tensor([out_modality], device=device))
-
-        visible_final = parser.visible_text.replace(TEXT_END, "")
-        return pending_calls, visible_final, audio_frames, interrupted
+        return RoundResult(
+            pending_calls=pending_calls,
+            visible_text=parser.visible_text.replace(TEXT_END, ""),
+            audio_frames=audio_frames,
+            interrupted=interrupted,
+            text_tokens=out_text,
+            audio_tokens=out_audio,
+            modality_flags=out_modality,
+        )

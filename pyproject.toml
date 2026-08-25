@@ -83,6 +83,10 @@ client = [
 voice = [
     "lfm2-audio[client]",
     "fastrtc[vad]>=0.0.20",
+    # Transcribes the capture so the user can see what was actually heard.
+    # faster-whisper runs on CPU through CTranslate2 — no torch, so the extra
+    # stays deployable on a laptop or a Reachy Mini.
+    "faster-whisper>=1.0",
 ]
 # App Gradio de test de l'endpoint serverless (app/gradio_app.py).
 app = [
@@ -231,7 +235,7 @@ module = [
     "vllm.*", "vllm_omni.*", "liquid_audio.*", "torch.*", "torchaudio.*",
     "transformers.*", "peft.*", "datasets.*", "safetensors.*",
     "soundfile.*", "chromadb.*",
-    "gradio.*", "fastrtc.*", "wandb.*", "kokoro.*", "ddgs.*", "tavily.*",
+    "gradio.*", "fastrtc.*", "wandb.*", "kokoro.*", "ddgs.*", "tavily.*", "faster_whisper.*",
     "google.*", "anthropic.*", "asyncpg.*",
     "huggingface_hub.*", "uvicorn.*", "fastapi.*", "httpx.*", "onnxruntime.*", "pyarrow.*",
 ]
