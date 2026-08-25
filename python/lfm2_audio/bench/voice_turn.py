@@ -76,6 +76,10 @@ class VoiceTurnHandler:
         ("generator already executing"). Paying the boot here, at startup,
         keeps that failure off the user's first sentence.
         """
+        # Announced before the call, not after: a cold worker takes minutes and
+        # this runs before the UI opens, so silence here reads as "the app does
+        # not start".
+        logger.info("waking the endpoint (up to ~3 min if the worker is cold)...")
         try:
             reply = self._client.invoke(text="Hi.", max_tokens=16)
             logger.info("endpoint warm: %s", reply.text)
