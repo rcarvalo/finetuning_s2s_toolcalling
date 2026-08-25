@@ -29,7 +29,7 @@ from lfm2_audio.ds.training_config import TrainingConfig
 from lfm2_audio.training.callback_builder import CallbackBuilder
 from lfm2_audio.training.freeze import FreezePolicy, apply_freeze_policy
 from lfm2_audio.training.instrumented_trainer import InstrumentedTrainer
-from lfm2_audio.training.lora import inject_lora
+from lfm2_audio.training.lora import inject_lora, warm_start_lora
 from lfm2_audio.training.lora_settings import LoraSettings
 from lfm2_audio.training.step_budget import resolve_max_steps
 
@@ -73,6 +73,8 @@ def model_construction_hook(config: TrainingConfig) -> Iterator[None]:
             model = LFM2AudioModel.from_pretrained(*args, **kwargs)
             if settings.enabled:
                 inject_lora(model, settings)
+                if config.lora.init_adapter:
+                    warm_start_lora(model, config.lora.init_adapter)
             counts = apply_freeze_policy(model, policy)
             logger.info(
                 "entraînables : %.1fM / gelés : %.1fM",

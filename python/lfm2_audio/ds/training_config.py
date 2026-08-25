@@ -26,6 +26,12 @@ class LoraConfig(BaseModel):
     r: int = Field(default=16, gt=0)
     alpha: int = Field(default=32, gt=0)
     dropout: float = Field(default=0.05, ge=0.0, lt=1.0)
+    # Warm start: Hub repo id or local directory holding an adapter_model.safetensors.
+    # A preempted run (Colab reclaims VMs) resumes from its last pushed adapter
+    # instead of restarting from scratch. Optimizer state is NOT restored — the
+    # LR schedule replays its warmup, which is why this is a warm start, not a
+    # bit-exact resume.
+    init_adapter: str | None = None
 
 
 class FreezeConfig(BaseModel):

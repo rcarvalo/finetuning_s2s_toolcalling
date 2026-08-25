@@ -98,6 +98,27 @@ def load_lora(model, adapter_path: str | Path) -> None:
         raise RuntimeError(f"unexpected LoRA keys: {unexpected[:5]}...")
 
 
+def warm_start_lora(model, source: str) -> None:
+    """Load adapter weights from a Hub repo id or a local directory.
+
+    Used to resume a run that a preempted VM cut short: the adapter must
+    already be injected (same r/alpha/targets), only its weights are replaced.
+    """
+    local = Path(source)
+    if local.is_dir():
+        # An existing directory is a local adapter, never a repo id: falling
+        # through to the Hub would report a confusing network error instead.
+        path = local / "adapter_model.safetensors"
+        if not path.exists():
+            raise FileNotFoundError(f"no adapter_model.safetensors in {local}")
+    else:
+        from huggingface_hub import hf_hub_download
+
+        path = Path(hf_hub_download(source, "adapter_model.safetensors"))
+    load_lora(model, path)
+    logger.info("LoRA warm-started from %s", source)
+
+
 def merge_lora(model) -> int:
     """Fusionne les adaptateurs dans les poids de base (export GGUF / inférence).
 

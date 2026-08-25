@@ -40,12 +40,12 @@ dataloader_num_workers: 4
 grad_clip: 1.0
 
 logging_interval: 10
-save_interval: 400
+save_interval: 200
 val_interval: 100
 output_dir: outputs/tc_en_voice_agent_v3
 
 hub_repo: Rcarvalo/lfm25-tc-en-v3-adapter
-push_interval: 400            # Colab reclaims sessions; a lost VM costs minutes
+push_interval: 200            # Colab reclaims sessions; a lost VM costs minutes
 
 wandb_project: lfm25-toolcalling-en
 wandb_run_name: tc_en_v3_phaseAB
