@@ -11,6 +11,7 @@ timings and the spoken answer, plus a WAV of every spoken reply.
 
 from __future__ import annotations
 
+import argparse
 import json
 import time
 from pathlib import Path
@@ -47,10 +48,22 @@ SYSTEM = (
 
 
 def main() -> None:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--adapter", default=ADAPTER, help="Hub repo id or local adapter directory")
+    parser.add_argument("--out-dir", default=str(OUT_DIR), type=Path)
+    parser.add_argument(
+        "--push-to",
+        default=None,
+        help="dataset repo id: upload the transcript when done. A reclaimed VM "
+        "otherwise takes the only copy of the run with it.",
+    )
+    args = parser.parse_args()
+
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     # Reuse the tested resolve/merge path, then hand the raw pieces to the agent.
-    backend = LFM2Audio.from_pretrained(BASE, backend="liquid", adapter=ADAPTER)
+    backend = LFM2Audio.from_pretrained(BASE, backend="liquid", adapter=args.adapter)
     registry = build_toolcalling_en_registry(
         web_backend=DuckDuckGoBackend(), db_backend=FakeDbBackend(), timeout_s=15.0
     )
@@ -62,7 +75,7 @@ def main() -> None:
     )
 
     scenarios = json.loads(SCENARIOS.read_text(encoding="utf-8"))
-    transcript = (OUT_DIR / "transcript.jsonl").open("w", encoding="utf-8")
+    transcript = (out_dir / "transcript.jsonl").open("w", encoding="utf-8")
 
     for scenario in scenarios:
         chat = agent.new_session()
@@ -104,7 +117,7 @@ def main() -> None:
             record["first_event_s"] = round(first_event_s or 0.0, 2)
             if audio_out:
                 spoken = torch.cat(audio_out).float().cpu().numpy()
-                out_wav = OUT_DIR / f"{scenario['id']}__t{index}.wav"
+                out_wav = out_dir / f"{scenario['id']}__t{index}.wav"
                 sf.write(str(out_wav), spoken, 24_000, subtype="PCM_16")
                 record["spoken_s"] = round(len(spoken) / 24_000, 1)
             transcript.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -117,6 +130,19 @@ def main() -> None:
             )
 
     transcript.close()
+
+    if args.push_to:
+        import os
+
+        from huggingface_hub import HfApi
+
+        HfApi(token=os.environ.get("HF_TOKEN")).upload_file(
+            path_or_fileobj=str(out_dir / "transcript.jsonl"),
+            path_in_repo=f"reports/scenarios_{args.adapter.rsplit('/', 1)[-1]}.jsonl",
+            repo_id=args.push_to,
+            repo_type="dataset",
+        )
+        print(f"transcript pushed to {args.push_to}", flush=True)
     print("SCENARIOS_DONE", flush=True)
 
 
