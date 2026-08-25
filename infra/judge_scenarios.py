@@ -16,12 +16,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import statistics
 from pathlib import Path
 from typing import Any
 
 from lfm2_audio.scorer.sample import EvalSample
 from lfm2_audio.scorer.text.hf_judge import HfJudge
+from lfm2_audio.scorer.text.judge import Judge
 from lfm2_audio.scorer.text.reasoning import ReasoningScorer
 
 
@@ -31,27 +33,74 @@ def to_sample(record: dict[str, Any]) -> EvalSample:
         sample_id=f"{record['scenario']}__t{record['turn']}",
         prompt_text=record["user"],
         predicted_text=record["answer"],
+        # Prefer the full payload; `result_preview` (300 chars) only exists in
+        # transcripts recorded before that fix, and grading grounding against a
+        # truncated payload marks correct answers as hallucinations.
         tool_results=[
-            {"name": tool.get("name"), "result": tool.get("result_preview", "")} for tool in record.get("tools", [])
+            {"name": tool.get("name"), "result": tool.get("result") or tool.get("result_preview", "")}
+            for tool in record.get("tools", [])
         ],
     )
+
+
+def build_judge() -> Judge:
+    """Gemini when its key is present, Hugging Face otherwise.
+
+    Gemini flash is the cheap path and the project's historical judge; the HF
+    fallback exists so a missing key never silently turns `reasoning` into an
+    UNAVAILABLE scorer.
+    """
+    if os.environ.get("GEMINI_API_KEY"):
+        from lfm2_audio.scorer.text.gemini_judge import GeminiJudge
+
+        return GeminiJudge()
+    judge = HfJudge()
+    if not judge.has_credentials:
+        raise SystemExit("ni GEMINI_API_KEY ni HF_TOKEN : aucun juge disponible")
+    return judge
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--transcript", required=True, type=Path)
     parser.add_argument("--out", default=None, type=Path)
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=50,
+        help="hard cap on judged turns. Every judged turn is a paid API call, so "
+        "the cap is on by default and must be raised deliberately.",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="re-judge turns already present in the output file (default: reuse them)",
+    )
     args = parser.parse_args()
 
-    judge = HfJudge()
-    if not judge.has_credentials:
-        raise SystemExit("HF_TOKEN absent: the judge cannot run")
+    judge = build_judge()
     scorer = ReasoningScorer(judge)
+
+    out = args.out or args.transcript.with_name(f"judged_{args.transcript.stem}.json")
+    cached: dict[str, dict[str, Any]] = {}
+    if out.exists() and not args.force:
+        previous = json.loads(out.read_text(encoding="utf-8"))
+        cached = {row["id"]: row for row in previous.get("rows", []) if row.get("status") == "OK"}
+        if cached:
+            print(f"{len(cached)} tours déjà jugés, réutilisés (--force pour refaire)", flush=True)
 
     records = [json.loads(line) for line in args.transcript.open(encoding="utf-8")]
     rows = []
+    spent = 0
     for record in records:
         sample = to_sample(record)
+        if sample.sample_id in cached:
+            rows.append(cached[sample.sample_id])
+            continue
+        if spent >= args.limit:
+            print(f"plafond de {args.limit} appels atteint, {len(records) - len(rows)} tours non jugés", flush=True)
+            break
+        spent += 1
         result = scorer.score(sample)
         detail = result.details or {}
         rows.append(
@@ -78,7 +127,6 @@ def main() -> None:
             if values:
                 print(f"  {key:12s} {statistics.mean(values):.2f}")
 
-    out = args.out or args.transcript.with_name(f"judged_{args.transcript.stem}.json")
     out.write_text(
         json.dumps({"rubric": scorer.rubric.version, "judge": judge.model_id, "rows": rows}, indent=2), encoding="utf-8"
     )

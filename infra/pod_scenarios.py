@@ -104,6 +104,10 @@ def main() -> None:
                     record["tools"][-1] |= {
                         "ok": event.ok,
                         "elapsed_ms": round(event.elapsed_ms, 1),
+                        # The FULL payload, not a preview: the LLM judge grades
+                        # grounding against it, and a truncated one made it call
+                        # correct answers hallucinations (facts sat past the cut).
+                        "result": payload[:6000],
                         "result_preview": payload[:300],
                     }
                 elif isinstance(event, AudioChunk):

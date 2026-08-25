@@ -17,7 +17,10 @@ from google.genai.client import Client
 logger = logging.getLogger(__name__)
 
 API_KEY_ENV_VAR = "GEMINI_API_KEY"
-DEFAULT_MODEL_ID = "gemini-2.0-flash"
+# gemini-2.0-flash a été retiré du service (404 « no longer available ») ; flash
+# reste le palier adapté à une notation par rubrique — la tâche demande de la
+# compréhension, pas du raisonnement long, et le coût par campagne reste marginal.
+DEFAULT_MODEL_ID = "gemini-3.6-flash"
 
 
 class GeminiJudge:
