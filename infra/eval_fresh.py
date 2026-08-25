@@ -69,6 +69,12 @@ def main() -> None:
     parser.add_argument("--adapter", required=True, help="Hub repo id or local adapter directory")
     parser.add_argument("--out", default="reports/fresh/fresh_v3.json")
     parser.add_argument("--checkpoint", default="LiquidAI/LFM2.5-Audio-1.5B")
+    parser.add_argument(
+        "--push-to",
+        default=None,
+        help="dataset repo id: upload the report as soon as it exists. A reclaimed "
+        "Colab VM otherwise takes the only copy of the result with it.",
+    )
     args = parser.parse_args()
 
     OUT.mkdir(parents=True, exist_ok=True)
@@ -106,6 +112,19 @@ def main() -> None:
     report = json.loads(Path(args.out).read_text(encoding="utf-8"))
     for metric in report["metrics"]:
         print(f"{metric['scorer']}: mean={metric['mean']:.4f} coverage={metric['coverage']}", flush=True)
+
+    if args.push_to:
+        import os
+
+        from huggingface_hub import HfApi
+
+        HfApi(token=os.environ.get("HF_TOKEN")).upload_file(
+            path_or_fileobj=args.out,
+            path_in_repo=f"reports/{Path(args.out).name}",
+            repo_id=args.push_to,
+            repo_type="dataset",
+        )
+        print(f"report pushed to {args.push_to}", flush=True)
     print("EVAL_FRESH_DONE", flush=True)
 
 
