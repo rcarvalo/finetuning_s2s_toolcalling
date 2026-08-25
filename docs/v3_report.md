@@ -48,7 +48,61 @@ incohérent. La comparaison est frontale, pas graduelle.
 Bonus non recherché : sur `s7_no_tool_boundary`, v2 appelait un outil à tort ;
 v3 s'abstient correctement.
 
-## Résultat 3 — la limite, et elle est nette
+## Résultat 3 — deux défauts, tous deux diagnostiqués
+
+### 3a. La dégénérescence hors-outil est un bug d'orchestrateur, pas du modèle
+
+Sur les tours sans appel d'outil, la réponse part en boucle jusqu'à la limite
+de tokens (884 caractères sur « How are you? », 2 094 sur « capitale de
+l'Italie »), avec un motif de disfluences — « uh, you know, you? » — qui est la
+signature de nos tours **utilisateur**.
+
+Cause : `agent.py` décide le mode par `speaking = tool_ran or not hybrid`. Le
+tour 0 est **toujours** généré en séquentiel texte-seul, délibérément, pour que
+l'entrelacement ne déchiquette pas le span `<|tool_call_start|>…` (leçon v1).
+Or v3 a appris ses réponses en **entrelacé** (Phase B, 6:12). Sans appel
+d'outil, elle n'atteint jamais le mode parole et doit répondre dans un mode que
+sa distribution ne connaît plus.
+
+Vérifié expérimentalement (mêmes audios, `hybrid` basculé) :
+
+| | `hybrid=True` | `hybrid=False` |
+|---|---|---|
+| « How are you? » | 884 car. de boucle, 0 s | « I'm doing well, thank you for asking! How can I assist you? » — 3,7 s |
+| « Capitale de l'Italie » | 2 094 car. de boucle, 0 s | « The capital of Italy is Rome. » — 1,7 s |
+| Contrôle avec outil | e-mail correct, 3,7 s | **texte vide, appel cassé** |
+
+v3 sait donc parfaitement tenir une conversation ; l'orchestrateur l'en empêche.
+Mais la dernière ligne interdit de simplement basculer en entrelacé.
+**Correctif (sans réentraînement)** : décider en séquentiel, puis, si aucun
+appel d'outil n'est émis, régénérer la réponse en mode parole.
+
+### 3b. Ancrage ≠ pertinence : nos payloads d'entraînement ne ressemblent pas au réel
+
+Question : « qui a gagné le dernier Ballon d'Or ? »
+Réponse : « In 2022, France Football modified the rules for the Ballon d'Or… »
+
+Le modèle **récite le snippet** au lieu de répondre. Il est correctement ancré
+dans le payload — mais le payload ne contient pas la réponse, et il ne le
+détecte pas.
+
+Mesure sur `data/phase_b_train.jsonl` : les payloads d'outil de la Phase B sont
+**toujours une réponse propre et unique**.
+
+- `{"results": "The Antarctic Polar Desert is considered the largest desert in the world."}`
+- quand c'est une liste : **418 cas sur 473 ont exactement un élément** ;
+- clés hétérogènes (`results`, `result`, `snippet`, `answer`) ;
+- **aucun payload ne contient de bruit, ni ne manque la réponse.**
+
+DuckDuckGo réel renvoie 5 résultats hétérogènes `{title, url, snippet}`, parfois
+sans la réponse. Le modèle a appris « le payload contient la réponse, reformule-la » —
+il n'a jamais appris à **sélectionner** parmi plusieurs résultats, ni à dire
+**« je n'ai pas trouvé »**. Face au réel, il fait ce qu'on lui a enseigné.
+
+C'est la limite que la validation « 10/10 tours ancrés » masquait : je vérifiais
+que la réponse venait du payload, pas qu'elle répondait à la question.
+
+## Détail des tours conversationnels
 
 Les **3 tours conversationnels sans outil** (« how are you », « thank you »,
 « capital of Italy ») sont dégradés en texte :
@@ -97,14 +151,22 @@ s'appuyant sur le résultat** — fonctionne de bout en bout.
 Reste une lacune de registre, pas de capacité : le modèle est excellent en
 assistant outillé, maladroit en conversation sociale.
 
-## v4 — ce que ce rapport prescrit
+## Ce que ce rapport prescrit
 
-1. **Combler le registre manquant** : ajouter au corpus des tours sociaux courts
-   (salutations, remerciements, relances) avec **réponse voisée**, et des
-   réponses directes sans outil également voisées. C'est la cause la plus
-   probable des trois échecs, et elle est bon marché à corriger.
-2. **Transcript-first** (cf. `project-transcript-plan`) : conditionner la
-   génération sur la transcription pourrait récupérer les ~21 % d'arguments
-   inexacts, la métrique la plus faible depuis v2.
-3. Une variable à la fois : ces deux changements se mesurent séparément sur le
-   même fresh set.
+**Priorité 1 — orchestrateur, aucun réentraînement** (§3a). Basculer en mode
+parole quand le tour 0 n'émet pas d'appel d'outil. Corrige la dégénérescence
+conversationnelle immédiatement, à coût nul.
+
+**Priorité 2 — réalisme des payloads, v4** (§3b). Reconstruire les tours `tool`
+de la Phase B à l'image du réel : plusieurs résultats hétérogènes
+`{title, url, snippet}`, réponse parfois en position 3, **et une fraction de cas
+où la réponse est absente** — la bonne réponse étant alors « je n'ai pas
+trouvé ». C'est le défaut le plus visible à l'usage.
+
+**Priorité 3 — transcript-first** (cf. `project-transcript-plan`) : conditionner
+la génération sur la transcription pourrait récupérer les ~21 % d'arguments
+inexacts, métrique la plus faible depuis v2.
+
+Une variable à la fois, mesurée sur le même fresh set — et désormais aussi sur
+un jeu de scénarios enrichi de questions dont la réponse **n'est pas** dans les
+résultats, puisque c'est le cas que la validation actuelle ne couvrait pas.
