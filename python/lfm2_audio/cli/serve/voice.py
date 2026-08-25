@@ -25,6 +25,11 @@ def main() -> None:
     parser.add_argument("--max-tokens", type=int, default=None, help="cap on generated tokens per turn")
     parser.add_argument("--share", action="store_true", help="expose a public Gradio link")
     parser.add_argument(
+        "--no-warmup",
+        action="store_true",
+        help="skip the startup call that wakes a cold worker (boot then lands on your first turn)",
+    )
+    parser.add_argument(
         "--save-turns",
         type=Path,
         default=Path("reports/voice_turns"),
@@ -38,6 +43,8 @@ def main() -> None:
         max_tokens=args.max_tokens,
         save_dir=args.save_turns if str(args.save_turns) else None,
     )
+    if not args.no_warmup:
+        handler.warm_up()
     stream = Stream(ReplyOnPause(handler.respond), modality="audio", mode="send-receive")
     stream.ui.launch(share=args.share)
 

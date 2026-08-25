@@ -68,6 +68,20 @@ class VoiceTurnHandler:
         # assistant's own past replies are what carries the context.
         self._history: list[tuple[str, str]] = []
 
+    def warm_up(self) -> None:
+        """Wake the endpoint before the first utterance, best-effort.
+
+        A cold serverless worker takes minutes to boot, while the WebRTC layer
+        gives a turn 60 s before it times out and re-enters the generator
+        ("generator already executing"). Paying the boot here, at startup,
+        keeps that failure off the user's first sentence.
+        """
+        try:
+            reply = self._client.invoke(text="Hi.", max_tokens=16)
+            logger.info("endpoint warm: %s", reply.text)
+        except Exception:
+            logger.warning("warmup failed; the first turn may time out", exc_info=True)
+
     def respond(
         self, audio: tuple[int, npt.NDArray[np.int16]]
     ) -> Generator[tuple[int, npt.NDArray[np.float32]], None, None]:

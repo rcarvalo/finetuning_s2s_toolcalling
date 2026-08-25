@@ -19,7 +19,12 @@ class _FakeClient:
 
     def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
+        self.warmups: list[str | None] = []
         self.last_reply: Reply | None = None
+
+    def invoke(self, *, text: str | None = None, max_tokens: int | None = None) -> Reply:
+        self.warmups.append(text)
+        return Reply(text="warm")
 
     def invoke_stream(
         self,
@@ -109,3 +114,23 @@ def test_should_save_user_and_reply_wavs_when_save_dir_set(fake_client: _FakeCli
     saved = sorted(p.name for p in tmp_path.glob("*.wav"))
     assert len(saved) == 1  # the fake reply carries no audio → user WAV only
     assert saved[0].endswith("_user.wav")
+
+
+def test_should_warm_up_before_the_first_turn(fake_client: _FakeClient) -> None:
+    handler = VoiceTurnHandler(fake_client)  # type: ignore[arg-type]
+
+    handler.warm_up()
+    list(handler.respond(_speech()))
+
+    assert fake_client.warmups == ["Hi."]
+    assert fake_client.calls[0]["history"] == []  # warmup leaves the session empty
+
+
+def test_should_survive_a_failing_warmup(fake_client: _FakeClient) -> None:
+    def boom(**_: object) -> Reply:
+        raise RuntimeError("endpoint down")
+
+    fake_client.invoke = boom  # type: ignore[assignment,method-assign]
+    handler = VoiceTurnHandler(fake_client)  # type: ignore[arg-type]
+
+    handler.warm_up()  # must not raise
