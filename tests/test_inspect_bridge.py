@@ -20,6 +20,7 @@ from lfm2_audio.inspect_bridge.audio import data_uri_to_waveform, waveform_to_da
 from lfm2_audio.inspect_bridge.dataset import question_set_dataset, resolve_dataset_path, to_sample
 from lfm2_audio.inspect_bridge.provider import _last_user_turn
 from lfm2_audio.inspect_bridge.scores import to_inspect_score
+from lfm2_audio.inspect_bridge.task import voice_eval
 from lfm2_audio.scorer.result import ScoreResult
 
 # --------------------------------------------------------------------------- #
@@ -137,3 +138,28 @@ def test_should_translate_a_measured_result() -> None:
 )
 def test_should_refuse_to_turn_an_unmeasured_result_into_a_score(result: ScoreResult) -> None:
     assert to_inspect_score(result) is None
+
+
+def test_voice_eval_should_accept_scorers_as_a_list() -> None:
+    """Inspect turns `-T scorers=a,b` into a list before the task sees it."""
+    task = voice_eval(
+        questions="benchmark/lang_mirror/questions.jsonl",
+        scorers=["lang_match", "dnsmos"],
+        limit=1,
+    )
+
+    assert len(task.scorer) == 2
+
+
+def test_audio_root_should_resolve_against_the_repo_root(tmp_path, monkeypatch) -> None:
+    """inspect eval chdirs to the task file's directory; a repo-relative
+    audio_root must keep pointing at the checkout."""
+    monkeypatch.chdir(tmp_path)
+    dataset = question_set_dataset(
+        "benchmark/fleurs_fr_asr/questions.jsonl",
+        audio_root="data/benchmark_audio/fleurs_fr",
+        limit=1,
+    )
+    content = dataset[0].input[0].content
+    audio = next(part for part in content if part.type == "audio")
+    assert audio.audio.startswith("data:audio/wav;base64,")

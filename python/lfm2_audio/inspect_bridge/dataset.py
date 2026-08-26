@@ -77,6 +77,10 @@ def question_set_dataset(
 ) -> Dataset:
     """Load a question-set JSONL as an Inspect dataset."""
     resolved = resolve_dataset_path(path)
+    # Same chdir hazard as the questions file: a repo-relative audio_root must
+    # survive inspect eval running from the task file's directory.
+    if audio_root is not None and not Path(audio_root).is_absolute() and not Path(audio_root).exists():
+        audio_root = str(REPO_ROOT / audio_root)
     questions = QuestionSet.from_jsonl(resolved, audio_root=audio_root)
     if limit:
         questions = questions.take(limit)

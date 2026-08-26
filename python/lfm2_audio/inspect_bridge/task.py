@@ -35,13 +35,15 @@ DEFAULT_SCORERS = "tool_call,dnsmos,utmos"
 def voice_eval(
     questions: str = "benchmark/toolcalling_en/cases.sample.jsonl",
     audio_root: str | None = None,
-    scorers: str = DEFAULT_SCORERS,
+    scorers: str | list[str] = DEFAULT_SCORERS,
     limit: int | None = None,
     asr_language: str = "en",
     rubric: str | None = None,
 ) -> Task:
     """Answer every case once, then grade it with our own scorers."""
-    names = [name.strip() for name in scorers.split(",") if name.strip()]
+    # Inspect parses a comma in a -T value into a list before we see it.
+    raw_names = scorers if isinstance(scorers, list) else scorers.split(",")
+    names = [name.strip() for name in raw_names if name.strip()]
     # Campaign-level ASR default; a sample carrying metadata["lang"] still wins.
     scoring = ScoringConfig(asr_language=asr_language)
     return Task(
