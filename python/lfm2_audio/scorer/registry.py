@@ -65,6 +65,13 @@ SCORERS = ScorerRegistry(
             description="MOS P.835 prédit (sig/bak/ovrl), sans référence",
         ),
         ScorerSpec(
+            name="utmos",
+            module="lfm2_audio.scorer.audio.utmos",
+            class_name="UtmosScorer",
+            requires=("torch",),
+            description="MOS de naturalité prédit (UTMOS), sans référence",
+        ),
+        ScorerSpec(
             name="nisqa",
             module="lfm2_audio.scorer.audio.nisqa",
             class_name="NisqaScorer",

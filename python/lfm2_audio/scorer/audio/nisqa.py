@@ -54,6 +54,26 @@ class NisqaScorer(BaseScorer):
             )
         if not self._model_path.exists():
             return f"checkpoint NISQA introuvable : {self._model_path}"
+        return self._architecture_missing(self._model_path)
+
+    def _architecture_missing(self, model_path: Path) -> str | None:
+        """``nisqa.tar`` ne contient QUE des poids — l'architecture manque.
+
+        Mesuré le 26/08/2026 : le checkpoint officiel est un dict
+        ``{args, model_state_dict}`` (100 entrées), pas un module sérialisé.
+        Sans la classe du modèle (dépôt gabrielmittag/NISQA, non publié sur
+        PyPI), rien ne peut être instancié. Le dire ICI plutôt qu'échouer à la
+        mesure : une campagne doit voir une métrique *indisponible*, pas une
+        métrique qui plante — la confusion entre les deux avait déjà fait
+        passer une éval partielle pour complète.
+        """
+        checkpoint = torch.load(model_path, map_location="cpu", weights_only=False)
+        if isinstance(checkpoint, dict) and "model" not in checkpoint:
+            return (
+                f"checkpoint NISQA sans architecture ({sorted(checkpoint)}) : la classe du modèle "
+                "n'est pas distribuée sur PyPI. Utiliser `utmos` (MOS de naturalité, même famille "
+                "d'usage) ou passer par VERSA, qui vendorise l'implémentation de référence."
+            )
         return None
 
     def supports(self, sample: EvalSample) -> bool:

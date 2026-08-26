@@ -71,12 +71,18 @@ class ScoringConfig(BaseModel):
 
     @classmethod
     def with_defaults(cls) -> ScoringConfig:
-        """Jeu complet : audio (wer, dnsmos, nisqa) + texte (tool_call, reasoning)."""
+        """Jeu complet : audio (wer, dnsmos, utmos) + texte (tool_call, reasoning).
+
+        ``utmos`` remplace ``nisqa`` dans le jeu par défaut : NISQA exige une
+        architecture non distribuée (cf. ``NisqaScorer.unavailable_reason``),
+        et UTMOS couvre le même besoin — le MOS de naturalité — en une
+        dépendance ``torch.hub``. Les deux restent dans le registre.
+        """
         return cls(
             scorers=(
                 ScorerConfig(name="wer"),
                 ScorerConfig(name="dnsmos"),
-                ScorerConfig(name="nisqa"),
+                ScorerConfig(name="utmos"),
                 ScorerConfig(name="tool_call"),
                 ScorerConfig(name="reasoning"),
             )
