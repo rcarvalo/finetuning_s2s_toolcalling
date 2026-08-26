@@ -82,6 +82,10 @@ class VersaRunner:
         self._timeout_s = timeout_s
 
     @property
+    def root(self) -> Path:
+        return self._root
+
+    @property
     def python(self) -> Path:
         return self._root / ".venv" / "bin" / "python"
 

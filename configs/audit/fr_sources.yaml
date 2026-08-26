@@ -1,0 +1,30 @@
+# FR source audit (bilingual plan, phase 1.1) — which sources to sample and how.
+# Sources without raw audio (packed tensors, codec codes) get metadata-only
+# audits: MOS on decoded codes would measure the codec, not the corpus.
+sample_size: 100
+audio_out: data/audit_fr
+sources:
+  - name: student_cv_fr
+    repo_id: baptistefrancois1/s2s-fr-finetuning
+    config: common_voice_fr
+    split: train
+    audio_column: audio
+    text_column: transcript
+    speaker_column: speaker_id
+    id_column: clip_id
+    register: lu (Common Voice, phrases lues)
+  - name: dialogue_tts_1000h
+    repo_id: Rcarvalo/french-dialogue-tts-1000h
+    kind: audiofolder  # wav + metadata.jsonl, pas chargeable en streaming datasets
+    metadata_file: metadata.jsonl
+    text_column: text
+    speaker_column: voice
+    register: dialogue (TTS synthétisé)
+  - name: emilia_yodas_fr
+    repo_id: Rcarvalo/emilia-yodas-fr-filtered
+    split: train
+    text_column: text
+    speaker_column: speaker
+    duration_column: duration_sec
+    register: parole spontanée (Emilia/YODAS)
+    metadata_only: true  # audio_codes seulement — pas de wav brut à noter

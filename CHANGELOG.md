@@ -6,6 +6,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Added
+- FR source audit (phase 1.1) — `lfm2-fr-audit` samples each candidate FR
+  source (`configs/audit/fr_sources.yaml`), measures the raw-audio ones with
+  VERSA (DNSMOS/UTMOS/NISQA — the same metrics the gates read) plus a
+  label-cleanliness WER (faster-whisper fr re-listening vs the shipped
+  transcript), and writes the comparison to `docs/fr_data_audit.md`.
+  Aggregation logic in `data_prep/fr_source_audit.py` (tested). Sources
+  without raw audio are audited on metadata only: `pilot-125h` is packed
+  tensors (and already pilot-validated), `emilia-yodas-fr` ships codec codes —
+  decoding them would judge the codec, not the corpus. `dialogue-tts-1000h`
+  is a wav+metadata.jsonl audiofolder, sampled with an even stride so one
+  recording batch cannot masquerade as the whole corpus.
 - `asr_wer` scorer — plain text-vs-text WER of the model's reply against the
   reference transcript, the D1 gate metric on `fleurs_fr_asr`. The audio `wer`
   scorer measures the TTS path (it re-transcribes generated speech); this one
