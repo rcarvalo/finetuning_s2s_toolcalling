@@ -1,0 +1,102 @@
+# Voice the v5 refusals with Voxtral on RunPod, then ship them to the Hub.
+#
+# v5 rewrites every "the payload does not answer that" turn into a situated
+# refusal that names what was found and what was asked. Each one is distinct,
+# so each needs its own clip — v4 could share five WAVs because it had five
+# fixed sentences.
+#
+# The voice MUST be `neutral_female`, the assistant voice pod_synth_phase_b.sh
+# used for the whole corpus. v4 voiced its refusals with Aiden instead, so the
+# model heard two different voices for itself.
+#
+# Why not Colab: five documented attempts died on the CUDA-13 vllm wheel vs the
+# CUDA-12.8 Python-3.13 Colab image. The official vllm/vllm-openai:v0.22.0
+# image ships the exact CUDA stack its wheels were built for.
+#
+#   set -a; source .env; set +a
+#   sky launch -c voxtral-v5 infra/sky_tts_v5_misses.yaml --down --env HF_TOKEN
+#
+# Produces phase_b/miss_audio_v5.tar.gz on Rcarvalo/tc-en-voice-agent-v1.
+
+name: voxtral-v5-misses
+
+resources:
+  cloud: runpod
+  accelerators: RTX4090:1      # Voxtral 4B bf16 fits easily in 24 GB
+  image_id: docker:vllm/vllm-openai:v0.22.0
+  disk_size: 60
+
+workdir: .
+
+envs:
+  HF_TOKEN: ""
+  MANIFEST: data/tc_en_v5/miss_to_tts.jsonl
+
+setup: |
+  pip install -q vllm-omni==0.22.0 mistral_common
+  pip install -q -e ".[serving-liquid]" pyarrow
+
+run: |
+  set -e
+  test -s "$MANIFEST" || { echo "manifest $MANIFEST missing — run prepare_v5 --stage transform"; exit 1; }
+
+  nohup vllm serve mistralai/Voxtral-4B-TTS-2603 --omni \
+      --gpu-memory-utilization 0.85 > voxtral.log 2>&1 &
+  for i in $(seq 1 120); do
+    curl -sf http://localhost:8000/health >/dev/null 2>&1 && break
+    sleep 5
+  done
+  curl -sf http://localhost:8000/health >/dev/null || { tail -30 voxtral.log; exit 1; }
+  echo "Voxtral up"
+
+  # The manifest is a flat list of texts, wrapped as dialogues holding ONE
+  # assistant turn: `lfm2-synthesize-audio` voices assistant turns, and that is
+  # the path carrying --assistant-voice. No user turn — a placeholder one would
+  # be voiced too, wasting a clip per refusal.
+  mkdir -p data/miss_v5
+  python - <<'PY'
+  import json, os, pathlib
+  rows = [json.loads(line) for line in pathlib.Path(os.environ["MANIFEST"]).read_text().splitlines() if line.strip()]
+  with open("data/miss_v5_src.jsonl", "w", encoding="utf-8") as out:
+      for row in rows:
+          out.write(json.dumps({
+              "id": row["id"],
+              "turns": [{"role": "assistant", "text": row["text"]}],
+              "meta": {"target_audio": row["audio"]},
+          }, ensure_ascii=False) + "\n")
+  print(f"{len(rows)} refusals to voice")
+  PY
+
+  lfm2-synthesize-audio --engine voxtral \
+      --dialogues data/miss_v5_src.jsonl --audio-root data/miss_v5 \
+      --out data/miss_v5_voiced.jsonl \
+      --voices neutral_female --assistant-voice neutral_female \
+      --concurrency 8
+
+  # Rename to the names prepare_v5 wrote into the dialogues: a clip under any
+  # other name would leave the refusal silent at packing time.
+  python - <<'PY'
+  import json, pathlib, shutil, tarfile
+  root = pathlib.Path("data/miss_v5")
+  out = pathlib.Path("data/miss_v5_final"); out.mkdir(exist_ok=True)
+  kept = 0
+  for line in pathlib.Path("data/miss_v5_voiced.jsonl").read_text().splitlines():
+      d = json.loads(line)
+      target = (d.get("meta") or {}).get("target_audio")
+      src = next((t.get("audio") for t in d["turns"] if t["role"] == "assistant" and t.get("audio")), None)
+      if not (target and src and (root / src).exists()):
+          print("MISSING", d["id"], src)
+          continue
+      shutil.copy(root / src, out / target)
+      kept += 1
+  with tarfile.open("miss_audio_v5.tar.gz", "w:gz") as tar:
+      for wav in sorted(out.glob("*.wav")):
+          tar.add(wav, arcname=wav.name)
+  print(f"packed {kept} refusal clips")
+
+  from huggingface_hub import HfApi
+  HfApi().upload_file(path_or_fileobj="miss_audio_v5.tar.gz",
+                      path_in_repo="phase_b/miss_audio_v5.tar.gz",
+                      repo_id="Rcarvalo/tc-en-voice-agent-v1", repo_type="dataset")
+  print("TTS_V5_DONE")
+  PY
