@@ -14,6 +14,13 @@ from lfm2_audio.ds.audio import Waveform
 
 @runtime_checkable
 class Transcriber(Protocol):
-    """Convertit un signal en texte."""
+    """Convertit un signal en texte.
 
-    def transcribe(self, audio: Waveform) -> str: ...
+    ``language`` est l'indice par appel (code ISO court, ``"fr"``/``"en"``) : un
+    jeu bilingue note chaque échantillon dans SA langue au sein d'une même
+    campagne. ``None`` retombe sur la langue configurée du transcripteur —
+    forcer une langue unique par campagne transcrirait l'autre moitié du jeu
+    en charabia et gonflerait son WER arbitrairement.
+    """
+
+    def transcribe(self, audio: Waveform, *, language: str | None = None) -> str: ...

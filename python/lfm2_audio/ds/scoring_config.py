@@ -36,6 +36,13 @@ class ScoringConfig(BaseModel):
     asr_model_id: str = "openai/whisper-large-v3-turbo"
     """ASR de référence du WER — partagé par tous les scorers qui transcrivent."""
 
+    asr_language: str = "en"
+    """Langue par défaut de la transcription (code ISO court).
+
+    C'est le repli : un échantillon qui porte ``metadata["lang"]`` est transcrit
+    dans SA langue, ce qui rend une campagne bilingue mesurable en un seul run.
+    """
+
     asr_backend: Literal["transformers", "faster_whisper"] = "transformers"
     """Moteur ASR du WER.
 

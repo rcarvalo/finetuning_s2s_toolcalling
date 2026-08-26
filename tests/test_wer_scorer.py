@@ -17,9 +17,11 @@ class FakeTranscriber:
     def __init__(self, text: str) -> None:
         self._text = text
         self.calls = 0
+        self.languages: list[str | None] = []
 
-    def transcribe(self, audio: Waveform) -> str:
+    def transcribe(self, audio: Waveform, *, language: str | None = None) -> str:
         self.calls += 1
+        self.languages.append(language)
         return self._text
 
 
@@ -116,3 +118,30 @@ def test_should_not_transcribe_when_skipping():
     WerScorer(transcriber).score(EvalSample(sample_id="s1"))
 
     assert transcriber.calls == 0
+
+
+def test_should_transcribe_in_the_sample_language() -> None:
+    """A bilingual campaign must grade each sample in ITS language: forcing EN
+    on FR speech measures the ASR's confusion, not intelligibility."""
+    transcriber = FakeTranscriber("bonjour tout le monde")
+    scorer = WerScorer(transcriber)
+    sample = EvalSample(
+        sample_id="fr1",
+        predicted_text="bonjour tout le monde",
+        predicted_audio=_audio(),
+        metadata={"lang": "fr"},
+    )
+
+    scorer.score(sample)
+
+    assert transcriber.languages == ["fr"]
+
+
+def test_should_fall_back_to_the_transcriber_default_without_lang() -> None:
+    transcriber = FakeTranscriber("hello world")
+    scorer = WerScorer(transcriber)
+    sample = EvalSample(sample_id="en1", predicted_text="hello world", predicted_audio=_audio())
+
+    scorer.score(sample)
+
+    assert transcriber.languages == [None]

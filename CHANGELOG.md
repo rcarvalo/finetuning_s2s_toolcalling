@@ -6,6 +6,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Added
+- Bilingual eval plumbing (phase 0A of the FR/EN plan). ASR language now flows
+  end to end: `ScoringConfig.asr_language` sets the campaign default, a sample
+  carrying `metadata["lang"]` wins over it, and both Whisper backends accept the
+  per-call override — a FR clip is no longer transcribed as English noise.
+  `voice_eval` exposes `-T asr_language=fr`. The judge rubric gains
+  `reasoning-v3` with a `language_match` criterion and the judge prompt states
+  the expected language: answering EN to a FR question no longer scores 5/5.
+  FR latency prompts (`PROMPTS_BY_LANGUAGE`, `lfm2-latency --lang fr`) mirror
+  the EN set so the two TTFA series stay comparable.
+- `evaluation/versa_runner.py` — bridge to the VERSA toolkit (isolated venv
+  `versa-eval/`), the metric authority at gates: writes the `.scp` + YAML
+  config, shells out to `scorer.py`, returns `key → {metric: value}`. Config
+  presets for pseudo-MOS (DNSMOS+UTMOS), NISQA, Whisper WER and speaker
+  similarity ship with it.
 - Inspect AI is now the eval runner (extra `inspect`). Everything a campaign
   needs — parallelism, retries, several variants in one command, the log and its
   viewer — exists upstream and is better tested than a local rewrite. What is

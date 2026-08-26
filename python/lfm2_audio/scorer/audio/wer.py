@@ -45,7 +45,11 @@ class WerScorer(BaseScorer):
         audio = sample.predicted_audio
         if audio is None:  # supports() l'a déjà vérifié — ceinture et bretelles
             return ScoreResult.skipped(self.name, "aucun audio généré à transcrire")
-        hypothesis = self._transcriber.transcribe(audio)
+        # Per-sample language: a bilingual set carries `lang` in its metadata,
+        # and transcribing FR speech with an EN-forced ASR would not measure
+        # intelligibility — it would measure the ASR's confusion.
+        language = sample.metadata.get("lang")
+        hypothesis = self._transcriber.transcribe(audio, language=language)
         reference = sample.spoken_reference
 
         rate = word_error_rate(reference, hypothesis, normalize=self._normalize)

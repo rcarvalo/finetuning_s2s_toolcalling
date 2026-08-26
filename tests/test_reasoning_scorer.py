@@ -7,7 +7,7 @@ import json
 from lfm2_audio.scorer.sample import EvalSample
 from lfm2_audio.scorer.status import ScoreStatus
 from lfm2_audio.scorer.text.reasoning import ReasoningScorer
-from lfm2_audio.scorer.text.rubric import REASONING_RUBRIC, JudgeCriterion, JudgeRubric
+from lfm2_audio.scorer.text.rubric import ANSWER_RUBRIC_V3, REASONING_RUBRIC, JudgeCriterion, JudgeRubric
 
 
 class FakeJudge:
@@ -119,3 +119,20 @@ def test_custom_rubric_should_drive_the_scoring():
 
     assert result.value == 0.7
     assert result.details["rubric_version"] == "single-v1"
+
+
+def test_should_state_the_expected_language_to_the_judge() -> None:
+    """Without it, an EN reply to a FR question scores 5/5 on every axis."""
+    judge = FakeJudge(_verdict(relevance=5, language_match=1))
+    scorer = ReasoningScorer(judge, rubric=ANSWER_RUBRIC_V3)
+    sample = EvalSample(
+        sample_id="fr1",
+        prompt_text="Quel temps fait-il ?",
+        predicted_text="It is sunny.",
+        metadata={"lang": "fr"},
+    )
+
+    scorer.score(sample)
+
+    assert "language: fr" in judge.prompts[0]
+    assert "language_match" in judge.prompts[0]

@@ -49,7 +49,7 @@ class FasterWhisperTranscriber:
     def model_id(self) -> str:
         return f"faster-whisper/{self._model_size}"
 
-    def transcribe(self, audio: Waveform) -> str:
+    def transcribe(self, audio: Waveform, *, language: str | None = None) -> str:
         """Texte du signal, ou chaîne vide si faster-whisper n'est pas installé.
 
         Une dépendance absente rend le WER ``UNAVAILABLE`` en amont ; renvoyer
@@ -62,7 +62,7 @@ class FasterWhisperTranscriber:
             return ""
         segments, _ = model.transcribe(
             audio.resample(INPUT_SAMPLE_RATE).samples,
-            language=self._language,
+            language=language or self._language,
             beam_size=1,
         )
         return " ".join(segment.text for segment in segments).strip()

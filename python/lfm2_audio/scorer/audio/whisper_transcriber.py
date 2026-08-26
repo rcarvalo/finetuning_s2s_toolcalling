@@ -47,12 +47,16 @@ class WhisperTranscriber:
     def model_id(self) -> str:
         return self._model_id
 
-    def transcribe(self, audio: Waveform) -> str:
-        """Transcrit un signal. Whisper attend du 16 kHz mono."""
+    def transcribe(self, audio: Waveform, *, language: str | None = None) -> str:
+        """Transcrit un signal. Whisper attend du 16 kHz mono.
+
+        ``language`` prime sur la langue configurée : c'est ce qui permet à une
+        campagne bilingue de noter chaque échantillon dans sa langue.
+        """
         resampled = audio.resample(INPUT_SAMPLE_RATE)
         output = self._asr()(
             {"raw": resampled.samples, "sampling_rate": resampled.sample_rate},
-            generate_kwargs={"language": self._language},
+            generate_kwargs={"language": language or self._language},
         )
         return str(output["text"]).strip()
 

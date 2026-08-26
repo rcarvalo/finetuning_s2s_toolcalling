@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 _JSON_BLOCK = re.compile(r"\{.*\}", flags=re.DOTALL)
 
 _PROMPT_TEMPLATE = """You are grading a voice assistant's spoken reply.
-
+{language_line}
 Question asked by the user:
 {question}
 
@@ -87,7 +87,15 @@ class ReasoningScorer(BaseScorer):
         tool_result = (
             json.dumps(sample.tool_results, ensure_ascii=False) if sample.tool_results else "(no tool was called)"
         )
+        # Stated explicitly when known: the judge cannot grade language_match
+        # against a language it was never told, and guessing it from a short
+        # transcript is exactly the failure mode we measure in the model.
+        lang = sample.metadata.get("lang")
+        language_line = ""
+        if lang:
+            language_line = f"The user's question is in language: {lang}. The reply is expected in that language.\n"
         return _PROMPT_TEMPLATE.format(
+            language_line=language_line,
             question=sample.prompt_text or "(spoken question, transcript unavailable)",
             tool_result=tool_result,
             answer=spoken_part(sample.predicted_text),

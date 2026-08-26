@@ -102,10 +102,15 @@ class ScorerFactory:
         """Whisper, construit une seule fois pour tous les scorers qui transcrivent."""
         if self._transcriber is None:
             if self._config.asr_backend == "faster_whisper":
-                self._transcriber = FASTER_WHISPER.build(model_size=self._config.asr_model_size)
+                self._transcriber = FASTER_WHISPER.build(
+                    model_size=self._config.asr_model_size,
+                    language=self._config.asr_language,
+                )
             else:
                 self._transcriber = TRANSCRIBER.build(
-                    model_id=self._config.asr_model_id, device=self._config.asr_device
+                    model_id=self._config.asr_model_id,
+                    device=self._config.asr_device,
+                    language=self._config.asr_language,
                 )
         return self._transcriber
 

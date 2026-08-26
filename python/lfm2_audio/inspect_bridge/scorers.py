@@ -18,10 +18,11 @@ from inspect_ai.model import ContentAudio
 from inspect_ai.scorer import Score, Scorer, Target, mean, scorer
 from inspect_ai.solver import TaskState
 
+from lfm2_audio.ds.scoring_config import ScorerConfig, ScoringConfig
 from lfm2_audio.inspect_bridge.audio import data_uri_to_waveform
 from lfm2_audio.inspect_bridge.scores import to_inspect_score
 from lfm2_audio.scorer.base import BaseScorer
-from lfm2_audio.scorer.registry import SCORERS
+from lfm2_audio.scorer.factory import ScorerFactory
 from lfm2_audio.scorer.sample import EvalSample
 
 logger = logging.getLogger(__name__)
@@ -71,19 +72,28 @@ def wrap(base: BaseScorer) -> Scorer:
     return score
 
 
-def lfm2_scorer(name: str, **kwargs: Any) -> Scorer:  # noqa: ANN401 — kwargs du scorer sous-jacent
+def lfm2_scorer(
+    name: str,
+    *,
+    scoring: ScoringConfig | None = None,
+    **kwargs: Any,  # noqa: ANN401 — kwargs du scorer sous-jacent
+) -> Scorer:
     """Build one of our registered scorers, by name, for an Inspect task.
 
-    Goes through the registry so a missing optional dependency degrades the way
-    it does everywhere else — reported, never silently absent.
+    Built through :class:`ScorerFactory` rather than the bare registry: the
+    factory injects the shared dependencies (WER's transcriber, the judge) and
+    degrades a missing dependency into a reported unmeasured metric — the same
+    path every campaign takes. Constructing the class directly is what made
+    ``wer`` unreachable from Inspect (missing required ``transcriber``).
+
+    ``scoring`` carries campaign-level knobs like ``asr_language``.
     """
-    spec = SCORERS.describe(name)
-    reason = spec.unavailable_reason()
-    if reason:
-        logger.warning("scorer %s indisponible : %s", name, reason)
+    config = (scoring or ScoringConfig()).model_copy(
+        update={"scorers": (ScorerConfig(name=name, options=dict(kwargs)),)}
+    )
 
     @scorer(metrics=[mean()], name=name)
     def build() -> Scorer:
-        return wrap(spec.load()(**kwargs))
+        return wrap(ScorerFactory(config).build_all()[0])
 
     return build()

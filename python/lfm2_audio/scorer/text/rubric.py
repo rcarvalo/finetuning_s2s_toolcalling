@@ -130,3 +130,29 @@ REASONING_RUBRIC = JudgeRubric(
 )
 """Rubrique par défaut. L'ancrage pèse le plus : c'est le mode d'échec dominant
 d'un assistant qui appelle un outil puis parle à côté du résultat."""
+
+
+ANSWER_RUBRIC_V3 = JudgeRubric(
+    version="reasoning-v3",
+    criteria=(
+        *ANSWER_RUBRIC_V2.criteria,
+        JudgeCriterion(
+            key="language_match",
+            question=(
+                "Is the reply in the SAME language as the user's question? Score 5 when it is. "
+                "Score 1 when the reply is in a different language, even if its content is "
+                "otherwise perfect. Proper nouns and borrowed technical terms do not count as "
+                "switching."
+            ),
+            weight=1.0,
+        ),
+    ),
+)
+"""Rubrique v3 = v2 + ``language_match``, pour le chantier bilingue FR/EN.
+
+Sans ce critère, répondre en anglais à une question française obtenait 5/5 sur
+chaque axe : la réponse est pertinente, ancrée, cohérente — elle est juste dans
+la mauvaise langue, et c'est précisément le premier mode d'échec attendu d'un
+modèle en cours de bilingualisation. Les gates lisent ce critère seul (≥4.5),
+jamais noyé dans la moyenne.
+"""

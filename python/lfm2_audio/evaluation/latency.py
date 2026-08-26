@@ -25,6 +25,17 @@ DEFAULT_PROMPTS = (
     "Tell me a short story.",
 )
 
+# TTFA is prompt-length-sensitive, so a FR latency figure quoted off EN prompts
+# would not be a FR figure. Same lengths and same shapes as the EN set, so the
+# two series stay comparable.
+DEFAULT_PROMPTS_FR = (
+    "Bonjour, qui es-tu ?",
+    "Quelle heure est-il à Paris ?",
+    "Raconte-moi une petite histoire.",
+)
+
+PROMPTS_BY_LANGUAGE = {"en": DEFAULT_PROMPTS, "fr": DEFAULT_PROMPTS_FR}
+
 
 @dataclass(frozen=True, slots=True)
 class LatencyReport:

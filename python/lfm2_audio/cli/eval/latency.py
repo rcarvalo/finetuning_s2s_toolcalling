@@ -15,7 +15,7 @@ import sys
 from lfm2_audio.core.errors import Lfm2AudioError
 from lfm2_audio.ds.inference_config import EngineConfig
 from lfm2_audio.evaluation.latency import (
-    DEFAULT_PROMPTS,
+    PROMPTS_BY_LANGUAGE,
     LatencyReport,
     format_ms,
 )
@@ -32,6 +32,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--warmup", type=int, default=2)
     parser.add_argument("--max-tokens", type=int, default=192)
     parser.add_argument("--system", default="Respond with interleaved text and audio.")
+    parser.add_argument(
+        "--lang",
+        choices=sorted(PROMPTS_BY_LANGUAGE),
+        default="en",
+        help="langue des prompts de mesure (le TTFA depend du prompt : une serie par langue)",
+    )
     parser.add_argument(
         "--no-deploy-config",
         action="store_true",
@@ -86,7 +92,7 @@ def main() -> int:
         return 1
 
     with model:
-        benchmark = LatencyBenchmark(model, prompts=DEFAULT_PROMPTS, max_tokens=args.max_tokens)
+        benchmark = LatencyBenchmark(model, prompts=PROMPTS_BY_LANGUAGE[args.lang], max_tokens=args.max_tokens)
         benchmark.warmup(args.warmup)
         report = benchmark.run(args.runs)
 
