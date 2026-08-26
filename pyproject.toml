@@ -102,6 +102,12 @@ app = [
     "gradio>=5.0",
     "httpx>=0.27",
 ]
+# Export d'une campagne vers le viewer Inspect AI : sa liste filtrable, son
+# détail par échantillon et son lecteur audio (`ContentAudio` en data URI)
+# valent mieux qu'un viewer maison. Optionnel : rien ne l'importe hors export.
+inspect = [
+    "inspect-ai>=0.3",
+]
 # Base de connaissances RAG.
 rag = [
     "chromadb>=0.5",
@@ -132,6 +138,7 @@ lfm2-eval-audio = "lfm2_audio.cli.eval.audio_toolcall:main"
 lfm2-eval-toolcalling = "lfm2_audio.cli.eval.toolcall:main"
 lfm2-eval-compare = "lfm2_audio.cli.eval.compare:main"
 lfm2-eval-rescore = "lfm2_audio.cli.eval.rescore:main"
+lfm2-eval-inspect = "lfm2_audio.cli.eval.inspect_export:main"
 lfm2-toolcalling-demo = "lfm2_audio.cli.serve.demo_toolcall:main"
 lfm2-orchestrator-demo = "lfm2_audio.cli.serve.demo_orchestrator:main"
 lfm2-convert-checkpoint = "lfm2_audio.cli.serve.convert_omni:main"

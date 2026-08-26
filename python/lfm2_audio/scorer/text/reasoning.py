@@ -18,8 +18,7 @@ import logging
 import re
 from typing import Any, ClassVar
 
-from lfm2_audio.core.chat_format import TOOL_CALL_END, TOOL_CALL_START
-from lfm2_audio.core.prompt import strip_special_tokens
+from lfm2_audio.core.prompt import spoken_part as shared_spoken_part
 from lfm2_audio.scorer.base import BaseScorer
 from lfm2_audio.scorer.result import ScoreResult
 from lfm2_audio.scorer.sample import EvalSample
@@ -29,14 +28,6 @@ from lfm2_audio.scorer.text.rubric import REASONING_RUBRIC, JudgeRubric
 logger = logging.getLogger(__name__)
 
 _JSON_BLOCK = re.compile(r"\{.*\}", flags=re.DOTALL)
-
-# Le span d'appel EN ENTIER, pas seulement ses marqueurs : retirer les seuls
-# `<|tool_call_*|>` laisserait `[web_search(query="…")]`, qui passerait pour une
-# réponse en langage naturel et serait envoyé au juge.
-_TOOL_CALL_SPAN = re.compile(
-    re.escape(TOOL_CALL_START) + r".*?" + re.escape(TOOL_CALL_END),
-    flags=re.DOTALL,
-)
 
 _PROMPT_TEMPLATE = """You are grading a voice assistant's spoken reply.
 
@@ -107,15 +98,14 @@ class ReasoningScorer(BaseScorer):
 
 
 def spoken_part(text: str) -> str:
-    """Ce que le modèle a réellement dit : span d'appel et marqueurs retirés.
+    """Ce que le modèle a réellement dit — voir :func:`lfm2_audio.core.prompt.spoken_part`.
 
-    Un span d'appel non fermé (stop token strippé par vLLM) est retiré jusqu'à la
-    fin, sans quoi son contenu partirait au juge comme s'il s'agissait de parole.
+    Ré-exporté ici parce que le juge est son premier appelant historique ; la
+    définition vit dans ``core.prompt``, partagée avec l'export Inspect, pour
+    que « ce qui est jugé » et « ce qui est affiché comme réponse » ne puissent
+    pas diverger.
     """
-    without_calls = _TOOL_CALL_SPAN.sub(" ", text)
-    if TOOL_CALL_START in without_calls:
-        without_calls = without_calls[: without_calls.index(TOOL_CALL_START)]
-    return strip_special_tokens(without_calls)
+    return shared_spoken_part(text)
 
 
 def _parse_verdict(raw: str) -> dict[str, Any]:

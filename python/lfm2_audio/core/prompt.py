@@ -18,6 +18,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from lfm2_audio.core.chat_format import TOOL_CALL_SPAN, TOOL_CALL_START
 from lfm2_audio.core.errors import PromptError
 from lfm2_audio.core.tokenizer import Tokenizer
 from lfm2_audio.ds.audio import Waveform
@@ -38,6 +39,20 @@ DEFAULT_SYSTEM = "Respond with interleaved text and audio."
 def strip_special_tokens(text: str) -> str:
     """Texte « parlable » : tous les marqueurs spéciaux retirés."""
     return _SPECIAL_TOKEN.sub("", text).strip()
+
+
+def spoken_part(text: str) -> str:
+    """What the model actually said: the whole call span removed, not just its markers.
+
+    Stripping the markers alone would leave ``[web_search(query="…")]`` looking
+    like a sentence — which is how a tool call ends up being judged as speech,
+    or shown to a reader as the spoken answer. An unterminated span (vLLM strips
+    the stop token) is cut to the end for the same reason.
+    """
+    without_calls = TOOL_CALL_SPAN.sub(" ", text)
+    if TOOL_CALL_START in without_calls:
+        without_calls = without_calls[: without_calls.index(TOOL_CALL_START)]
+    return strip_special_tokens(without_calls)
 
 
 @dataclass(frozen=True, slots=True)
