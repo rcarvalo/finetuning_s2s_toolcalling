@@ -9,6 +9,7 @@ silencieuse (le texte continue de sortir, plus aucun chunk n'arrive).
 from __future__ import annotations
 
 import logging
+import os
 import time
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
@@ -25,6 +26,33 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+ENGINE_ENV_DEFAULTS = {
+    # vLLM 0.22.1 active sa voie AOT-compile par défaut, mais le torch qu'il
+    # épingle (2.11) n'a pas l'attribut qu'elle requiert : l'étage compilé meurt
+    # au démarrage sur « StageEngineCoreProc died during READY ». Les CUDA
+    # graphs par morceaux n'en ont pas besoin (TTFA 0,28 s, RTF 0,57 mesurés
+    # sur L4 avec exactement cette configuration).
+    "VLLM_USE_AOT_COMPILE": "0",
+    # Le sampler FlashInfer JIT-compile ses kernels au démarrage et réclame
+    # nvcc — absent des images sans toolkit CUDA. Le sampler natif PyTorch ne
+    # JIT rien et lui est équivalent à batch 1.
+    "VLLM_USE_FLASHINFER_SAMPLER": "0",
+}
+"""Contournements 0.22 imposés au PROCESSUS, pas à l'engine.
+
+Ils vivaient dans ``Dockerfile.serve`` uniquement : toute autre voie d'entrée
+(démo locale, scénarios, notebook) démarrait sans eux et mourait au boot. Les
+poser ici les rend valables partout, sans écraser un choix explicite.
+"""
+
+
+def apply_engine_env_defaults() -> None:
+    """Pose les contournements 0.22 s'ils ne sont pas déjà fixés."""
+    for name, value in ENGINE_ENV_DEFAULTS.items():
+        if name not in os.environ:
+            os.environ[name] = value
+            logger.info("contournement vLLM 0.22 : %s=%s", name, value)
+
 
 class OmniEngine:
     """Enveloppe de ``vllm_omni.Omni`` configurée pour le streaming in-process."""
@@ -33,6 +61,7 @@ class OmniEngine:
         self.config = config or EngineConfig()
         self._closed = False
 
+        apply_engine_env_defaults()
         load_vllm_omni_plugins()
 
         started = time.time()
