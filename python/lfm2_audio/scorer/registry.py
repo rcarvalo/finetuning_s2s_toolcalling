@@ -79,6 +79,12 @@ SCORERS = ScorerRegistry(
             description="MOS NISQA v2 prédit, sans référence",
         ),
         ScorerSpec(
+            name="asr_wer",
+            module="lfm2_audio.scorer.text.asr_wer",
+            class_name="AsrWerScorer",
+            description="WER de la réponse texte contre la transcription de référence",
+        ),
+        ScorerSpec(
             name="tool_call",
             module="lfm2_audio.scorer.text.tool_call",
             class_name="ToolCallScorer",

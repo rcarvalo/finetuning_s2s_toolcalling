@@ -56,7 +56,7 @@ def test_describe_should_work_for_an_uninstallable_scorer():
 
 
 def test_default_registry_should_expose_every_known_metric():
-    assert set(SCORERS.names) == {"wer", "dnsmos", "utmos", "nisqa", "tool_call", "reasoning"}
+    assert set(SCORERS.names) == {"wer", "asr_wer", "dnsmos", "utmos", "nisqa", "tool_call", "reasoning"}
 
 
 # --------------------------------------------------------------------------- #
@@ -123,5 +123,7 @@ def test_options_should_reach_the_constructor():
 def test_default_config_should_enable_every_runnable_metric():
     """``nisqa`` reste enregistré mais hors du jeu par défaut : son architecture
     n'est pas distribuée, donc il ne peut produire aucun score (cf.
-    ``NisqaScorer.unavailable_reason``). ``utmos`` couvre le même besoin."""
-    assert set(ScoringConfig.with_defaults().enabled_names) == set(SCORERS.names) - {"nisqa"}
+    ``NisqaScorer.unavailable_reason``). ``utmos`` couvre le même besoin.
+    ``asr_wer`` reste hors défauts aussi : comparer une réponse libre à une
+    transcription de référence n'a de sens que sur un benchmark ASR."""
+    assert set(ScoringConfig.with_defaults().enabled_names) == set(SCORERS.names) - {"nisqa", "asr_wer"}

@@ -6,6 +6,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Added
+- `asr_wer` scorer — plain text-vs-text WER of the model's reply against the
+  reference transcript, the D1 gate metric on `fleurs_fr_asr`. The audio `wer`
+  scorer measures the TTS path (it re-transcribes generated speech); this one
+  measures the listening path, shares the same Levenshtein and normalisation,
+  and needs no transcriber. Registered but off by default: comparing a free
+  reply to a transcript only makes sense on an ASR benchmark.
 - FR benchmarks (phase 0A, task 6). `benchmark/fr_s2s/` (100 spoken-style FR
   questions), `benchmark/lang_mirror/` (20 FR / 20 EN / 20 code-switch cases
   with `meta.expected_lang` — the mirroring gate reads % of replies in the
