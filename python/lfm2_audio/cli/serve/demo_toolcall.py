@@ -181,8 +181,14 @@ def build_simple_ui(agent: Any) -> Any:
         if recording is None:
             return None, history
         sample_rate, pcm = recording
-        wave = Waveform.from_pcm16(np.asarray(pcm), sample_rate)
-        print(f"👤 entrée {wave.duration_s:.1f}s @ {wave.sample_rate}Hz · RMS {wave.rms:.3f}", flush=True)
+        # `for_encoder` AVANT tout : le micro du navigateur donne du 44,1 kHz et
+        # l'encodeur mel est calibré 16 kHz. Le mélange ne lève aucune erreur —
+        # il dégrade silencieusement ce que le modèle entend, donc ses décisions.
+        wave = Waveform.from_pcm16(np.asarray(pcm), sample_rate).for_encoder()
+        print(
+            f"👤 entrée {wave.duration_s:.1f}s @ {wave.sample_rate}Hz (micro {sample_rate}Hz) · RMS {wave.rms:.3f}",
+            flush=True,
+        )
         audio, trace = run_turn(agent, wave)
         print(trace, flush=True)
         pcm16 = (np.clip(audio, -1.0, 1.0) * 32_767).astype(np.int16)
@@ -205,9 +211,10 @@ def build_stream(agent: Any, turn: str) -> Any:
     def handler(audio: tuple[int, np.ndarray]) -> Any:
 
         sample_rate, pcm = audio
-        wave = Waveform.from_pcm16(np.asarray(pcm), sample_rate)
+        # Même règle que l'UI simple : rééchantillonner AVANT l'encodeur.
+        wave = Waveform.from_pcm16(np.asarray(pcm), sample_rate).for_encoder()
         print(
-            f"👤 entrée {wave.duration_s:.1f}s @ {wave.sample_rate}Hz · RMS {wave.rms:.3f}",
+            f"👤 entrée {wave.duration_s:.1f}s @ {wave.sample_rate}Hz (micro {sample_rate}Hz) · RMS {wave.rms:.3f}",
             flush=True,
         )
         if wave.rms < MIN_INPUT_RMS:
