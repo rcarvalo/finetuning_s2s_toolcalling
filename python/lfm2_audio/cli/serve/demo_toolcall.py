@@ -46,6 +46,7 @@ from lfm2_audio.orchestrator.events import (
     TurnComplete,
 )
 from lfm2_audio.orchestrator.fillers import EN_FILLER_PHRASES, FillerBank
+from lfm2_audio.orchestrator.playback import BlockBuffer, detach
 from lfm2_audio.tools.fake_db import FakeDbBackend
 from lfm2_audio.tools.toolcalling_en import build_toolcalling_en_registry
 from lfm2_audio.tools.web_search.duckduckgo import DuckDuckGoBackend
@@ -176,43 +177,56 @@ def run_turn(agent: Any, wave: Waveform) -> tuple[np.ndarray, str]:
 
 
 def stream_turn(agent: Any, wave: Waveform) -> Iterator[tuple[Any, str]]:
-    """Un tour, rendu AU FIL DE L'EAU : (chunk audio, trace) à chaque événement.
+    """Stream one turn as (audio span, trace), so the wait ends at the first sound.
 
-    Attendre la réponse complète coûtait ~7 s perçues alors que le travail utile
-    tient en ~2 s (décision + outil + 1er son) : le reste, c'est la synthèse de
-    l'audio, qu'on peut écouter pendant qu'elle se fait. Gradio joue les chunks
-    à mesure, donc la latence PERÇUE tombe au premier son.
+    Generation is detached from delivery and audio is handed over in spans of a
+    second rather than 80 ms frames — see :mod:`lfm2_audio.orchestrator.playback`
+    for the measurements that forced both.
+
+    An event carrying no sound yields ``gr.skip()`` rather than ``None``: the
+    trace still updates, while the player keeps the stream it is reading. Only
+    the opening yield sends ``None``, to clear the previous reply.
     """
     lines: list[str] = []
     start = time.monotonic()
     mark = start
     first_sound: float | None = None
+    buffer = BlockBuffer(SR_OUT)
 
-    with LOCK:
-        for event in agent.respond(wave):
-            if isinstance(event, ToolCallBegin):
-                lines.append(f"🔧 {event.name}({event.arguments})  ⏱ décision {time.monotonic() - mark:.2f}s")
-                yield None, "\n".join(lines)
-            elif isinstance(event, ToolCallResult):
-                mark = time.monotonic()
-                lines.append(f"   ↳ ⏱ outil {event.elapsed_ms:.0f}ms · {str(event.payload)[:180]}")
-                yield None, "\n".join(lines)
-            elif isinstance(event, FillerSpeech):
-                lines.append(f"💬 {event.phrase}")
-                if event.wav_path:
-                    filler, _ = sf.read(event.wav_path, dtype="float32")
-                    yield _as_pcm16(np.asarray(filler, dtype=np.float32).reshape(-1)), "\n".join(lines)
-                else:
-                    yield None, "\n".join(lines)
-            elif isinstance(event, AudioChunk):
-                if first_sound is None:
-                    first_sound = time.monotonic() - mark
-                yield _as_pcm16(np.asarray(event.samples, dtype=np.float32).reshape(-1)), "\n".join(lines)
-            elif isinstance(event, TurnComplete):
-                ttfa = f"{first_sound:.2f}s" if first_sound is not None else "—"
-                lines.append(f"🤖 {event.text}")
-                lines.append(f"⏱ 1er son {ttfa} · tour complet {time.monotonic() - start:.1f}s")
-                yield None, "\n".join(lines)
+    def turn() -> Iterator[Any]:
+        with LOCK:
+            yield from agent.respond(wave)
+
+    yield None, "\n".join(lines)
+    for event in detach(turn):
+        span: Any = gr.skip()
+        if isinstance(event, ToolCallBegin):
+            lines.append(f"🔧 {event.name}({event.arguments})  ⏱ décision {time.monotonic() - mark:.2f}s")
+        elif isinstance(event, ToolCallResult):
+            mark = time.monotonic()
+            lines.append(f"   ↳ ⏱ outil {event.elapsed_ms:.0f}ms · {str(event.payload)[:180]}")
+        elif isinstance(event, FillerSpeech):
+            lines.append(f"💬 {event.phrase}")
+            if event.wav_path:
+                # Le filler est un clip complet : il part tel quel, sans passer
+                # par le tampon — c'est lui qui couvre l'attente de l'outil.
+                filler, _ = sf.read(event.wav_path, dtype="float32")
+                span = _as_pcm16(np.asarray(filler, dtype=np.float32).reshape(-1))
+        elif isinstance(event, AudioChunk):
+            if first_sound is None:
+                first_sound = time.monotonic() - mark
+            block = buffer.push(np.asarray(event.samples, dtype=np.float32))
+            if block is None:
+                continue  # rien à jouer ni à dire : pas d'aller-retour réseau
+            span = _as_pcm16(block)
+        elif isinstance(event, TurnComplete):
+            ttfa = f"{first_sound:.2f}s" if first_sound is not None else "—"
+            lines.append(f"🤖 {event.text}")
+            lines.append(f"⏱ 1er son {ttfa} · tour complet {time.monotonic() - start:.1f}s")
+            tail = buffer.flush()
+            if tail is not None:
+                span = _as_pcm16(tail)
+        yield span, "\n".join(lines)
 
 
 def _as_pcm16(samples: np.ndarray) -> tuple[int, np.ndarray]:
