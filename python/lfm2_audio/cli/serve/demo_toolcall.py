@@ -34,7 +34,6 @@ from fastrtc import (
 )
 
 from lfm2_audio.core import chat_format
-from lfm2_audio.core.env import preload_cuda13
 from lfm2_audio.core.errors import BackendUnavailableError
 from lfm2_audio.ds.audio import Waveform
 from lfm2_audio.ds.inference_config import EngineConfig
@@ -46,8 +45,6 @@ from lfm2_audio.orchestrator.events import (
     TurnComplete,
 )
 from lfm2_audio.orchestrator.fillers import EN_FILLER_PHRASES, FillerBank
-from lfm2_audio.orchestrator.vllm_tool_agent import VllmToolAgent
-from lfm2_audio.serving.backends.vllm_omni import VllmOmniBackend
 from lfm2_audio.tools.fake_db import FakeDbBackend
 from lfm2_audio.tools.toolcalling_en import build_toolcalling_en_registry
 from lfm2_audio.tools.web_search.duckduckgo import DuckDuckGoBackend
@@ -115,6 +112,13 @@ def build_agent(
         )
         return LiquidToolAgent(reception)
 
+    # Imports vLLM DIFFÉRÉS : `core.env` importe vllm_omni au niveau module, et
+    # `--backend liquid` doit tourner sur une machine qui n'a ni vLLM ni
+    # diffusers. Les charger en tête rendrait le chemin léger dépendant du lourd.
+    from lfm2_audio.core.env import preload_cuda13
+    from lfm2_audio.orchestrator.vllm_tool_agent import VllmToolAgent
+    from lfm2_audio.serving.backends.vllm_omni import VllmOmniBackend
+
     preload_cuda13()  # AVANT tout import de vllm
     model = VllmOmniBackend.from_pretrained(
         checkpoint,
@@ -131,7 +135,8 @@ def build_agent(
     return VllmToolAgent(model, _build_registry(), fillers=_build_fillers(filler_dir))
 
 
-def build_stream(agent: VllmToolAgent, turn: str) -> Any:
+def build_stream(agent: Any, turn: str) -> Any:
+    """UI voix partagée par les deux backends : l'agent n'expose que respond(wave)."""
 
     def handler(audio: tuple[int, np.ndarray]) -> Any:
 
