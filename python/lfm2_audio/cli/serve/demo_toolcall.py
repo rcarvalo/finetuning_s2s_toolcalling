@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import os
 import threading
+import time
 from typing import Any
 
 # TORCHDYNAMO_DISABLE was set here historically (all-eager era). It is fatal
@@ -103,6 +104,11 @@ def build_stream(agent: VllmToolAgent, turn: str) -> Any:
         if wave.rms < MIN_INPUT_RMS:
             print(f"   (ignoré : RMS {wave.rms:.3f} < {MIN_INPUT_RMS} — écho/silence)", flush=True)
             return
+        # Chronométrage par étape : c'est la donnée que l'écoute seule ne donne
+        # pas — où partent les secondes d'un tour (décision, outil, reprise).
+        t_start = time.monotonic()
+        t_mark = t_start
+        first_sound_s: float | None = None
         with LOCK:
             # NB : pas de sonde « transcription » — le modèle Phase B ne transcrit
             # plus (le fine-tuning tool-calling a écrasé l'ASR : il RÉPOND au lieu
@@ -110,12 +116,14 @@ def build_stream(agent: VllmToolAgent, turn: str) -> Any:
             # call (ligne 🔧), qui est fidèle (« weather in Paris », « in Celsius »…).
             for ev in agent.respond(wave):
                 if isinstance(ev, ToolCallBegin):
-                    line = f"🔧 {ev.name}({ev.arguments})"
+                    decision_s = time.monotonic() - t_mark
+                    line = f"🔧 {ev.name}({ev.arguments})  ⏱ décision {decision_s:.2f}s"
                     print(line, flush=True)
                     yield AdditionalOutputs(line)
                 elif isinstance(ev, ToolCallResult):
+                    t_mark = time.monotonic()  # la reprise se mesure depuis le résultat
                     print(f"   ↳ outil ok={ev.ok} ({ev.elapsed_ms:.0f}ms) → {str(ev.payload)[:300]}", flush=True)
-                    yield AdditionalOutputs(f"   ↳ {str(ev.payload)[:140]}")
+                    yield AdditionalOutputs(f"   ↳ ⏱ outil {ev.elapsed_ms:.0f}ms · {str(ev.payload)[:140]}")
                 elif isinstance(ev, FillerSpeech):
                     yield AdditionalOutputs(f"💬 {ev.phrase}")
                     if ev.wav_path:  # joué pendant le round-trip → masque le TTFA
@@ -123,14 +131,21 @@ def build_stream(agent: VllmToolAgent, turn: str) -> Any:
                         pcm16 = (np.clip(fwav.reshape(-1), -1.0, 1.0) * 32_767).astype(np.int16)
                         yield (SR_OUT, pcm16.reshape(1, -1))
                 elif isinstance(ev, AudioChunk):
+                    if first_sound_s is None:
+                        first_sound_s = time.monotonic() - t_mark
                     # vLLM RTF<1 → on stream EN DIRECT (pas d'underrun, contrairement
                     # à liquid-audio) : c'est tout l'intérêt du port.
                     w = np.asarray(ev.samples, dtype=np.float32).reshape(-1)
                     pcm16 = (np.clip(w, -1.0, 1.0) * 32_767).astype(np.int16)
                     yield (SR_OUT, pcm16.reshape(1, -1))
                 elif isinstance(ev, TurnComplete):
-                    print(f"🤖 {ev.text}  ({ev.tool_rounds} tool round(s))", flush=True)
-                    yield AdditionalOutputs(f"🤖 {ev.text}")
+                    total_s = time.monotonic() - t_start
+                    ttfa = f"{first_sound_s:.2f}s" if first_sound_s is not None else "—"
+                    print(
+                        f"🤖 {ev.text}  ({ev.tool_rounds} round(s), 1er son {ttfa}, total {total_s:.1f}s)",
+                        flush=True,
+                    )
+                    yield AdditionalOutputs(f"🤖 {ev.text}\n⏱ 1er son après outil {ttfa} · tour complet {total_s:.1f}s")
 
     rtc_conf = server_conf = None
     if turn == "cloudflare":
