@@ -263,6 +263,16 @@ def main() -> None:
         else:
             turn = "none"
 
+    # `webrtc_ui` est résolu ici et pas en tête : il tire fastrtc (donc
+    # onnxruntime et TensorFlow), que `--ui simple` n'a pas à exiger. Mais il
+    # doit être résolu AVANT le modèle : importer ces piles alors que les 1,5 Md
+    # de paramètres occupent déjà la RAM fait tuer le process sans traceback.
+    make_stream: Any = None
+    if args.ui == "webrtc":
+        from lfm2_audio.cli.serve.webrtc_ui import build_stream
+
+        make_stream = build_stream
+
     agent = build_agent(
         args.checkpoint,
         args.adapter,
@@ -270,15 +280,11 @@ def main() -> None:
         filler_dir=args.filler_dir,
         backend=args.backend,
     )
-    if args.ui == "simple":
+    if make_stream is None:
         ui = build_simple_ui(agent)
         mode = "simple (sans WebRTC)"
     else:
-        # Résolu ici seulement : ce module tire `fastrtc`, que le chemin simple
-        # n'a pas à exiger (cf. le découpage dans `webrtc_ui`).
-        from lfm2_audio.cli.serve.webrtc_ui import build_stream
-
-        ui = build_stream(agent, turn).ui
+        ui = make_stream(agent, turn).ui
         mode = f"WebRTC (TURN: {turn})"
     print(f"\n▶ démo S2S + tool calling prête — backend {args.backend}, UI {mode}", flush=True)
     # quiet supprime l'affichage de l'URL publique — inutilisable avec --share,
