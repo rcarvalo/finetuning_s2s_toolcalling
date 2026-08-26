@@ -19,6 +19,7 @@ sources:
     metadata_file: metadata.jsonl
     text_column: text
     speaker_column: voice
+    max_per_speaker: null  # corpus mono-voix assumé : le plafond de diversité n'a pas de sens ici
     register: dialogue (TTS synthétisé)
   - name: emilia_yodas_fr
     repo_id: Rcarvalo/emilia-yodas-fr-filtered

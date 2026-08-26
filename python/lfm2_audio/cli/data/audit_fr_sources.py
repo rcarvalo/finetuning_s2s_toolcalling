@@ -26,6 +26,7 @@ import soxr
 import yaml
 from datasets import Audio, load_dataset
 
+from lfm2_audio.data_prep.asr_bench import AsrCandidate, AsrClipSelector
 from lfm2_audio.data_prep.fr_source_audit import ClipAudit, SourceAudit, audit_markdown
 from lfm2_audio.evaluation.versa_runner import MOS_CONFIG, VersaRunner, nisqa_config
 from lfm2_audio.scorer.audio.wer import word_error_rate
@@ -51,17 +52,24 @@ def audit_source(spec: dict[str, Any], sample_size: int, audio_root: Path, versa
     out_dir = audio_root / audit.name
     out_dir.mkdir(parents=True, exist_ok=True)
     wavs: dict[str, Path] = {}
+    # Same diversity guard as the benchmarks: streamed corpora are often
+    # ordered by speaker, and the first N clips would audit one voice.
+    selector = AsrClipSelector(limit=sample_size, max_per_speaker=spec.get("max_per_speaker", 3))
     for index, row in enumerate(rows):
-        if audit.size >= sample_size:
+        if selector.full:
             break
         clip_id = f"{audit.name}_{index:04d}"
+        speaker = str(row.get(spec.get("speaker_column", ""), "") or "")
+        transcript = str(row.get(spec["text_column"], "") or "")
+        if not selector.offer(AsrCandidate(sample_id=clip_id, transcript=transcript, speaker=speaker)):
+            continue
         duration = _duration(row, spec, out_dir, clip_id, wavs, metadata_only=audit.metadata_only)
         audit.add(
             ClipAudit(
                 sample_id=clip_id,
                 duration_s=duration,
-                speaker=str(row.get(spec.get("speaker_column", ""), "") or ""),
-                transcript=str(row.get(spec["text_column"], "") or ""),
+                speaker=speaker,
+                transcript=transcript,
             )
         )
 
