@@ -33,6 +33,7 @@ from fastrtc import (
     get_cloudflare_turn_credentials,
 )
 
+from lfm2_audio.core import chat_format
 from lfm2_audio.core.env import preload_cuda13
 from lfm2_audio.core.errors import BackendUnavailableError
 from lfm2_audio.ds.audio import Waveform
@@ -64,14 +65,55 @@ LOCK = threading.Lock()
 # ──────────────────────────────── construction ───────────────────────────────
 
 
+def _build_registry() -> Any:
+    """Outils réels : Tavily si sa clé est là (plus rapide), DuckDuckGo sinon."""
+    web = TavilyBackend(max_results=2) if os.environ.get("TAVILY_API_KEY") else DuckDuckGoBackend(max_results=4)
+    print(f"[web] {'Tavily' if os.environ.get('TAVILY_API_KEY') else 'DuckDuckGo (repli)'}", flush=True)
+    return build_toolcalling_en_registry(web_backend=web, db_backend=FakeDbBackend())
+
+
+def _build_fillers(filler_dir: str | None) -> FillerBank:
+    """Wavs pré-rendus si fournis (voix du modèle), texte seul sinon.
+
+    Ne JAMAIS les rendre via le modèle tool-calling : c'est hors-distribution,
+    il émet un token audio en step TEXT et la machine de modalité tue l'engine.
+    """
+    return FillerBank(filler_dir=Path(filler_dir) if filler_dir else None, phrases=dict(EN_FILLER_PHRASES))
+
+
 def build_agent(
     checkpoint: str,
     adapter: str | None = None,
     *,
     no_deploy_config: bool = False,
     filler_dir: str | None = None,
-) -> VllmToolAgent:
+    backend: str = "vllm",
+) -> Any:
     """Assemble modèle + registre d'outils + fillers en un agent prêt à répondre."""
+
+    if backend == "liquid":
+        # Chemin sans vLLM : aucune dépendance diffusers/peft/torchao, et il
+        # porte le correctif deux-passes (réponse parlée quand aucun outil
+        # n'est appelé). TTFA plus élevé qu'en vLLM — les fillers le masquent.
+        from lfm2_audio.orchestrator.agent import AgentConfig, ReceptionAgent
+        from lfm2_audio.orchestrator.liquid_tool_agent import LiquidToolAgent
+        from lfm2_audio.serving.backends.liquid import LiquidAudioBackend
+        from lfm2_audio.serving.model import LFM2Audio
+
+        served = LFM2Audio.from_pretrained(checkpoint, backend="liquid", adapter=adapter)
+        # Même rétrécissement explicite que la branche vLLM : l'agent veut le
+        # modèle brut, que seul le backend concret expose (la fabrique rend l'ABC).
+        if not isinstance(served, LiquidAudioBackend):
+            message = f"--backend liquid exige LiquidAudioBackend, obtenu {type(served).__name__}"
+            raise BackendUnavailableError(message)
+        reception = ReceptionAgent(
+            served._model,
+            served._processor,
+            _build_registry(),
+            config=AgentConfig(max_new_tokens=512, system_instructions=chat_format.TOOLCALLING_EN_SYSTEM_INSTRUCTIONS),
+            fillers=_build_fillers(filler_dir),
+        )
+        return LiquidToolAgent(reception)
 
     preload_cuda13()  # AVANT tout import de vllm
     model = VllmOmniBackend.from_pretrained(
@@ -86,20 +128,7 @@ def build_agent(
         message = f"la démo tool-calling exige le backend vLLM-Omni, obtenu {type(model).__name__}"
         raise BackendUnavailableError(message)
 
-    # Tavily : 2 résultats suffisent (le handler borne à 2) et c'est plus rapide.
-    web = TavilyBackend(max_results=2) if os.environ.get("TAVILY_API_KEY") else DuckDuckGoBackend(max_results=4)
-    print(f"[web] {'Tavily' if os.environ.get('TAVILY_API_KEY') else 'DuckDuckGo (repli)'}", flush=True)
-    registry = build_toolcalling_en_registry(web_backend=web, db_backend=FakeDbBackend())
-    # Fillers : wavs PRÉ-RENDUS si --filler-dir est fourni (voix Aiden — celle
-    # que le modèle a apprise, donc transition invisible), texte seul sinon.
-    # Ne JAMAIS les rendre via « Perform TTS. » sur le modèle tool-calling :
-    # c'est hors-distribution → il émet un token audio en step TEXT → la machine
-    # de modalité lève et TUE l'engine.
-    bank = FillerBank(
-        filler_dir=Path(filler_dir) if filler_dir else None,
-        phrases=dict(EN_FILLER_PHRASES),
-    )
-    return VllmToolAgent(model, registry, fillers=bank)
+    return VllmToolAgent(model, _build_registry(), fillers=_build_fillers(filler_dir))
 
 
 def build_stream(agent: VllmToolAgent, turn: str) -> Any:
@@ -204,6 +233,7 @@ def main() -> None:
         default=None,
         help="wavs d'attente pré-rendus (voix du modèle) joués pendant l'exécution de l'outil",
     )
+    ap.add_argument("--backend", choices=["vllm", "liquid"], default="vllm", help="liquid : sans vLLM ni diffusers")
     ap.add_argument("--turn", choices=["auto", "cloudflare", "none"], default="auto")
     ap.add_argument("--share", action="store_true")
     ap.add_argument("--port", type=int, default=7860)
@@ -222,6 +252,7 @@ def main() -> None:
         args.adapter,
         no_deploy_config=args.no_deploy_config,
         filler_dir=args.filler_dir,
+        backend=args.backend,
     )
     stream = build_stream(agent, turn)
     print(f"\n▶ démo S2S + tool calling vLLM-Omni prête (TURN: {turn})", flush=True)
