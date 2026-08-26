@@ -1,0 +1,69 @@
+# v4 — recette v3 à l'identique. UNE variable change : le réalisme des payloads.
+#
+# Ce que l'éval v3 a montré (docs/v3_report.md) : la décision et la réponse
+# post-outil fonctionnent, mais le modèle **invente ce que le payload ne
+# contient pas** — « Sarah's email address is sarah.johnson@example.com » sur
+# une table sans colonne e-mail. Honnêteté 2,6/5 au juge LLM.
+#
+# Cause mesurée : tous les payloads d'entraînement contenaient la réponse,
+# seule et propre. v4 les remplace par des payloads bruités (3-5 entrées,
+# position variable) dont 15 % ne contiennent PAS la réponse — la cible
+# devenant alors un aveu d'échec (lfm2_audio.data_prep.payload_realism).
+#
+# Tout le reste est identique à v3 : même LoRA, même mélange Phase A + B,
+# même durée, mêmes voix. L'écart mesuré sera donc attribuable aux payloads
+# et à rien d'autre.
+#
+# Hors périmètre, volontairement : le corpus social. Le correctif
+# d'orchestrateur (commit 75f42eb) a déjà porté la cohérence hors-outil de
+# 1,00 à 5,00 — ajouter des données pour un défaut déjà corrigé introduirait
+# une seconde variable sans besoin mesuré.
+
+model_id: LiquidAI/LFM2.5-Audio-1.5B
+train_dataset: datasets/tc_en_v4_train
+val_dataset: datasets/tc_en_v4_val
+context_length: 2048
+
+lora:
+  enabled: true
+  r: 32
+  alpha: 64
+  dropout: 0.05
+  # Reprise après reprise de VM au step 1000. L'état de l'optimiseur n'est pas
+  # restauré : c'est un démarrage à chaud, pas une reprise bit-à-bit.
+  init_adapter: Rcarvalo/lfm25-tc-en-v4-adapter
+
+freeze:
+  freeze_encoder: true
+  freeze_audio_heads: true
+
+lr: 1.0e-4
+max_steps: 970                 # reste à faire : 1971 - 1000 déjà entraînés
+batch_size: 4
+warmup_steps: 30              # modèle déjà chaud : un warmup long relancerait le LR trop haut
+dataloader_num_workers: 4
+grad_clip: 1.0
+
+logging_interval: 10
+save_interval: 200
+val_interval: 100
+output_dir: outputs/tc_en_voice_agent_v4
+
+hub_repo: Rcarvalo/lfm25-tc-en-v4-adapter
+push_interval: 200            # Colab reprend les VM : v3 est morte au step 1600
+
+wandb_project: lfm25-toolcalling-en
+wandb_run_name: tc_en_v4_payload_realism_resume
+
+evaluation:
+  enabled: true
+  question_set: data/tc_en_v4/val.jsonl
+  audio_root: data/tc_en_v4/audio_val
+  interval: 100
+  at_start: true
+  max_questions: 24
+  max_new_tokens: 200
+  tool_definitions: en
+  scoring:
+    scorers:
+      - name: tool_call
