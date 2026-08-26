@@ -42,7 +42,6 @@ from lfm2_audio.orchestrator.playback import BlockBuffer, detach
 from lfm2_audio.tools.fake_db import FakeDbBackend
 from lfm2_audio.tools.toolcalling_en import build_toolcalling_en_registry
 from lfm2_audio.tools.web_search.duckduckgo import DuckDuckGoBackend
-from lfm2_audio.tools.web_search.tavily import TavilyBackend
 
 # ───────────────────────── adaptateur backend vLLM-Omni ──────────────────────
 
@@ -51,9 +50,21 @@ from lfm2_audio.tools.web_search.tavily import TavilyBackend
 
 
 def _build_registry() -> Any:
-    """Outils réels : Tavily si sa clé est là (plus rapide), DuckDuckGo sinon."""
-    web = TavilyBackend(max_results=2) if os.environ.get("TAVILY_API_KEY") else DuckDuckGoBackend(max_results=4)
-    print(f"[web] {'Tavily' if os.environ.get('TAVILY_API_KEY') else 'DuckDuckGo (repli)'}", flush=True)
+    """Outils réels : Tavily si sa clé est là (plus rapide), DuckDuckGo sinon.
+
+    Le module Tavily n'est résolu que dans sa branche : il tire le SDK
+    ``tavily``, que le repli DuckDuckGo n'a aucune raison d'exiger — même
+    motif que les imports vLLM de ``build_agent``.
+    """
+    web: Any
+    if os.environ.get("TAVILY_API_KEY"):
+        from lfm2_audio.tools.web_search.tavily import TavilyBackend
+
+        web = TavilyBackend(max_results=2)
+        print("[web] Tavily", flush=True)
+    else:
+        web = DuckDuckGoBackend(max_results=4)
+        print("[web] DuckDuckGo (repli)", flush=True)
     return build_toolcalling_en_registry(web_backend=web, db_backend=FakeDbBackend())
 
 
