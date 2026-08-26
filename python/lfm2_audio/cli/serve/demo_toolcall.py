@@ -199,6 +199,11 @@ def main() -> None:
         action="store_true",
         help="kwargs legacy (tout eager) au lieu du YAML par stage — TTFA dégradé",
     )
+    ap.add_argument(
+        "--filler-dir",
+        default=None,
+        help="wavs d'attente pré-rendus (voix du modèle) joués pendant l'exécution de l'outil",
+    )
     ap.add_argument("--turn", choices=["auto", "cloudflare", "none"], default="auto")
     ap.add_argument("--share", action="store_true")
     ap.add_argument("--port", type=int, default=7860)
@@ -212,7 +217,12 @@ def main() -> None:
             else "none"
         )
 
-    agent = build_agent(args.checkpoint, args.adapter, no_deploy_config=args.no_deploy_config)
+    agent = build_agent(
+        args.checkpoint,
+        args.adapter,
+        no_deploy_config=args.no_deploy_config,
+        filler_dir=args.filler_dir,
+    )
     stream = build_stream(agent, turn)
     print(f"\n▶ démo S2S + tool calling vLLM-Omni prête (TURN: {turn})", flush=True)
     stream.ui.launch(server_port=args.port, share=args.share, quiet=True)
