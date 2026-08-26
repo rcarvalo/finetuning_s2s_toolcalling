@@ -6,6 +6,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Added
+- Inspect AI is now the eval runner (extra `inspect`). Everything a campaign
+  needs — parallelism, retries, several variants in one command, the log and its
+  viewer — exists upstream and is better tested than a local rewrite. What is
+  ours is what Inspect cannot supply: `inspect_bridge/provider.py` exposes
+  LFM2.5-Audio as a model provider (`--model lfm2/<checkpoint> -M adapter=…`, or
+  `--model lfm2-endpoint/<id>`) that hears a `ContentAudio` question and answers
+  with the speech attached, so the viewer draws a player next to the score;
+  `inspect_bridge/scorers.py` wraps our scorers instead of reimplementing them,
+  so a number in the viewer is the number the report carries;
+  `inspect_bridge/dataset.py` maps a question set, sending a spoken question as
+  audio and never as its transcript.
+
+      inspect eval python/lfm2_audio/inspect_bridge/task.py \
+        --model lfm2/LiquidAI/LFM2.5-Audio-1.5B \
+        -T scorers=tool_call,dnsmos,utmos --max-samples 1
+      inspect view --log-dir logs
+
+  `--max-samples 1` is load-bearing on a local checkpoint: the samples share one
+  GPU, so raising it buys nothing and exhausts VRAM. Endpoints are the opposite.
+
+### Removed
+- `Campaign`, `CampaignConfig` and `lfm2-campaign`, written hours earlier: they
+  duplicated `inspect eval` / `eval-set` (config-driven runs, bounded
+  parallelism, per-variant logs) without their resume-after-failure or adaptive
+  concurrency. A local layer shadowing a live tool inherits its bugs and none of
+  its fixes.
+
+### Added
 - `ToolCallDiagnosis` (`evaluation/tool_call_diagnosis.py`): the anatomy of a
   tool-calling case, evidence kept. `score_case` computed which argument
   diverged and by how much, then discarded it one line later — a report could

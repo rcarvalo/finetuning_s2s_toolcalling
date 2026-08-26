@@ -39,3 +39,22 @@ def wav_file_to_data_uri(path: str) -> str:
     """Same, straight from a WAV file — no decode/re-encode round trip."""
     with open(path, "rb") as handle:
         return f"data:{WAV_MIME};base64," + base64.b64encode(handle.read()).decode()
+
+
+def data_uri_to_waveform(source: str) -> Waveform:
+    """Decode what a log carries back into a waveform.
+
+    Accepts both forms a ``ContentAudio`` can hold: the base64 data URI the
+    viewer needs, and a plain path — a dataset written by hand references files.
+    """
+    if not source.startswith("data:"):
+        return Waveform.from_file(source)
+    payload = base64.b64decode(source.split(",", 1)[1])
+    # Decoded with the stdlib rather than handed to `Waveform.from_file`, which
+    # stringifies its argument and would turn a buffer into a bogus path. WAV by
+    # construction here, symmetric with the encoder above.
+    with wave.open(io.BytesIO(payload), "rb") as handle:
+        frames = handle.readframes(handle.getnframes())
+        sample_rate = handle.getframerate()
+    samples = np.frombuffer(frames, dtype=np.int16).astype(np.float32) / (_PCM16_MAX + 1)
+    return Waveform.of(samples, sample_rate)
