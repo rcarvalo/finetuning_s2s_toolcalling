@@ -39,6 +39,11 @@ serving = [
     # >=0.22.0 resolves to the latest, which then demands a newer vLLM than the
     # one pinned by URL just above it — and the install fails on the conflict.
     "vllm-omni>=0.22,<0.23",
+    # Servir un ADAPTATEUR passe par la fusion LoRA, donc par peft. Même borne
+    # que l'extra `train` : peft>=0.15 exige torchao>=0.16, ininstallable avec
+    # le torch de vLLM 0.22 — sans cette borne, la démo tool-calling meurt au
+    # démarrage sur « Found an incompatible version of torchao ».
+    "peft>=0.13,<0.15",
 ]
 # Évaluation : métriques audio (WER via Whisper, DNSMOS, NISQA) et juge LLM.
 # Les poids DNSMOS/NISQA ne sont pas redistribuables : chemins dans
