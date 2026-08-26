@@ -15,6 +15,7 @@ import argparse
 import os
 import threading
 import time
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -174,12 +175,57 @@ def run_turn(agent: Any, wave: Waveform) -> tuple[np.ndarray, str]:
     return audio, "\n".join(lines)
 
 
-def build_simple_ui(agent: Any) -> Any:
-    """Interface enregistrer → envoyer, sans WebRTC ni TURN."""
+def stream_turn(agent: Any, wave: Waveform) -> Iterator[tuple[Any, str]]:
+    """Un tour, rendu AU FIL DE L'EAU : (chunk audio, trace) à chaque événement.
 
-    def on_submit(recording: tuple[int, np.ndarray] | None, history: str) -> tuple[Any, str]:
+    Attendre la réponse complète coûtait ~7 s perçues alors que le travail utile
+    tient en ~2 s (décision + outil + 1er son) : le reste, c'est la synthèse de
+    l'audio, qu'on peut écouter pendant qu'elle se fait. Gradio joue les chunks
+    à mesure, donc la latence PERÇUE tombe au premier son.
+    """
+    lines: list[str] = []
+    start = time.monotonic()
+    mark = start
+    first_sound: float | None = None
+
+    with LOCK:
+        for event in agent.respond(wave):
+            if isinstance(event, ToolCallBegin):
+                lines.append(f"🔧 {event.name}({event.arguments})  ⏱ décision {time.monotonic() - mark:.2f}s")
+                yield None, "\n".join(lines)
+            elif isinstance(event, ToolCallResult):
+                mark = time.monotonic()
+                lines.append(f"   ↳ ⏱ outil {event.elapsed_ms:.0f}ms · {str(event.payload)[:180]}")
+                yield None, "\n".join(lines)
+            elif isinstance(event, FillerSpeech):
+                lines.append(f"💬 {event.phrase}")
+                if event.wav_path:
+                    filler, _ = sf.read(event.wav_path, dtype="float32")
+                    yield _as_pcm16(np.asarray(filler, dtype=np.float32).reshape(-1)), "\n".join(lines)
+                else:
+                    yield None, "\n".join(lines)
+            elif isinstance(event, AudioChunk):
+                if first_sound is None:
+                    first_sound = time.monotonic() - mark
+                yield _as_pcm16(np.asarray(event.samples, dtype=np.float32).reshape(-1)), "\n".join(lines)
+            elif isinstance(event, TurnComplete):
+                ttfa = f"{first_sound:.2f}s" if first_sound is not None else "—"
+                lines.append(f"🤖 {event.text}")
+                lines.append(f"⏱ 1er son {ttfa} · tour complet {time.monotonic() - start:.1f}s")
+                yield None, "\n".join(lines)
+
+
+def _as_pcm16(samples: np.ndarray) -> tuple[int, np.ndarray]:
+    return SR_OUT, (np.clip(samples, -1.0, 1.0) * 32_767).astype(np.int16)
+
+
+def build_simple_ui(agent: Any) -> Any:
+    """Interface enregistrer → envoyer, sans WebRTC ni TURN, audio streamé."""
+
+    def on_submit(recording: tuple[int, np.ndarray] | None, history: str) -> Iterator[tuple[Any, str]]:
         if recording is None:
-            return None, history
+            yield None, history
+            return
         sample_rate, pcm = recording
         # `for_encoder` AVANT tout : le micro du navigateur donne du 44,1 kHz et
         # l'encodeur mel est calibré 16 kHz. Le mélange ne lève aucune erreur —
@@ -189,16 +235,17 @@ def build_simple_ui(agent: Any) -> Any:
             f"👤 entrée {wave.duration_s:.1f}s @ {wave.sample_rate}Hz (micro {sample_rate}Hz) · RMS {wave.rms:.3f}",
             flush=True,
         )
-        audio, trace = run_turn(agent, wave)
+        prefix = (history + "\n\n") if history else ""
+        trace = ""
+        for chunk, trace in stream_turn(agent, wave):
+            yield chunk, prefix + trace
         print(trace, flush=True)
-        pcm16 = (np.clip(audio, -1.0, 1.0) * 32_767).astype(np.int16)
-        return (SR_OUT, pcm16), ((history + "\n\n") if history else "") + trace
 
     with gr.Blocks(title="LFM2.5-Audio · tool calling") as ui:
         gr.Markdown("### Parlez, puis envoyez — les outils sont réels (web + base de démo).")
         with gr.Row():
             mic = gr.Audio(sources=["microphone"], type="numpy", label="votre question")
-            reply = gr.Audio(label="réponse", autoplay=True)
+            reply = gr.Audio(label="réponse", autoplay=True, streaming=True)
         trace = gr.Textbox(label="conversation + outils + latences", lines=14)
         mic.stop_recording(on_submit, inputs=[mic, trace], outputs=[reply, trace])
         gr.Button("Envoyer").click(on_submit, inputs=[mic, trace], outputs=[reply, trace])
