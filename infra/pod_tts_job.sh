@@ -32,13 +32,24 @@ pip install -q vllm-omni==0.22.0 mistral_common soundfile httpx pyarrow \
     numpy pydantic pydantic-settings pyyaml huggingface-hub
 
 echo "=== voxtral up ==="
+# vLLM 0.22 workarounds, EXPORTED here because they are read when vllm's
+# modules load: setting them any later is too late. Without them the engine
+# dies as "StageEngineCoreProc died during READY (exit code 1)" — the same
+# failure that has blocked the serving engine, and it reached this pod on
+# 26/08 once the auto-rebuilt image drifted.
+export VLLM_USE_AOT_COMPILE=0
+export VLLM_USE_FLASHINFER_SAMPLER=0
+export VLLM_LOGGING_LEVEL="${VLLM_LOGGING_LEVEL:-INFO}"
+
 nohup vllm serve mistralai/Voxtral-4B-TTS-2603 --omni \
     --gpu-memory-utilization 0.85 > /voxtral.log 2>&1 &
 for _ in $(seq 1 180); do
     curl -sf http://localhost:8000/health >/dev/null 2>&1 && break
     sleep 5
 done
-curl -sf http://localhost:8000/health >/dev/null || { echo "SERVER_DEAD"; tail -40 /voxtral.log; exit 1; }
+# 200 lines, not 40: the engine's real cause sits in the CHILD process trace,
+# which the last forty lines of a Python traceback never reach.
+curl -sf http://localhost:8000/health >/dev/null || { echo "SERVER_DEAD"; tail -200 /voxtral.log; exit 1; }
 echo "server healthy"
 
 # The server is shared by every job below; only the producer differs.
