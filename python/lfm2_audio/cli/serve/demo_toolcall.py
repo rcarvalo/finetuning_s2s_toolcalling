@@ -135,8 +135,72 @@ def build_agent(
     return VllmToolAgent(model, _build_registry(), fillers=_build_fillers(filler_dir))
 
 
+def run_turn(agent: Any, wave: Waveform) -> tuple[np.ndarray, str]:
+    """Un tour complet, rendu en (audio concaténé, trace lisible).
+
+    Chemin SANS WebRTC : l'audio transite par le tunnel HTTPS de Gradio, donc
+    aucun relais TURN n'est nécessaire — `turn.fastrtc.org` n'existe plus et
+    Cloudflare exige une clé. C'est le mode qui marche partout, au prix du
+    mains-libres (on enregistre, puis on envoie).
+    """
+    lines: list[str] = []
+    chunks: list[np.ndarray] = []
+    start = time.monotonic()
+    mark = start
+    first_sound: float | None = None
+
+    with LOCK:
+        for event in agent.respond(wave):
+            if isinstance(event, ToolCallBegin):
+                lines.append(f"🔧 {event.name}({event.arguments})  ⏱ décision {time.monotonic() - mark:.2f}s")
+            elif isinstance(event, ToolCallResult):
+                mark = time.monotonic()
+                lines.append(f"   ↳ ⏱ outil {event.elapsed_ms:.0f}ms · {str(event.payload)[:180]}")
+            elif isinstance(event, FillerSpeech):
+                lines.append(f"💬 {event.phrase}")
+                if event.wav_path:
+                    filler, _ = sf.read(event.wav_path, dtype="float32")
+                    chunks.append(np.asarray(filler, dtype=np.float32).reshape(-1))
+            elif isinstance(event, AudioChunk):
+                if first_sound is None:
+                    first_sound = time.monotonic() - mark
+                chunks.append(np.asarray(event.samples, dtype=np.float32).reshape(-1))
+            elif isinstance(event, TurnComplete):
+                ttfa = f"{first_sound:.2f}s" if first_sound is not None else "—"
+                lines.append(f"🤖 {event.text}")
+                lines.append(f"⏱ 1er son après outil {ttfa} · tour complet {time.monotonic() - start:.1f}s")
+
+    audio = np.concatenate(chunks) if chunks else np.zeros(1, dtype=np.float32)
+    return audio, "\n".join(lines)
+
+
+def build_simple_ui(agent: Any) -> Any:
+    """Interface enregistrer → envoyer, sans WebRTC ni TURN."""
+
+    def on_submit(recording: tuple[int, np.ndarray] | None, history: str) -> tuple[Any, str]:
+        if recording is None:
+            return None, history
+        sample_rate, pcm = recording
+        wave = Waveform.from_pcm16(np.asarray(pcm), sample_rate)
+        print(f"👤 entrée {wave.duration_s:.1f}s @ {wave.sample_rate}Hz · RMS {wave.rms:.3f}", flush=True)
+        audio, trace = run_turn(agent, wave)
+        print(trace, flush=True)
+        pcm16 = (np.clip(audio, -1.0, 1.0) * 32_767).astype(np.int16)
+        return (SR_OUT, pcm16), ((history + "\n\n") if history else "") + trace
+
+    with gr.Blocks(title="LFM2.5-Audio · tool calling") as ui:
+        gr.Markdown("### Parlez, puis envoyez — les outils sont réels (web + base de démo).")
+        with gr.Row():
+            mic = gr.Audio(sources=["microphone"], type="numpy", label="votre question")
+            reply = gr.Audio(label="réponse", autoplay=True)
+        trace = gr.Textbox(label="conversation + outils + latences", lines=14)
+        mic.stop_recording(on_submit, inputs=[mic, trace], outputs=[reply, trace])
+        gr.Button("Envoyer").click(on_submit, inputs=[mic, trace], outputs=[reply, trace])
+    return ui
+
+
 def build_stream(agent: Any, turn: str) -> Any:
-    """UI voix partagée par les deux backends : l'agent n'expose que respond(wave)."""
+    """UI voix mains-libres (WebRTC). Exige un relais TURN hors réseau local."""
 
     def handler(audio: tuple[int, np.ndarray]) -> Any:
 
@@ -239,6 +303,13 @@ def main() -> None:
         help="wavs d'attente pré-rendus (voix du modèle) joués pendant l'exécution de l'outil",
     )
     ap.add_argument("--backend", choices=["vllm", "liquid"], default="vllm", help="liquid : sans vLLM ni diffusers")
+    ap.add_argument(
+        "--ui",
+        choices=["webrtc", "simple"],
+        default="webrtc",
+        help="simple : enregistrer→envoyer, sans WebRTC — donc sans relais TURN "
+        "(turn.fastrtc.org n'existe plus ; Cloudflare exige une clé)",
+    )
     ap.add_argument("--turn", choices=["auto", "cloudflare", "none"], default="auto")
     ap.add_argument("--share", action="store_true")
     ap.add_argument("--port", type=int, default=7860)
@@ -259,11 +330,12 @@ def main() -> None:
         filler_dir=args.filler_dir,
         backend=args.backend,
     )
-    stream = build_stream(agent, turn)
-    print(f"\n▶ démo S2S + tool calling vLLM-Omni prête (TURN: {turn})", flush=True)
+    ui = build_simple_ui(agent) if args.ui == "simple" else build_stream(agent, turn).ui
+    mode = "simple (sans WebRTC)" if args.ui == "simple" else f"WebRTC (TURN: {turn})"
+    print(f"\n▶ démo S2S + tool calling prête — backend {args.backend}, UI {mode}", flush=True)
     # quiet supprime l'affichage de l'URL publique — inutilisable avec --share,
     # dont c'est justement le seul livrable.
-    stream.ui.launch(server_port=args.port, share=args.share, quiet=not args.share)
+    ui.launch(server_port=args.port, share=args.share, quiet=not args.share)
 
 
 if __name__ == "__main__":
