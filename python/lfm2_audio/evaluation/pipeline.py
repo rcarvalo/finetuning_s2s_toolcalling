@@ -15,6 +15,7 @@ from typing import Any
 from lfm2_audio.evaluation.generator import ResponseGenerator
 from lfm2_audio.evaluation.question_set import QuestionSet
 from lfm2_audio.evaluation.report import EvaluationReport, SampleReport
+from lfm2_audio.evaluation.sample_archive import SampleArchive
 from lfm2_audio.scorer.base import BaseScorer
 from lfm2_audio.scorer.sample import EvalSample
 
@@ -37,9 +38,20 @@ class EvaluationPipeline:
         generator: ResponseGenerator,
         *,
         context: dict[str, Any] | None = None,
+        archive: SampleArchive | None = None,
     ) -> EvaluationReport:
-        """Campagne complète : génération puis notation."""
+        """Campagne complète : génération puis notation.
+
+        ``archive`` conserve les réponses produites (audio + textes) pour
+        pouvoir les renoter sans GPU quand une métrique change — une campagne
+        coûte un GPU, une correction de métrique ne devrait pas en coûter un
+        second (cf. :mod:`lfm2_audio.evaluation.sample_archive`).
+        """
         samples = list(self.generate(questions, generator))
+        if archive is not None:
+            for sample in samples:
+                archive.save(sample)
+            logger.info("%d échantillons archivés dans %s", len(samples), archive.root)
         return self.score(samples, context={**(context or {}), **self._context(questions)})
 
     def generate(self, questions: QuestionSet, generator: ResponseGenerator) -> Iterable[EvalSample]:

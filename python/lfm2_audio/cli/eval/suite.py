@@ -24,6 +24,7 @@ from lfm2_audio.ds.scoring_config import ScorerConfig, ScoringConfig
 from lfm2_audio.evaluation.model_generator import ModelResponseGenerator
 from lfm2_audio.evaluation.pipeline import EvaluationPipeline
 from lfm2_audio.evaluation.question_set import QuestionSet
+from lfm2_audio.evaluation.sample_archive import SampleArchive
 from lfm2_audio.evaluation.tool_prompt import resolve_system
 from lfm2_audio.scorer.factory import ScorerFactory
 from lfm2_audio.scorer.registry import SCORERS
@@ -61,6 +62,14 @@ def build_parser() -> argparse.ArgumentParser:
             "Raccourci : 'en' pour le set web_search + db_query."
         ),
     )
+    parser.add_argument(
+        "--archive",
+        default=None,
+        help=(
+            "répertoire où conserver l'audio et les textes produits. Permet de renoter la "
+            "campagne SANS GPU quand une métrique change (`lfm2-eval-rescore`)."
+        ),
+    )
     parser.add_argument("--list-scorers", action="store_true", help="lister les métriques et sortir")
     return parser
 
@@ -89,7 +98,7 @@ def build_scoring_config(args: argparse.Namespace) -> ScoringConfig:
     )
 
 
-AUDIO_SCORERS = frozenset({"wer", "dnsmos", "nisqa"})
+AUDIO_SCORERS = frozenset({"wer", "dnsmos", "utmos", "nisqa"})
 """Scorers that grade the generated audio — they need interleaved generation."""
 
 
@@ -152,6 +161,7 @@ def main() -> int:
                 # Two campaigns that declared different tools are not comparable.
                 "tool_definitions": args.tool_definitions,
             },
+            archive=SampleArchive(args.archive) if args.archive else None,
         )
 
     print()
