@@ -8,7 +8,7 @@ machine qui ne saurait pas les instancier.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -36,8 +36,31 @@ class ScoringConfig(BaseModel):
     asr_model_id: str = "openai/whisper-large-v3-turbo"
     """ASR de référence du WER — partagé par tous les scorers qui transcrivent."""
 
-    judge_model_id: str = "gemini-2.0-flash"
-    """Juge du scorer de raisonnement."""
+    asr_backend: Literal["transformers", "faster_whisper"] = "transformers"
+    """Moteur ASR du WER.
+
+    ``faster_whisper`` transcrit sur CPU en int8 : c'est ce qui rend le WER
+    mesurable pendant un entraînement, là où le chemin ``transformers`` charge
+    Whisper sur ``cuda:0`` et fait déborder la VRAM.
+    """
+
+    asr_model_size: str = "base"
+    """Taille du modèle faster-whisper (``tiny``/``base``/``small``/…)."""
+
+    asr_device: str | None = None
+    """Où charger l'ASR. ``None`` = CUDA si disponible.
+
+    À forcer sur ``"cpu"`` quand le GPU sert déjà : l'entraînement culmine à
+    ~96 % de la VRAM d'une L4, et Whisper à côté la fait déborder.
+    """
+
+    judge_model_id: str = "gemini-3.6-flash"
+    """Juge du scorer de raisonnement.
+
+    ``gemini-2.0-flash`` a été retiré du service (404 « no longer available ») ;
+    ce défaut écrasait celui de ``GeminiJudge`` et faisait échouer toute
+    campagne pilotée par la config.
+    """
 
     fail_on_unavailable: bool = False
     """Si vrai, un scorer indisponible fait échouer la campagne au lieu de la dégrader."""

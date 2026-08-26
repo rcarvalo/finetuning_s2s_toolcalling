@@ -75,6 +75,14 @@ def main() -> None:
         help="dataset repo id: upload the report as soon as it exists. A reclaimed "
         "Colab VM otherwise takes the only copy of the result with it.",
     )
+    parser.add_argument(
+        "--scorers",
+        default="tool_call",
+        help="comma-separated. 'tool_call' alone keeps the run comparable to v2/v3. "
+        "Add wer,dnsmos,nisqa to also grade the generated speech (this campaign "
+        "does produce audio, unlike the in-training eval), and reasoning for "
+        "relevance/grounding/honesty via the LLM judge.",
+    )
     args = parser.parse_args()
 
     OUT.mkdir(parents=True, exist_ok=True)
@@ -99,7 +107,7 @@ def main() -> None:
             "--tool-definitions",
             "en",
             "--scorers",
-            "tool_call",
+            args.scorers,
             "--fail-on-unavailable",
             "--out",
             args.out,
@@ -111,7 +119,13 @@ def main() -> None:
 
     report = json.loads(Path(args.out).read_text(encoding="utf-8"))
     for metric in report["metrics"]:
-        print(f"{metric['scorer']}: mean={metric['mean']:.4f} coverage={metric['coverage']}", flush=True)
+        # measured/skipped/unavailable, pas seulement la moyenne : un scorer qui
+        # saute tous les cas rendrait sinon une moyenne d'apparence honorable.
+        print(
+            f"{metric['scorer']:10s} mean={metric['mean']:.4f} measured={metric['measured']} "
+            f"skipped={metric['skipped']} unavailable={metric['unavailable']}",
+            flush=True,
+        )
 
     if args.push_to:
         import os

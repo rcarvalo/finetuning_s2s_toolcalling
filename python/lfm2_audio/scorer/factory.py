@@ -36,6 +36,14 @@ TRANSCRIBER = LazyComponent(
     class_name="WhisperTranscriber",
     requires=("torch", "transformers"),
 )
+# ASR CPU (CTranslate2, int8) : le chemin par défaut charge Whisper sur
+# cuda:0, ce qui fait déborder un GPU déjà occupé par l'entraînement ou par le
+# modèle audio de la campagne. Sélectionné par `asr_backend: faster_whisper`.
+FASTER_WHISPER = LazyComponent(
+    module="lfm2_audio.scorer.audio.faster_whisper_transcriber",
+    class_name="FasterWhisperTranscriber",
+    requires=("faster_whisper",),
+)
 JUDGE = LazyComponent(
     module="lfm2_audio.scorer.text.gemini_judge",
     class_name="GeminiJudge",
@@ -93,7 +101,12 @@ class ScorerFactory:
     def _shared_transcriber(self) -> Transcriber:
         """Whisper, construit une seule fois pour tous les scorers qui transcrivent."""
         if self._transcriber is None:
-            self._transcriber = TRANSCRIBER.build(model_id=self._config.asr_model_id)
+            if self._config.asr_backend == "faster_whisper":
+                self._transcriber = FASTER_WHISPER.build(model_size=self._config.asr_model_size)
+            else:
+                self._transcriber = TRANSCRIBER.build(
+                    model_id=self._config.asr_model_id, device=self._config.asr_device
+                )
         return self._transcriber
 
     def _shared_judge(self) -> Judge:

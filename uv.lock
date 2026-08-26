@@ -2576,6 +2576,7 @@ client = [
     { name = "httpx" },
 ]
 eval = [
+    { name = "faster-whisper" },
     { name = "google-genai" },
     { name = "onnxruntime" },
     { name = "soundfile" },
@@ -2662,6 +2663,7 @@ requires-dist = [
     { name = "datasets", marker = "extra == 'train'", specifier = ">=3.0" },
     { name = "ddgs", marker = "extra == 'tooldata'", specifier = ">=6.0" },
     { name = "fastapi", marker = "extra == 'serve'", specifier = ">=0.115" },
+    { name = "faster-whisper", marker = "extra == 'eval'", specifier = ">=1.0" },
     { name = "faster-whisper", marker = "extra == 'voice'", specifier = ">=1.0" },
     { name = "fastrtc", extras = ["vad"], marker = "extra == 'voice'", specifier = ">=0.0.20" },
     { name = "google-genai", marker = "extra == 'eval'", specifier = ">=0.3" },

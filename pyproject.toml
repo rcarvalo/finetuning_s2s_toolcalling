@@ -50,6 +50,9 @@ eval = [
     "onnxruntime>=1.18",
     "google-genai>=0.3",
     "soundfile>=0.12",
+    # ASR CPU du WER (CTranslate2, int8) : le chemin transformers charge Whisper
+    # sur cuda:0 et fait déborder un GPU déjà occupé par le modèle audio.
+    "faster-whisper>=1.0",
 ]
 
 # Fine-tuning — liquid-audio impose Python >= 3.12.
