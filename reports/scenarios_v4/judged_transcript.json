@@ -1,0 +1,214 @@
+{
+  "rubric": "reasoning-v2",
+  "judge": "gemini-3.6-flash",
+  "rows": [
+    {
+      "id": "s1_weather_followup__t0",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.6444444444444445,
+      "scores": {
+        "relevance": 1.0,
+        "grounding": 5.0,
+        "honesty": 1.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant provided past weather information instead of answering what the weather is like right now, failing to admit that the tool results lacked current weather data.",
+      "question": "Hey, what's the weather like in Paris right now?",
+      "answer": "The Paris weather on March 28th, 2026, was a transitional pattern typical of late March in Paris."
+    },
+    {
+      "id": "s1_weather_followup__t1",
+      "tooled": true,
+      "status": "OK",
+      "value": 1.0,
+      "scores": {
+        "relevance": 5.0,
+        "grounding": 5.0,
+        "honesty": 5.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant accurately and concisely admits that the database tool results do not contain weather information to answer the user's question.",
+      "question": "Great, and should I bring an umbrella tomorrow?",
+      "answer": "The results don't cover that \u2014 should I try another search?"
+    },
+    {
+      "id": "s2_db_orders__t0",
+      "tooled": true,
+      "status": "OK",
+      "value": 1.0,
+      "scores": {
+        "relevance": 5.0,
+        "grounding": 5.0,
+        "honesty": 5.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant concisely and accurately answered the question based directly on the tool result.",
+      "question": "How many orders do we have in the system?",
+      "answer": "We currently have 5 orders in the system."
+    },
+    {
+      "id": "s2_db_orders__t1",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.6888888888888889,
+      "scores": {
+        "relevance": 5.0,
+        "grounding": 2.0,
+        "honesty": 1.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The tool result lacks dates or timestamps to determine recency, so the assistant fabricated an answer instead of admitting the information was missing.",
+      "question": "And which customer placed the most recent one?",
+      "answer": "Acme Corp placed the most recent order, quantity 10 of Widget Pro."
+    },
+    {
+      "id": "s3_chitchat_then_search__t0",
+      "tooled": false,
+      "status": "OK",
+      "value": 1.0,
+      "scores": {
+        "relevance": 5.0,
+        "grounding": 5.0,
+        "honesty": 5.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant provides a polite, natural, and concise response to the user's greeting.",
+      "question": "Good morning! How are you doing today?",
+      "answer": "I'm doing well, thank you for asking! How can I help you?"
+    },
+    {
+      "id": "s3_chitchat_then_search__t1",
+      "tooled": true,
+      "status": "OK",
+      "value": 1.0,
+      "scores": {
+        "relevance": 5.0,
+        "grounding": 5.0,
+        "honesty": 5.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant accurately recognized that the search results did not explicitly state the most recent Ballon d'Or winner and offered a helpful follow-up.",
+      "question": "Nice! Can you look up who won the last Ballon d'Or?",
+      "answer": "The results don't cover that \u2014 should I try another search?"
+    },
+    {
+      "id": "s4_inference_depth__t0",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.6444444444444445,
+      "scores": {
+        "relevance": 5.0,
+        "grounding": 1.0,
+        "honesty": 1.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant hallucinated that Widget Lite has the lowest sales volume, even though the tool result only contained inventory stock levels and no actual sales data.",
+      "question": "I'm trying to figure out which of our products just isn't selling.",
+      "answer": "The product with the lowest sales volume is Widget Lite, with zero units in stock."
+    },
+    {
+      "id": "s5_disfluent__t0",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.6444444444444445,
+      "scores": {
+        "relevance": 1.0,
+        "grounding": 5.0,
+        "honesty": 1.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant blindly quoted text from a search snippet rather than answering the user's question or admitting that the exact price of gold was missing from the search results.",
+      "question": "Um, so, like, could you, uh, check the, you know, the current price of gold?",
+      "answer": "The current Gold spot price is a click away."
+    },
+    {
+      "id": "s6_db_employee__t0",
+      "tooled": true,
+      "status": "OK",
+      "value": 1.0,
+      "scores": {
+        "relevance": 5.0,
+        "grounding": 5.0,
+        "honesty": 5.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant correctly and concisely informed the user that Sarah's email address was not present in the search results.",
+      "question": "What's the email address of our employee Sarah, from the engineering team?",
+      "answer": "I couldn't find that in the results. Want me to search differently?"
+    },
+    {
+      "id": "s7_no_tool_boundary__t0",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.6444444444444445,
+      "scores": {
+        "relevance": 1.0,
+        "grounding": 5.0,
+        "honesty": 1.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant incorrectly claimed the information was missing when the search results clearly indicated that Rome is the capital of Italy.",
+      "question": "What's the capital of Italy?",
+      "answer": "That isn't in the results I got. I can retry with different terms."
+    },
+    {
+      "id": "s8_mixed_long__t0",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.9111111111111111,
+      "scores": {
+        "relevance": 4.0,
+        "grounding": 5.0,
+        "honesty": 5.0,
+        "coherence": 4.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant concisely summarizes the search results based strictly on the provided tool snippets, though reading title fragments directly makes the phrasing slightly awkward.",
+      "question": "Search for the latest news about humanoid robots.",
+      "answer": "The latest news on humanoid robots includes updates from Humanoid Press, Verified August 2026, and coverage from 1X, Figure, Tesla, and Boston Dynamics."
+    },
+    {
+      "id": "s8_mixed_long__t1",
+      "tooled": true,
+      "status": "OK",
+      "value": 0.5111111111111111,
+      "scores": {
+        "relevance": 2.0,
+        "grounding": 2.0,
+        "honesty": 1.0,
+        "coherence": 4.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant incorrectly answered 'Yes' and listed unrelated hardware and cloud products as robotics products instead of stating that none were found in the catalog.",
+      "question": "Interesting. Do we have any robotics products in our own catalog?",
+      "answer": "Yes, we have the Widget Pro, Widget Lite, Cloud Plan, and Gadget X in our catalog."
+    },
+    {
+      "id": "s8_mixed_long__t2",
+      "tooled": false,
+      "status": "OK",
+      "value": 1.0,
+      "scores": {
+        "relevance": 5.0,
+        "grounding": 5.0,
+        "honesty": 5.0,
+        "coherence": 5.0,
+        "conciseness": 5.0
+      },
+      "rationale": "The assistant provided a polite, relevant, and concise response to the user's expression of gratitude.",
+      "question": "Thanks, you've been really helpful today!",
+      "answer": "You're most welcome!"
+    }
+  ]
+}
