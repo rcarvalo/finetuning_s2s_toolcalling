@@ -72,7 +72,20 @@ class PayloadRealism:
             drop = rng.random() < self.miss_ratio
             misses += drop
             out.append(self._rewrite(dialogue, payload, pool, rng, drop=drop))
+        self._validate(out)
         return out, misses
+
+    @staticmethod
+    def _validate(dialogues: list[dict[str, Any]]) -> None:
+        """Échouer ici plutôt qu'au packing, sur une VM, une heure plus tard.
+
+        Un seul dialogue non conforme fait rejeter le dataset ENTIER par
+        ``pack_sft`` — c'est ce qu'un drapeau posé à la racine avait provoqué.
+        """
+        from lfm2_audio.ds.dialogue import parse_dialogue
+
+        for dialogue in dialogues:
+            parse_dialogue(dialogue)
 
     # ------------------------------------------------------------------ #
 
@@ -138,4 +151,8 @@ class PayloadRealism:
                 # un texte qui ne correspond pas à ce qui est prononcé.
                 turn.pop("audio", None)
 
-        return dict(dialogue) | {"turns": turns, "answer_absent": drop}
+        # Le drapeau va dans ``meta`` (extra="allow"), pas à la racine du
+        # dialogue : ``Dialogue`` est en extra="forbid" et rejetterait le
+        # dataset entier au packing.
+        meta = dict(dialogue.get("meta") or {}) | {"answer_absent": drop}
+        return dict(dialogue) | {"turns": turns, "meta": meta}

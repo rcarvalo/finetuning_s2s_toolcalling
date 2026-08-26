@@ -99,10 +99,13 @@ def test_should_shape_database_results_as_rows() -> None:
     assert "url" not in content["rows"][0]
 
 
-def test_should_flag_which_dialogues_lost_their_answer(corpus: list[dict[str, Any]]) -> None:
+def test_should_flag_the_loss_in_meta_not_at_the_dialogue_root(corpus: list[dict[str, Any]]) -> None:
+    # `Dialogue` est en extra="forbid" : un drapeau posé à la racine fait
+    # rejeter le dataset ENTIER au packing. `DialogueMeta` est extra="allow".
     out, misses = PayloadRealism(miss_ratio=0.5).apply(corpus)
 
-    assert sum(d["answer_absent"] for d in out) == misses
+    assert sum(d["meta"]["answer_absent"] for d in out) == misses
+    assert all("answer_absent" not in d for d in out)
 
 
 def test_should_be_reproducible_for_a_given_seed(corpus: list[dict[str, Any]]) -> None:
@@ -123,3 +126,19 @@ def test_should_leave_dialogues_without_a_tool_turn_untouched() -> None:
 def test_should_refuse_a_pool_too_small_to_build_distractors() -> None:
     with pytest.raises(ValueError, match="distracteurs"):
         PayloadRealism().apply([_dialogue(0)])
+
+
+def test_should_reject_a_corpus_the_dialogue_schema_would_refuse(monkeypatch: pytest.MonkeyPatch) -> None:
+    # La validation vit DANS apply() : sans elle, un dialogue non conforme
+    # n'échoue qu'au packing, sur une VM, une heure plus tard — et fait
+    # rejeter le dataset entier.
+    from lfm2_audio.data_prep import payload_realism
+
+    def refuse(_: dict[str, Any]) -> None:
+        raise ValueError("schéma refusé")
+
+    monkeypatch.setattr("lfm2_audio.ds.dialogue.parse_dialogue", refuse)
+    assert payload_realism.PayloadRealism  # le module est bien celui patché
+
+    with pytest.raises(ValueError, match="schéma refusé"):
+        PayloadRealism().apply([_dialogue(i) for i in range(60)])
