@@ -22,7 +22,12 @@ name: voxtral-v5-misses
 
 resources:
   cloud: runpod
-  accelerators: RTX4090:1      # Voxtral 4B bf16 fits easily in 24 GB
+  # SEVERAL candidates, not one: pinning RTX4090 failed twice on 26/08 — out of
+  # stock in CA, then a pod in CZ that never accepted SSH. Voxtral 4B bf16 fits
+  # in 24 GB, so anything here does; SkyPilot picks the cheapest with capacity.
+  # The Blackwell cards are CUDA 13 only, which is what the vLLM 0.22 wheels
+  # were built for anyway.
+  accelerators: {PRO-6000-MIG-24GB:1, RTXPRO4500:1, L40S:1, RTX4090:1, A40:1}
   image_id: docker:vllm/vllm-openai:v0.22.0
   disk_size: 60
 

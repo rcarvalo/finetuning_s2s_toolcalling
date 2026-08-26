@@ -1,0 +1,69 @@
+# v5 — recette v4 à l'identique. UNE variable change : le RÉALISME des payloads
+# et la forme des refus.
+#
+# Ce que la démo vocale a montré (docs/v4_report.md + essais du 26/08) :
+#
+#  * SUR-REFUS. « Who won World Cup 2026 » → refus, alors que le payload
+#    contenait « Spain have been crowned FIFA World Cup 2026 winners » quatre
+#    fois. Deux causes : les distracteurs de v4 venaient de dialogues
+#    quelconques (le sujet seul isolait la bonne entrée, raccourci qui ne
+#    transfère pas), et la réponse était livrée comme valeur d'un champ là où
+#    le réel la noie dans 400 caractères de prose.
+#  * REFUS HORS-SOL. Les cinq gabarits de v4 ne nommaient rien, donc
+#    s'écrivaient sans lire le payload — d'où le refus par réflexe
+#    (honnêteté 3,15, sous la porte de 4).
+#
+# v5 corrige les deux dans les données (lfm2_audio.data_prep.payload_realism,
+# near_distractors, snippet_shaper, contextual_miss) et laisse TOUT le reste
+# identique : même LoRA, même mélange Phase A + B, même durée, mêmes voix.
+# L'écart mesuré sera donc attribuable aux payloads et à rien d'autre.
+#
+# `miss_ratio` 0,15 → 0,12 seulement : la correction structurelle est le STYLE
+# du refus. Descendre à 0,08 ne laissait que 146 exemples contre 297, au risque
+# d'échanger le sur-refus contre le retour de l'hallucination — or c'est ce que
+# v4 avait le mieux corrigé (ancrage 2,83 → 4,23).
+#
+# Hors périmètre, volontairement : l'axe de forme interrogative (QUESTION_FORMS)
+# qui corrige le routage « when » → base de données. Il exige de RÉGÉNÉRER le
+# corpus par LLM puis de le re-sonoriser ; l'introduire ici ajouterait une
+# seconde variable et rendrait le résultat inattribuable. Ce sera v5.1.
+
+model_id: LiquidAI/LFM2.5-Audio-1.5B
+train_dataset: datasets/tc_en_v5_train
+val_dataset: datasets/tc_en_v5_val
+context_length: 2048
+
+lora:
+  enabled: true
+  r: 32
+  alpha: 64
+  dropout: 0.05
+
+freeze:
+  freeze_encoder: true
+  freeze_audio_heads: true
+
+lr: 1.0e-4
+num_epochs: 1.5
+batch_size: 4
+warmup_steps: 150
+dataloader_num_workers: 4
+grad_clip: 1.0
+
+logging_interval: 10
+save_interval: 200
+val_interval: 100
+output_dir: outputs/tc_en_voice_agent_v5
+
+hub_repo: Rcarvalo/lfm25-tc-en-v5-adapter
+push_interval: 200            # perdre le pod ne doit rien coûter d'autre que le temps
+
+wandb_project: lfm25-toolcalling-en
+wandb_run_name: tc_en_v5_payload_prose_and_situated_refusals
+
+evaluation:
+  enabled: true
+  question_set: data/tc_en_v5/val.jsonl
+  audio_root: data/tc_en_v5/audio_val
+  interval: 100
+  at_start: true
