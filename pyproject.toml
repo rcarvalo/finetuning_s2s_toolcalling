@@ -150,6 +150,7 @@ lfm2-synthesize-audio = "lfm2_audio.cli.data.synthesize:main"
 lfm2-build-dataset = "lfm2_audio.cli.data.push_hf:main"
 lfm2-analyze-dataset = "lfm2_audio.cli.data.analyze:main"
 lfm2-hf-to-dialogues = "lfm2_audio.cli.data.pull_hf:main"
+lfm2-asr-bench = "lfm2_audio.cli.data.make_asr_bench:main"
 lfm2-dataset-inventory = "lfm2_audio.cli.data.inventory:main"
 lfm2-dataset-curate = "lfm2_audio.cli.data.curate:main"
 lfm2-dataset-repack = "lfm2_audio.cli.data.repack:main"
@@ -251,7 +252,7 @@ no_implicit_reexport = true
 module = [
     "vllm.*", "vllm_omni.*", "liquid_audio.*", "torch.*", "torchaudio.*",
     "transformers.*", "peft.*", "datasets.*", "safetensors.*",
-    "soundfile.*", "chromadb.*",
+    "soundfile.*", "soxr.*", "chromadb.*",
     "gradio.*", "fastrtc.*", "wandb.*", "kokoro.*", "ddgs.*", "tavily.*", "faster_whisper.*",
     "google.*", "anthropic.*", "asyncpg.*",
     "huggingface_hub.*", "uvicorn.*", "fastapi.*", "httpx.*", "onnxruntime.*", "pyarrow.*",

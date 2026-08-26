@@ -6,6 +6,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Added
+- FR benchmarks (phase 0A, task 6). `benchmark/fr_s2s/` (100 spoken-style FR
+  questions), `benchmark/lang_mirror/` (20 FR / 20 EN / 20 code-switch cases
+  with `meta.expected_lang` — the mirroring gate reads % of replies in the
+  right language), `benchmark/fleurs_fr_asr/` (200 FLEURS-fr test clips) and
+  `benchmark/cv_fr_asr/` (300 student-dataset clips, distillmos ≥ 3.5, ≤ 3
+  clips/speaker). New `lfm2-asr-bench` CLI (selection logic in
+  `data_prep/asr_bench.py`, tested) streams any HF audio dataset into this
+  JSONL + 16 kHz WAV layout. Because the user's datasets and the student's
+  overlap (both draw on Common Voice FR), each ASR benchmark ships
+  `speakers.txt` AND `source_ids.txt`: the training mixer must hold these out
+  of EVERY source, not just the one the benchmark was cut from.
 - Bilingual eval plumbing (phase 0A of the FR/EN plan). ASR language now flows
   end to end: `ScoringConfig.asr_language` sets the campaign default, a sample
   carrying `metadata["lang"]` wins over it, and both Whisper backends accept the

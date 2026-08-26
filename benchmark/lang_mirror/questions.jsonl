@@ -1,0 +1,60 @@
+{"id": "mirror_fr_01", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Quelle heure est-il à Tokyo quand il est midi à Paris ?"}]}
+{"id": "mirror_fr_02", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Raconte-moi ta journée idéale."}]}
+{"id": "mirror_fr_03", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Quel temps fait-il en général à Marseille en été ?"}]}
+{"id": "mirror_fr_04", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Explique-moi la règle du hors-jeu au football."}]}
+{"id": "mirror_fr_05", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Donne-moi une recette simple de crêpes."}]}
+{"id": "mirror_fr_06", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Pourquoi les feuilles tombent en automne ?"}]}
+{"id": "mirror_fr_07", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Conseille-moi un roman français classique."}]}
+{"id": "mirror_fr_08", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Comment on dit merci en japonais ?"}]}
+{"id": "mirror_fr_09", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Quelle est la différence entre un croissant et un pain au chocolat ?"}]}
+{"id": "mirror_fr_10", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Décris-moi la tour Eiffel en trois phrases."}]}
+{"id": "mirror_fr_11", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Qu'est-ce que tu ferais avec un million d'euros ?"}]}
+{"id": "mirror_fr_12", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Chante-moi les paroles d'une comptine française."}]}
+{"id": "mirror_fr_13", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Pourquoi il faut boire de l'eau tous les jours ?"}]}
+{"id": "mirror_fr_14", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Quel est ton plat français préféré ?"}]}
+{"id": "mirror_fr_15", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Explique-moi comment marche une montgolfière."}]}
+{"id": "mirror_fr_16", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Donne-moi trois synonymes du mot content."}]}
+{"id": "mirror_fr_17", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Combien font sept fois huit ?"}]}
+{"id": "mirror_fr_18", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Raconte-moi une légende française connue."}]}
+{"id": "mirror_fr_19", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Comment je peux dire bonjour de façon polie à un inconnu ?"}]}
+{"id": "mirror_fr_20", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr"}, "turns": [{"role": "user", "text": "Quelle ville française tu me conseilles de visiter en premier ?"}]}
+{"id": "mirror_en_01", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "What's the weather usually like in London in October?"}]}
+{"id": "mirror_en_02", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "Tell me a fun fact about dolphins."}]}
+{"id": "mirror_en_03", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "How do I make a proper cup of tea?"}]}
+{"id": "mirror_en_04", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "What's the capital of New Zealand?"}]}
+{"id": "mirror_en_05", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "Explain how tides work in simple terms."}]}
+{"id": "mirror_en_06", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "Recommend a good science fiction novel."}]}
+{"id": "mirror_en_07", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "How many time zones are there in the United States?"}]}
+{"id": "mirror_en_08", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "What should I pack for a hiking trip?"}]}
+{"id": "mirror_en_09", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "Tell me a short bedtime story."}]}
+{"id": "mirror_en_10", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "Why do cats purr?"}]}
+{"id": "mirror_en_11", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "What's seven times nine?"}]}
+{"id": "mirror_en_12", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "Give me three tips for public speaking."}]}
+{"id": "mirror_en_13", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "How long does it take to fly from New York to Los Angeles?"}]}
+{"id": "mirror_en_14", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "What's the difference between a crocodile and an alligator?"}]}
+{"id": "mirror_en_15", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "Describe the Grand Canyon in a few sentences."}]}
+{"id": "mirror_en_16", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "How do I keep my houseplants alive?"}]}
+{"id": "mirror_en_17", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "What would you do with a free afternoon?"}]}
+{"id": "mirror_en_18", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "Explain what a rainbow is."}]}
+{"id": "mirror_en_19", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "Who wrote Romeo and Juliet?"}]}
+{"id": "mirror_en_20", "tools": [], "meta": {"lang": "en", "expected_lang": "en"}, "turns": [{"role": "user", "text": "What's a good icebreaker question for a party?"}]}
+{"id": "mirror_switch_01", "tools": [], "meta": {"lang": "en", "expected_lang": "en", "code_switch": true}, "turns": [{"role": "user", "text": "Bonjour ! Actually, let me switch to English: can you tell me a fun fact about Paris?"}]}
+{"id": "mirror_switch_02", "tools": [], "meta": {"lang": "en", "expected_lang": "en", "code_switch": true}, "turns": [{"role": "user", "text": "Je disais donc... sorry, in English please: how do I cook rice properly?"}]}
+{"id": "mirror_switch_03", "tools": [], "meta": {"lang": "en", "expected_lang": "en", "code_switch": true}, "turns": [{"role": "user", "text": "Salut, tu vas bien ? By the way, what time is it in New York?"}]}
+{"id": "mirror_switch_04", "tools": [], "meta": {"lang": "en", "expected_lang": "en", "code_switch": true}, "turns": [{"role": "user", "text": "J'apprends l'anglais en ce moment. Can we practice? Tell me about your favorite season."}]}
+{"id": "mirror_switch_05", "tools": [], "meta": {"lang": "en", "expected_lang": "en", "code_switch": true}, "turns": [{"role": "user", "text": "Merci pour tout à l'heure ! One more thing: what's the tallest building in the world?"}]}
+{"id": "mirror_switch_06", "tools": [], "meta": {"lang": "en", "expected_lang": "en", "code_switch": true}, "turns": [{"role": "user", "text": "On parlait de cuisine... let's continue in English: what goes well with salmon?"}]}
+{"id": "mirror_switch_07", "tools": [], "meta": {"lang": "en", "expected_lang": "en", "code_switch": true}, "turns": [{"role": "user", "text": "D'accord, très clair. Now in English: summarize what makes a good password."}]}
+{"id": "mirror_switch_08", "tools": [], "meta": {"lang": "en", "expected_lang": "en", "code_switch": true}, "turns": [{"role": "user", "text": "Je suis un peu fatigué ce soir. Anyway, can you recommend a relaxing playlist style?"}]}
+{"id": "mirror_switch_09", "tools": [], "meta": {"lang": "en", "expected_lang": "en", "code_switch": true}, "turns": [{"role": "user", "text": "C'était super intéressant. Switching to English now: why is the sea salty?"}]}
+{"id": "mirror_switch_10", "tools": [], "meta": {"lang": "en", "expected_lang": "en", "code_switch": true}, "turns": [{"role": "user", "text": "Attends, je réfléchis... OK, in English: give me three ideas for a birthday gift."}]}
+{"id": "mirror_switch_11", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr", "code_switch": true}, "turns": [{"role": "user", "text": "Hello! Bon, passons au français : tu peux m'expliquer ce qu'est un arc-en-ciel ?"}]}
+{"id": "mirror_switch_12", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr", "code_switch": true}, "turns": [{"role": "user", "text": "I was saying... pardon, en français s'il te plaît : comment on fait une bonne vinaigrette ?"}]}
+{"id": "mirror_switch_13", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr", "code_switch": true}, "turns": [{"role": "user", "text": "Thanks a lot! Une dernière chose : quelle heure est-il à Montréal ?"}]}
+{"id": "mirror_switch_14", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr", "code_switch": true}, "turns": [{"role": "user", "text": "I'm learning French. On peut pratiquer ? Raconte-moi ta saison préférée."}]}
+{"id": "mirror_switch_15", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr", "code_switch": true}, "turns": [{"role": "user", "text": "That was great. Maintenant en français : pourquoi le ciel est bleu ?"}]}
+{"id": "mirror_switch_16", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr", "code_switch": true}, "turns": [{"role": "user", "text": "Let's see... continuons en français : qu'est-ce qui va bien avec du saumon ?"}]}
+{"id": "mirror_switch_17", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr", "code_switch": true}, "turns": [{"role": "user", "text": "Okay, understood. En français maintenant : résume ce qui fait un bon mot de passe."}]}
+{"id": "mirror_switch_18", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr", "code_switch": true}, "turns": [{"role": "user", "text": "I'm a bit tired tonight. Bref, tu peux me conseiller un style de musique relaxant ?"}]}
+{"id": "mirror_switch_19", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr", "code_switch": true}, "turns": [{"role": "user", "text": "So interesting! Je passe au français : pourquoi la mer est salée ?"}]}
+{"id": "mirror_switch_20", "tools": [], "meta": {"lang": "fr", "expected_lang": "fr", "code_switch": true}, "turns": [{"role": "user", "text": "Wait, let me think... bon, en français : donne-moi trois idées de cadeau d'anniversaire."}]}

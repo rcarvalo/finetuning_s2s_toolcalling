@@ -1,0 +1,100 @@
+{"id": "fr_s2s_001", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Bonjour ! Comment ça va aujourd'hui ?"}]}
+{"id": "fr_s2s_002", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Salut, tu peux te présenter en quelques mots ?"}]}
+{"id": "fr_s2s_003", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Coucou ! Qu'est-ce que tu sais faire exactement ?"}]}
+{"id": "fr_s2s_004", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Bonsoir, j'espère que je ne te dérange pas. Tu as une minute ?"}]}
+{"id": "fr_s2s_005", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Hé, ça fait longtemps ! Quoi de neuf ?"}]}
+{"id": "fr_s2s_006", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Bonjour, c'est la première fois que je te parle. Par quoi on commence ?"}]}
+{"id": "fr_s2s_007", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Salut ! Tu préfères qu'on se tutoie ou qu'on se vouvoie ?"}]}
+{"id": "fr_s2s_008", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Comment tu t'appelles, au fait ?"}]}
+{"id": "fr_s2s_009", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Est-ce que tu comprends bien le français ?"}]}
+{"id": "fr_s2s_010", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Dis-moi bonjour de la manière la plus chaleureuse possible."}]}
+{"id": "fr_s2s_011", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Tu peux m'expliquer simplement ce qu'est la photosynthèse ?"}]}
+{"id": "fr_s2s_012", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "C'est quoi, exactement, un trou noir ?"}]}
+{"id": "fr_s2s_013", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Explique-moi la différence entre un virus et une bactérie."}]}
+{"id": "fr_s2s_014", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Pourquoi le ciel est bleu ?"}]}
+{"id": "fr_s2s_015", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Comment fonctionne un moteur électrique, en gros ?"}]}
+{"id": "fr_s2s_016", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "C'est quoi l'intelligence artificielle, expliqué à un enfant de dix ans ?"}]}
+{"id": "fr_s2s_017", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Pourquoi on a des saisons ?"}]}
+{"id": "fr_s2s_018", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Explique-moi ce qu'est l'inflation, sans jargon économique."}]}
+{"id": "fr_s2s_019", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Quelle est la différence entre le temps et le climat ?"}]}
+{"id": "fr_s2s_020", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Comment les avions font pour voler ?"}]}
+{"id": "fr_s2s_021", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "C'est quoi un vaccin et comment ça marche ?"}]}
+{"id": "fr_s2s_022", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Pourquoi la mer est salée ?"}]}
+{"id": "fr_s2s_023", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Explique-moi ce qu'est la gravité en deux phrases."}]}
+{"id": "fr_s2s_024", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Qu'est-ce que l'ADN, concrètement ?"}]}
+{"id": "fr_s2s_025", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Comment marche le Wi-Fi ?"}]}
+{"id": "fr_s2s_026", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Pourquoi on rêve la nuit ?"}]}
+{"id": "fr_s2s_027", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "C'est quoi la différence entre une étoile et une planète ?"}]}
+{"id": "fr_s2s_028", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Explique-moi le principe de l'effet de serre."}]}
+{"id": "fr_s2s_029", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Comment fonctionne une éclipse solaire ?"}]}
+{"id": "fr_s2s_030", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Qu'est-ce qu'un algorithme, pour quelqu'un qui n'y connaît rien ?"}]}
+{"id": "fr_s2s_031", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Raconte-moi une petite histoire pour m'endormir."}]}
+{"id": "fr_s2s_032", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Invente une histoire courte avec un chat qui parle."}]}
+{"id": "fr_s2s_033", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Raconte-moi une blague."}]}
+{"id": "fr_s2s_034", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Tu peux me faire un petit poème sur la pluie ?"}]}
+{"id": "fr_s2s_035", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Invente-moi un conte de deux minutes qui se passe en Bretagne."}]}
+{"id": "fr_s2s_036", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Raconte-moi une anecdote amusante sur l'espace."}]}
+{"id": "fr_s2s_037", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Fais-moi une devinette, je vais essayer de trouver."}]}
+{"id": "fr_s2s_038", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Décris-moi un coucher de soleil comme si j'étais aveugle."}]}
+{"id": "fr_s2s_039", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Invente un slogan pour une boulangerie de quartier."}]}
+{"id": "fr_s2s_040", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Raconte une histoire drôle qui arrive à un robot maladroit."}]}
+{"id": "fr_s2s_041", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Qu'est-ce que je peux cuisiner ce soir avec des œufs et des pommes de terre ?"}]}
+{"id": "fr_s2s_042", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Donne-moi trois idées pour occuper des enfants un jour de pluie."}]}
+{"id": "fr_s2s_043", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Comment enlever une tache de vin rouge sur un tee-shirt ?"}]}
+{"id": "fr_s2s_044", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "J'ai du mal à m'endormir le soir, tu as des conseils ?"}]}
+{"id": "fr_s2s_045", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Comment je peux améliorer mon anglais en dix minutes par jour ?"}]}
+{"id": "fr_s2s_046", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Quels étirements tu conseilles après une journée assis au bureau ?"}]}
+{"id": "fr_s2s_047", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Donne-moi une idée de cadeau pour ma grand-mère de quatre-vingts ans."}]}
+{"id": "fr_s2s_048", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Comment organiser un déménagement sans stress ?"}]}
+{"id": "fr_s2s_049", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Qu'est-ce qu'il faut mettre dans une valise pour un week-end à la montagne ?"}]}
+{"id": "fr_s2s_050", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Comment faire des économies sur les courses sans manger moins bien ?"}]}
+{"id": "fr_s2s_051", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "J'ai un entretien d'embauche demain, tu as des conseils ?"}]}
+{"id": "fr_s2s_052", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Comment garder mes plantes en vie quand je pars en vacances ?"}]}
+{"id": "fr_s2s_053", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Propose-moi un petit-déjeuner équilibré et rapide."}]}
+{"id": "fr_s2s_054", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Comment apprendre à faire du vélo à un enfant ?"}]}
+{"id": "fr_s2s_055", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Que faire quand on renverse de l'eau sur son ordinateur portable ?"}]}
+{"id": "fr_s2s_056", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Donne-moi une astuce pour retenir les prénoms des gens."}]}
+{"id": "fr_s2s_057", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Comment bien préparer un barbecue pour dix personnes ?"}]}
+{"id": "fr_s2s_058", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Quelle est la meilleure façon de nettoyer des vitres sans traces ?"}]}
+{"id": "fr_s2s_059", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Je veux me mettre à la course à pied, je commence comment ?"}]}
+{"id": "fr_s2s_060", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Comment calmer le hoquet ?"}]}
+{"id": "fr_s2s_061", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Quelle est la capitale de l'Australie ?"}]}
+{"id": "fr_s2s_062", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Qui a peint la Joconde ?"}]}
+{"id": "fr_s2s_063", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "En quelle année a eu lieu la Révolution française ?"}]}
+{"id": "fr_s2s_064", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Quel est le plus long fleuve du monde ?"}]}
+{"id": "fr_s2s_065", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Combien de joueurs il y a dans une équipe de rugby à quinze ?"}]}
+{"id": "fr_s2s_066", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Qui a écrit Les Misérables ?"}]}
+{"id": "fr_s2s_067", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Quelle est la plus haute montagne d'Europe ?"}]}
+{"id": "fr_s2s_068", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Combien de pays il y a environ dans l'Union européenne ?"}]}
+{"id": "fr_s2s_069", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "C'est quoi le monument le plus visité de Paris ?"}]}
+{"id": "fr_s2s_070", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Qui a marché le premier sur la Lune ?"}]}
+{"id": "fr_s2s_071", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Quelle est la langue la plus parlée au monde ?"}]}
+{"id": "fr_s2s_072", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "De quelle couleur est le maillot du leader du Tour de France ?"}]}
+{"id": "fr_s2s_073", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Quel est l'animal terrestre le plus rapide ?"}]}
+{"id": "fr_s2s_074", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Dans quel pays se trouvent les pyramides de Gizeh ?"}]}
+{"id": "fr_s2s_075", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Qui a composé la Neuvième Symphonie ?"}]}
+{"id": "fr_s2s_076", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Quelle est la monnaie du Japon ?"}]}
+{"id": "fr_s2s_077", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Combien de temps met la lumière du Soleil pour arriver sur Terre ?"}]}
+{"id": "fr_s2s_078", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Quel est le plus grand océan du monde ?"}]}
+{"id": "fr_s2s_079", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Qui a inventé l'imprimerie en Europe ?"}]}
+{"id": "fr_s2s_080", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Quelle est la capitale du Canada ?"}]}
+{"id": "fr_s2s_081", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "À ton avis, c'est mieux de lire le livre avant de voir le film, ou l'inverse ?"}]}
+{"id": "fr_s2s_082", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Qu'est-ce qui est le plus important : le talent ou le travail ?"}]}
+{"id": "fr_s2s_083", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Tu penses quoi du télétravail ?"}]}
+{"id": "fr_s2s_084", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Vaut-il mieux vivre en ville ou à la campagne, selon toi ?"}]}
+{"id": "fr_s2s_085", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Est-ce que les réseaux sociaux rapprochent ou éloignent les gens ?"}]}
+{"id": "fr_s2s_086", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Si tu pouvais dîner avec un personnage historique, tu choisirais qui ?"}]}
+{"id": "fr_s2s_087", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Le petit-déjeuner est-il vraiment le repas le plus important de la journée ?"}]}
+{"id": "fr_s2s_088", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Faut-il apprendre le code à l'école primaire ?"}]}
+{"id": "fr_s2s_089", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "C'est quoi, pour toi, une journée réussie ?"}]}
+{"id": "fr_s2s_090", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Vaut-il mieux un long week-end ou des vacances plus courtes mais plus souvent ?"}]}
+{"id": "fr_s2s_091", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Combien font dix-sept plus vingt-huit ?"}]}
+{"id": "fr_s2s_092", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Si j'achète trois baguettes à un euro vingt chacune, je paie combien ?"}]}
+{"id": "fr_s2s_093", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Quel est le double de quarante-six ?"}]}
+{"id": "fr_s2s_094", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Un train part à quatorze heures et roule deux heures et demie. Il arrive à quelle heure ?"}]}
+{"id": "fr_s2s_095", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Combien de minutes il y a dans une journée ?"}]}
+{"id": "fr_s2s_096", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Si demain on est mercredi, on était quel jour avant-hier ?"}]}
+{"id": "fr_s2s_097", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Combien font cent divisé par quatre ?"}]}
+{"id": "fr_s2s_098", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "J'ai douze pommes, j'en donne le tiers. Il m'en reste combien ?"}]}
+{"id": "fr_s2s_099", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Quel nombre vient après mille neuf cent quatre-vingt-dix-neuf ?"}]}
+{"id": "fr_s2s_100", "tools": [], "meta": {"lang": "fr"}, "turns": [{"role": "user", "text": "Trois quarts d'heure, ça fait combien de minutes ?"}]}
