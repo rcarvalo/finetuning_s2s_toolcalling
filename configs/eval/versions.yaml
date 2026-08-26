@@ -1,0 +1,33 @@
+# Comparer plusieurs versions sur le MÊME jeu, avec les MÊMES scorers.
+# Une différence entre deux runs ne peut alors venir que de la variante.
+#
+#   lfm2-campaign --config configs/eval/versions.yaml --dry-run   # valider
+#   lfm2-campaign --config configs/eval/versions.yaml             # lancer
+
+questions: benchmark/toolcalling_en/cases.sample.jsonl
+tool_definitions: en
+runs_root: reports/runs
+
+# 1 = séquentiel. Les variantes locales partagent un GPU : les lancer à deux
+# les ralentit toutes les deux. À monter pour des endpoints, qui sont des
+# workers indépendants et où l'attente est réseau.
+max_parallel: 1
+
+scoring:
+  scorers:
+    - name: tool_call
+    - name: dnsmos
+    - name: utmos
+
+variants:
+  - name: vanilla
+    checkpoint: LiquidAI/LFM2.5-Audio-1.5B
+    backend: liquid
+
+  # - name: v4
+  #   checkpoint: LiquidAI/LFM2.5-Audio-1.5B
+  #   adapter: Rcarvalo/lfm25-tc-en-v4-adapter
+  #   backend: liquid
+
+  # - name: prod-endpoint
+  #   endpoint: nlanq0nzjtuxhe

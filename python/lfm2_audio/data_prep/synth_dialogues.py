@@ -39,6 +39,21 @@ TOOL_TARGETS: list[tuple[ToolTarget, float]] = [
 PHRASING_STYLES = ["direct command", "polite question", "indirect request", "with disfluency"]
 INFERENCE_DEPTHS = ["explicit arguments", "requires inference"]
 
+# Forme interrogative — tirée INDÉPENDAMMENT de l'outil cible, et c'est tout
+# l'objet de cet axe. En v4 les cas `db_query` étaient massivement en who/which/
+# when (« who is the top customer »), si bien que la forme primait le domaine :
+# « When is the next presidential election in France? » partait vers la base de
+# clients, reproductible et sans rapport avec l'audio. Croiser chaque forme avec
+# chaque outil retire au modèle ce raccourci.
+QUESTION_FORMS = [
+    "a who-question about a person or a winner",
+    "a which-question choosing among options",
+    "a when-question about a date or a schedule",
+    "a where-question about a place",
+    "a how-question about a quantity or a manner",
+    "a statement or command, not a question",
+]
+
 # Réponses négatives « à trous » (ex. « It's [current time]. ») = mauvaise cible.
 _PLACEHOLDER = re.compile(r"\[[^\]]+\]")
 
@@ -59,6 +74,7 @@ class SynthCase:
     tool_result: dict[str, Any] | None = None  # loop : résultat d'outil réinjecté
     style: str = ""
     depth: str = ""
+    form: str = ""  # forme interrogative, tirée indépendamment de la cible
 
 
 # --------------------------------------------------------------------------- #
@@ -75,6 +91,7 @@ def build_generation_prompt(
     tool_definitions: list[dict],
     blocklist: Iterable[str] = (),
     mode: str = "single",
+    form: str = "",
 ) -> str:
     """Prompt demandant ``n`` cas pour une cellule de taxonomie (sortie JSON strict).
 
@@ -112,7 +129,16 @@ def build_generation_prompt(
         f"Available tools (JSON schemas):\n{tools_json}\n\n"
         f"{target_spec}\n"
         f'Phrasing style: "{style}". Inference depth: "{depth}".\n'
-        f"Produce exactly {n} DIVERSE, realistic English user utterances as spoken to a "
+        # La forme est imposée SANS changer la cible : c'est ce qui décorrèle
+        # « when » de la base de données. Sans cette contrainte, le générateur
+        # retombe sur la forme naturelle du domaine et recrée le raccourci.
+        + (
+            f"Phrase every utterance as {form}. Keep the correct tool exactly as specified above — "
+            "the grammatical form must not change which tool applies.\n"
+            if form
+            else ""
+        )
+        + f"Produce exactly {n} DIVERSE, realistic English user utterances as spoken to a "
         "voice assistant (no markup, no tool tokens).\n"
         + (f"Avoid anything close to these held-out utterances:\n{block}\n" if block else "")
         + "Respond with ONLY a JSON array, each element shaped like:\n"
@@ -121,7 +147,7 @@ def build_generation_prompt(
 
 
 def parse_generation_response(
-    text: str, *, target: ToolTarget, style: str, depth: str, mode: str = "single"
+    text: str, *, target: ToolTarget, style: str, depth: str, mode: str = "single", form: str = ""
 ) -> list[SynthCase]:
     """Parse la réponse JSON du LLM en ``SynthCase`` (tolère un éventuel fence ```)."""
     payload = _extract_json_array(text)
@@ -139,6 +165,7 @@ def parse_generation_response(
                     answer=str(item.get("answer", "")).strip(),
                     style=style,
                     depth=depth,
+                    form=form,
                 )
             )
         elif mode == "loop":
@@ -152,6 +179,7 @@ def parse_generation_response(
                     answer=str(item.get("answer", "")).strip(),
                     style=style,
                     depth=depth,
+                    form=form,
                 )
             )
         else:
@@ -162,6 +190,7 @@ def parse_generation_response(
                     arguments=dict(item.get("arguments", {})),
                     style=style,
                     depth=depth,
+                    form=form,
                 )
             )
     return cases
@@ -313,7 +342,7 @@ def case_to_dialogue(case: SynthCase, idx: int, *, tools: list[str], mode: str =
         # défaut FR « accueil » que l'adapter mettait sinon → routage brouillé).
         "system": TOOLCALLING_EN_SYSTEM_INSTRUCTIONS,
         "tools": tools,
-        "meta": {"style": case.style, "depth": case.depth, "target": case.target},
+        "meta": {"style": case.style, "depth": case.depth, "target": case.target, "form": case.form},
         "turns": turns,
     }
 

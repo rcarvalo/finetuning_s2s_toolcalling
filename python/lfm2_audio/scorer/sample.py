@@ -42,6 +42,14 @@ class EvalSample:
     tool_results: list[dict[str, Any]] = field(default_factory=list)
     """Résultats d'outils réinjectés — base de l'ancrage factuel."""
 
+    trajectory: list[dict[str, Any]] = field(default_factory=list)
+    """Les étapes du tour (appel, résultat d'outil, réponse), sérialisées.
+
+    Portée en dict plutôt qu'en :class:`~lfm2_audio.evaluation.trajectory.Trajectory`
+    pour que ``EvalSample`` reste ce que tout scorer sait lire, sans dépendre du
+    paquet d'évaluation. ``Trajectory.from_list`` la relit quand on en a besoin.
+    """
+
     metadata: dict[str, Any] = field(default_factory=dict)
 
     @property

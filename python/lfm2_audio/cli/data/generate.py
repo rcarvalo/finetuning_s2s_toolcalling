@@ -144,20 +144,27 @@ def main() -> None:
         alloc[t] += 1
         return t
 
-    def _make_cell(target: sd.ToolTarget) -> tuple[sd.ToolTarget, str, str, str]:
-        """Construit une cellule (style/profondeur aléatoires pour la diversité)."""
+    def _make_cell(target: sd.ToolTarget) -> tuple[sd.ToolTarget, str, str, str, str]:
+        """Construit une cellule (style/profondeur/forme aléatoires).
+
+        La forme interrogative est tirée INDÉPENDAMMENT de la cible : c'est ce
+        qui empêche « when » d'appartenir à la base de données, le raccourci
+        que v4 avait appris.
+        """
         style = rng.choice(sd.PHRASING_STYLES)
         depth = rng.choice(sd.INFERENCE_DEPTHS)
+        form = rng.choice(sd.QUESTION_FORMS)
         prompt = sd.build_generation_prompt(
             target=target,
             style=style,
             depth=depth,
+            form=form,
             n=args.per_cell,
             tool_definitions=TOOLCALLING_EN_TOOL_DEFINITIONS,
             blocklist=rng.sample(contamination.held_out, min(8, len(contamination.held_out))),
             mode=args.mode,
         )
-        return target, style, depth, prompt
+        return target, style, depth, form, prompt
 
     def _safe_gen(prompt: str) -> str | Exception:
         try:
@@ -174,11 +181,15 @@ def main() -> None:
         while written < args.n_total and cells < args.max_cells:
             batch = [_make_cell(_next_target()) for _ in range(args.concurrency)]
             cells += len(batch)
-            for (target, style, depth, _), raw in zip(batch, pool.map(_safe_gen, [c[3] for c in batch]), strict=True):
+            for (target, style, depth, form, _), raw in zip(
+                batch, pool.map(_safe_gen, [c[4] for c in batch]), strict=True
+            ):
                 if isinstance(raw, Exception):
                     print(f"[appel échoué] {raw}", file=sys.stderr)
                     continue
-                for case in sd.parse_generation_response(raw, target=target, style=style, depth=depth, mode=args.mode):
+                for case in sd.parse_generation_response(
+                    raw, target=target, style=style, depth=depth, form=form, mode=args.mode
+                ):
                     if written >= args.n_total:
                         break
                     if sd.verify_case(case, registry, mode=args.mode):

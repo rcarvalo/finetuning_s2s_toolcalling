@@ -52,6 +52,7 @@ class SampleArchive:
             "reference_text": sample.reference_text,
             "expected_calls": sample.expected_calls,
             "tool_results": sample.tool_results,
+            "trajectory": sample.trajectory,
             "metadata": sample.metadata,
         }
         if sample.has_predicted_audio and sample.predicted_audio is not None:
@@ -76,6 +77,7 @@ class SampleArchive:
                 reference_text=payload.get("reference_text", ""),
                 expected_calls=payload.get("expected_calls", []),
                 tool_results=payload.get("tool_results", []),
+                trajectory=payload.get("trajectory", []),
                 metadata=payload.get("metadata", {}),
             )
 
