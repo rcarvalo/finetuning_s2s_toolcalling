@@ -115,8 +115,9 @@ class TestAbsence:
         assert _spoken(out[0])["audio"] == "a0.wav"
 
     def test_should_default_to_a_rate_that_does_not_teach_reflex_refusal(self) -> None:
-        # v4 tournait à 0,15 et sur-refusait. Le défaut porte la correction.
-        assert PayloadRealism().miss_ratio == 0.08
+        # v4 tournait à 0,15 et sur-refusait ; 0,08 ne laissait que 146
+        # exemples contre 297, au risque de rouvrir l'hallucination.
+        assert PayloadRealism().miss_ratio == 0.12
 
 
 class TestContract:

@@ -8,7 +8,7 @@ interrogatifs doivent donc être invisibles ici.
 
 from __future__ import annotations
 
-from lfm2_audio.data_prep.question_terms import leading_term, salient_terms
+from lfm2_audio.data_prep.question_terms import leading_term, salient_terms, topic_phrase
 
 
 class TestSalientTerms:
@@ -42,3 +42,24 @@ class TestLeadingTerm:
 
     def test_should_return_none_when_there_is_nothing_to_name(self) -> None:
         assert leading_term("what is it") is None
+
+
+class TestTopicPhrase:
+    def test_should_strip_the_leading_interrogative(self) -> None:
+        assert topic_phrase("what is the average order value") == "average order value"
+
+    def test_should_keep_a_query_that_is_already_a_topic(self) -> None:
+        assert topic_phrase("cryptocurrency definition") == "cryptocurrency definition"
+
+    def test_should_not_end_on_a_function_word(self) -> None:
+        # « results about the customers in » : la préposition orpheline
+        # s'entend, et le corpus est lu à voix haute.
+        assert topic_phrase("the customers in") == "customers"
+
+    def test_should_cap_the_length(self) -> None:
+        phrase = topic_phrase("alpha bravo charlie delta echo foxtrot golf", max_words=3)
+
+        assert phrase == "alpha bravo charlie"
+
+    def test_should_return_none_when_nothing_survives(self) -> None:
+        assert topic_phrase("what is it") is None

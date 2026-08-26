@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import random
 
-from lfm2_audio.data_prep.question_terms import leading_term
+from lfm2_audio.data_prep.question_terms import salient_terms, topic_phrase
 
 BOTH_SIDES = (
     "I'm seeing results about {found}, but nothing on {asked}. Want me to search for {asked} directly?",
@@ -47,26 +47,38 @@ class ContextualMiss:
     """Builds the answer given when the payload does not hold the answer."""
 
     def text(self, question: str, neighbour_questions: list[str], rng: random.Random) -> str:
-        """A refusal grounded in this question and these neighbouring results."""
-        asked = leading_term(question)
+        """A refusal grounded in this query and these neighbouring results.
+
+        ``question`` and ``neighbour_questions`` should be the tool-call
+        queries, not the raw utterances — see :func:`topic_phrase`.
+        """
+        asked = topic_phrase(question)
         if asked is None:
             return rng.choice(BLIND)
 
-        found = self._found_term(neighbour_questions, asked)
+        found = self._found_topic(neighbour_questions, asked)
         if found is None:
             return rng.choice(ASKED_ONLY).format(asked=asked)
         return rng.choice(BOTH_SIDES).format(found=found, asked=asked)
 
     @staticmethod
-    def _found_term(neighbour_questions: list[str], asked: str) -> str | None:
-        """A term describing the neighbours, never the one that was asked.
+    def _found_topic(neighbour_questions: list[str], asked: str) -> str | None:
+        """A phrase describing the neighbours, never the one that was asked.
 
-        Reusing ``asked`` would produce "results about X, but nothing on X" —
-        self-contradictory, and it would teach the model to emit the ask back
-        rather than read the payload.
+        Sharing a word is expected and welcome: the distractors are drawn on
+        topic, so "results about the World Cup venue, but nothing on the World
+        Cup winner" is both realistic and the most useful thing to say. Only a
+        topic that says nothing *new* is refused — one whose content words are
+        contained in the ask, or contain it — since "about X, but nothing on X"
+        contradicts itself and would teach the model to echo the question back
+        instead of reading the payload.
         """
+        asked_words = set(salient_terms(asked))
         for question in neighbour_questions:
-            term = leading_term(question)
-            if term and term != asked:
-                return term
+            topic = topic_phrase(question)
+            if not topic:
+                continue
+            words = set(salient_terms(topic))
+            if words and not (words <= asked_words or asked_words <= words):
+                return topic
         return None

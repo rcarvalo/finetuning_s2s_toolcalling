@@ -131,10 +131,14 @@ STOPWORDS = frozenset(
         "like",
         "want",
         "need",
+        "many",
+        "much",
     ]
 )
 
-_WORD = re.compile(r"[a-zA-Z][a-zA-Z0-9'’-]*")
+# A word may open on a digit: requiring a letter turned "4G and 5G" into
+# "g and g" in a real corpus pass, and that text gets spoken aloud.
+_WORD = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9'’-]*")
 
 
 def salient_terms(text: str, *, limit: int = 6) -> list[str]:
@@ -159,3 +163,22 @@ def leading_term(text: str) -> str | None:
     """The single term a refusal should name, or None if there is nothing."""
     terms = salient_terms(text, limit=1)
     return terms[0] if terms else None
+
+
+def topic_phrase(text: str, *, max_words: int = 8) -> str | None:
+    """The phrase ``text`` is about, for a refusal to name out loud.
+
+    Feed this the tool-call query, not the user's utterance. Ranking single
+    words by length lands on whatever is longest — "the results are about
+    natural, not effective" came out of a real corpus pass, because adjectives
+    outran the subject. A query is already the distilled topic, so trimming its
+    leading and trailing function words is enough and stays grammatical.
+    """
+    words = _WORD.findall(text)
+    start = 0
+    while start < len(words) and words[start].lower() in STOPWORDS:
+        start += 1
+    kept = words[start : start + max_words]
+    while kept and kept[-1].lower() in STOPWORDS:
+        kept.pop()
+    return " ".join(word.lower() for word in kept) if kept else None

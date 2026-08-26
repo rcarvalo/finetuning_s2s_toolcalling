@@ -20,8 +20,13 @@ Trois transformations, chacune visant un échec mesuré :
 3. **Absence** (``miss_ratio``) — la réponse attendue devient un aveu d'échec
    *situé* (:class:`ContextualMiss`), à ré-enregistrer.
 
-``miss_ratio`` retombe de 0,15 à 0,08 : à 15 %, v4 a appris à refuser trop
-souvent (honnêteté 3,15, sous la porte de 4).
+``miss_ratio`` passe de 0,15 à 0,12. v4 refusait trop (honnêteté 3,15, sous la
+porte de 4), mais la cause structurelle était ses gabarits, réductibles à un
+réflexe : les refus situés la retirent à eux seuls. Descendre AUSSI bas que
+0,08 ne laissait que 146 exemples contre 297, au risque d'échanger le sur-refus
+contre le retour de l'hallucination — or c'est justement ce que v4 avait le
+mieux corrigé (ancrage 2,83 → 4,23). On ne baisse donc que d'un cinquième, et
+le curseur se remonte si l'éval montre un sous-refus.
 """
 
 from __future__ import annotations
@@ -42,7 +47,7 @@ class PayloadRealism:
     """Réécrit les tours ``tool`` d'un corpus de dialogues."""
 
     seed: int = 7
-    miss_ratio: float = 0.08
+    miss_ratio: float = 0.12
     min_results: int = 3
     max_results: int = 5
     shaper: SnippetShaper = field(default_factory=SnippetShaper)
@@ -102,18 +107,21 @@ class PayloadRealism:
 
     @staticmethod
     def _question_of(dialogue: dict[str, Any]) -> str:
-        """Le texte de la question posée — ce dont le dialogue parle.
+        """Le sujet du dialogue — la REQUÊTE d'outil d'abord, l'énoncé ensuite.
 
-        Repli sur les arguments du tool call quand le tour user n'a pas de
-        texte (dialogue purement audio) : la requête émise dit le sujet.
+        La requête est le sujet déjà distillé (« cryptocurrency definition »),
+        là où l'énoncé porte des politesses et des hésitations (« Excuse me,
+        could you explain what… »). Une passe réelle sur le corpus en a fait la
+        démonstration : lue sur l'énoncé, la phrase de refus sortait « results
+        about natural, not effective » — des adjectifs pris pour des sujets.
         """
+        for turn in dialogue.get("turns", []):
+            for call in turn.get("tool_calls") or []:
+                if values := [str(v) for v in (call.get("arguments") or {}).values() if v]:
+                    return " ".join(values)
         for turn in dialogue.get("turns", []):
             if turn.get("role") == "user" and turn.get("text"):
                 return str(turn["text"])
-        for turn in dialogue.get("turns", []):
-            for call in turn.get("tool_calls") or []:
-                if values := [str(v) for v in (call.get("arguments") or {}).values()]:
-                    return " ".join(values)
         return ""
 
     @staticmethod
