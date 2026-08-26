@@ -41,7 +41,11 @@ done
 curl -sf http://localhost:8000/health >/dev/null || { echo "SERVER_DEAD"; tail -40 /voxtral.log; exit 1; }
 echo "server healthy"
 
-python3 /repo/infra/pod_synth_fresh.py
+# The server is shared by every job below; only the producer differs.
+case "${TTS_JOB:-fresh}" in
+    misses_v5) python3 /repo/infra/pod_synth_misses_v5.py ;;
+    *)         python3 /repo/infra/pod_synth_fresh.py ;;
+esac
 
 # Keep the pod alive briefly so logs are readable; the operator deletes it.
 sleep 600
