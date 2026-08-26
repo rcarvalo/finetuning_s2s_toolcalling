@@ -41,7 +41,10 @@ class LoraMergePreparer(CheckpointPreparer):
         n_text, n_audio = request.interleaved_ratio or (None, None)
 
         logger.info("fusion de l'adaptateur %s dans %s", adapter, source)
-        export_full(str(source), str(adapter), merged, "cuda", n_text, n_audio)
+        # `source` reste un Path : liquid-audio distingue dossier local (Path) et
+        # repo Hub (str), et le stringifier ici faisait chercher un repo nommé
+        # `/root/.cache/...` (HFValidationError au démarrage de la démo).
+        export_full(source, str(adapter), merged, "cuda", n_text, n_audio)
 
         convert_to_omni(merged, target)
         self.mark_ready(target)

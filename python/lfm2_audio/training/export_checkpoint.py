@@ -39,6 +39,7 @@ from liquid_audio import LFM2AudioModel
 from liquid_audio.utils import get_model_dir
 from safetensors.torch import save_file
 
+from lfm2_audio.core.model_ref import model_ref
 from lfm2_audio.training.checkpoint_layout import (
     BACKBONE_AUX_FILES,
     FULL_AUX_DIRS,
@@ -52,9 +53,9 @@ from lfm2_audio.training.checkpoint_layout import (
 from lfm2_audio.training.lora import inject_lora, load_lora, load_lora_settings, merge_lora
 
 
-def _load_merged_model(base: str, adapter: str | None, device: str):
+def _load_merged_model(base: str | Path, adapter: str | None, device: str):
 
-    model = LFM2AudioModel.from_pretrained(base, device=device, dtype=torch.bfloat16).eval()
+    model = LFM2AudioModel.from_pretrained(model_ref(base), device=device, dtype=torch.bfloat16).eval()
     if adapter:
         settings = load_lora_settings(adapter)
         inject_lora(model, settings)
@@ -63,13 +64,13 @@ def _load_merged_model(base: str, adapter: str | None, device: str):
     return model
 
 
-def _base_cache_dir(base: str) -> Path:
+def _base_cache_dir(base: str | Path) -> Path:
 
-    return Path(get_model_dir(base))
+    return Path(get_model_dir(model_ref(base)))
 
 
 def export_full(
-    base: str, adapter: str | None, output: Path, device: str, n_text: int | None, n_audio: int | None
+    base: str | Path, adapter: str | None, output: Path, device: str, n_text: int | None, n_audio: int | None
 ) -> None:
 
     model = _load_merged_model(base, adapter, device)
