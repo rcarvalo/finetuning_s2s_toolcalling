@@ -15,6 +15,7 @@ import time
 from typing import Any
 
 import gradio as gr
+import httpx
 import numpy as np
 import soundfile as sf
 from fastrtc import (
@@ -36,6 +37,23 @@ from lfm2_audio.orchestrator.events import (
     ToolCallResult,
     TurnComplete,
 )
+
+
+def _server_credentials(**keys: str) -> Any:
+    """Fetch the server-side TURN credentials, or None if the network refuses.
+
+    A transient DNS hiccup here used to kill the whole demo — after three
+    minutes of model loading, which is the expensive part. An optional network
+    call at startup must never be fatal: the client fetches its own credentials
+    when a session opens, so the stream can still come up without these.
+    """
+    try:
+        creds = get_cloudflare_turn_credentials(ttl=86_400, **keys)
+    except httpx.HTTPError as exc:
+        print(f"[TURN] identifiants serveur indisponibles ({exc}) — le client tentera les siens", flush=True)
+        return None
+    print("[TURN] Cloudflare via token Hugging Face" if not keys else "[TURN] Cloudflare clés directes", flush=True)
+    return creds
 
 
 def build_stream(agent: Any, turn: str) -> Any:
@@ -103,14 +121,12 @@ def build_stream(agent: Any, turn: str) -> Any:
         # (lu dans HF_TOKEN). Le client reçoit la fonction async — fastrtc la
         # rappelle par session, les identifiants étant à durée de vie courte.
         rtc_conf = get_cloudflare_turn_credentials_async
-        server_conf = get_cloudflare_turn_credentials(ttl=86_400)
-        print("[TURN] Cloudflare via token Hugging Face", flush=True)
+        server_conf = _server_credentials()
     elif turn == "cloudflare":
         key_id, key_token = os.environ.get("CLOUDFLARE_TURN_KEY_ID"), os.environ.get("CLOUDFLARE_TURN_KEY_API_TOKEN")
         if key_id and key_token:
-            creds = get_cloudflare_turn_credentials(turn_key_id=key_id, turn_key_api_token=key_token, ttl=86_400)
+            creds = _server_credentials(turn_key_id=key_id, turn_key_api_token=key_token)
             rtc_conf = server_conf = creds
-            print("[TURN] Cloudflare clés directes", flush=True)
 
     reply_kwargs: dict = {"can_interrupt": False, "output_sample_rate": SR_OUT}
     try:
