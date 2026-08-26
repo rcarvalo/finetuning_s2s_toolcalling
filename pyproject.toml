@@ -162,6 +162,12 @@ lfm2-serve-ws = "lfm2_audio.cli.serve.websocket:main"
 
 # Chargé par vLLM-Omni dans TOUS ses process (engine + workers) :
 # enregistre l'architecture Lfm2AudioOmniModel et le pipeline lfm2_audio.
+[project.entry-points.inspect_ai]
+# Inspect imports this module at startup so `--model lfm2/…` resolves from the
+# CLI — without it the @modelapi registration only exists when our own code
+# already imported the provider.
+lfm2_audio = "lfm2_audio.inspect_bridge.provider"
+
 [project.entry-points."vllm_omni.general_plugins"]
 lfm2_audio = "lfm2_audio.vllm_plugin:register"
 

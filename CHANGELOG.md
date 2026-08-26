@@ -6,6 +6,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Added
+- `inspect_ai` entry point: Inspect now imports the provider at startup, so
+  `--model lfm2/…` resolves from the bare CLI. Until now the @modelapi
+  registration only existed when our own code had already imported the
+  provider — the first real CLI campaign (Colab, phase 0B) failed on
+  "Model API lfm2 not recognized". Task reference fixed too: Inspect wants
+  the file path form (`inspect eval python/…/task.py@voice_eval`).
 - Judge rubric selectable by version string: `RUBRICS_BY_VERSION` +
   `resolve_rubric` in `rubric.py`, `ReasoningScorer(rubric="reasoning-v3")`,
   and `voice_eval -T rubric=reasoning-v3` — JSON scorer options cannot carry a

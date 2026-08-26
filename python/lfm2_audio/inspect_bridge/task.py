@@ -4,7 +4,7 @@ Everything a campaign used to need from us is now upstream: parallelism,
 retries, running several variants in one command, the log and its viewer. What
 is left here is the description of *what* to evaluate.
 
-    inspect eval lfm2_audio.inspect_bridge.task \\
+    inspect eval python/lfm2_audio/inspect_bridge/task.py@voice_eval \\
       --model lfm2/LiquidAI/LFM2.5-Audio-1.5B \\
       -T questions=benchmark/toolcalling_en/cases.sample.jsonl \\
       -T scorers=tool_call,dnsmos,utmos \\
