@@ -144,6 +144,10 @@ class VersaRunner:
             str(work / "scores.jsonl"),
             "--io",
             "soundfile",
+            # Without this, VERSA drops a versa_cache/ wherever cwd happens to
+            # be — including our repo root during an audit run.
+            "--cache_folder",
+            str(self._root / "versa" / "versa_cache"),
         ]
         if gt:
             _write_scp(work / "gt.scp", gt)

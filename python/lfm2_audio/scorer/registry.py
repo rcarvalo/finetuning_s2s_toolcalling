@@ -85,6 +85,12 @@ SCORERS = ScorerRegistry(
             description="WER de la réponse texte contre la transcription de référence",
         ),
         ScorerSpec(
+            name="lang_match",
+            module="lfm2_audio.scorer.text.lang_match",
+            class_name="LangMatchScorer",
+            description="la réponse est-elle dans la langue attendue ? (FR/EN, déterministe)",
+        ),
+        ScorerSpec(
             name="tool_call",
             module="lfm2_audio.scorer.text.tool_call",
             class_name="ToolCallScorer",

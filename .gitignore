@@ -54,3 +54,4 @@ data/audio*/
 .DS_Store
 Thumbs.db
 data/phase_b_train*.jsonl
+versa_cache/

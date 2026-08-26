@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Added
+- `lang_match` scorer — deterministic FR/EN mirroring check (function-word
+  counting, no dependency, no API call): 1.0 when the reply's language matches
+  `metadata.expected_lang` (falling back to `lang`), the metric the
+  `lang_mirror` benchmark and the R3 ≥95 % gate read. Fails rather than
+  guesses on signal-free replies. Off by default like `asr_wer`.
 - FR source audit (phase 1.1) — `lfm2-fr-audit` samples each candidate FR
   source (`configs/audit/fr_sources.yaml`), measures the raw-audio ones with
   VERSA (DNSMOS/UTMOS/NISQA — the same metrics the gates read) plus a
