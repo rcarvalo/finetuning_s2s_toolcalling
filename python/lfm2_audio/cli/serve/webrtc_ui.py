@@ -24,6 +24,7 @@ from fastrtc import (
     SileroVadOptions,
     Stream,
     get_cloudflare_turn_credentials,
+    get_cloudflare_turn_credentials_async,
 )
 
 from lfm2_audio.cli.serve.turn_io import LOCK, MIN_INPUT_RMS, SR_OUT
@@ -95,8 +96,16 @@ def build_stream(agent: Any, turn: str) -> Any:
                     )
                     yield AdditionalOutputs(f"🤖 {ev.text}\n⏱ 1er son après outil {ttfa} · tour complet {total_s:.1f}s")
 
-    rtc_conf = server_conf = None
-    if turn == "cloudflare":
+    rtc_conf: Any = None
+    server_conf: Any = None
+    if turn == "hf":
+        # fastrtc sert un relais Cloudflare gratuit contre un token Hugging Face
+        # (lu dans HF_TOKEN). Le client reçoit la fonction async — fastrtc la
+        # rappelle par session, les identifiants étant à durée de vie courte.
+        rtc_conf = get_cloudflare_turn_credentials_async
+        server_conf = get_cloudflare_turn_credentials(ttl=86_400)
+        print("[TURN] Cloudflare via token Hugging Face", flush=True)
+    elif turn == "cloudflare":
         key_id, key_token = os.environ.get("CLOUDFLARE_TURN_KEY_ID"), os.environ.get("CLOUDFLARE_TURN_KEY_API_TOKEN")
         if key_id and key_token:
             creds = get_cloudflare_turn_credentials(turn_key_id=key_id, turn_key_api_token=key_token, ttl=86_400)

@@ -246,18 +246,22 @@ def main() -> None:
         help="simple : enregistrer→envoyer, sans WebRTC — donc sans relais TURN "
         "(turn.fastrtc.org n'existe plus ; Cloudflare exige une clé)",
     )
-    ap.add_argument("--turn", choices=["auto", "cloudflare", "none"], default="auto")
+    ap.add_argument("--turn", choices=["auto", "hf", "cloudflare", "none"], default="auto")
     ap.add_argument("--share", action="store_true")
     ap.add_argument("--port", type=int, default=7860)
     args = ap.parse_args()
 
     turn = args.turn
     if turn == "auto":
-        turn = (
-            "cloudflare"
-            if (os.environ.get("CLOUDFLARE_TURN_KEY_ID") and os.environ.get("CLOUDFLARE_TURN_KEY_API_TOKEN"))
-            else "none"
-        )
+        # HF d'abord : fastrtc sert un relais Cloudflare gratuit contre un token
+        # Hugging Face, qu'on a déjà. Sans lui, WebRTC n'a aucun relais joignable
+        # (turn.fastrtc.org n'existe plus) et la connexion échoue.
+        if os.environ.get("HF_TOKEN"):
+            turn = "hf"
+        elif os.environ.get("CLOUDFLARE_TURN_KEY_ID") and os.environ.get("CLOUDFLARE_TURN_KEY_API_TOKEN"):
+            turn = "cloudflare"
+        else:
+            turn = "none"
 
     agent = build_agent(
         args.checkpoint,
