@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import threading
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -25,15 +24,8 @@ from typing import Any
 import gradio as gr
 import numpy as np
 import soundfile as sf
-from fastrtc import (
-    AdditionalOutputs,
-    AlgoOptions,
-    ReplyOnPause,
-    SileroVadOptions,
-    Stream,
-    get_cloudflare_turn_credentials,
-)
 
+from lfm2_audio.cli.serve.turn_io import LOCK, SR_OUT, as_pcm16
 from lfm2_audio.core import chat_format
 from lfm2_audio.core.errors import BackendUnavailableError
 from lfm2_audio.ds.audio import Waveform
@@ -51,12 +43,6 @@ from lfm2_audio.tools.fake_db import FakeDbBackend
 from lfm2_audio.tools.toolcalling_en import build_toolcalling_en_registry
 from lfm2_audio.tools.web_search.duckduckgo import DuckDuckGoBackend
 from lfm2_audio.tools.web_search.tavily import TavilyBackend
-
-SR_OUT = 24_000
-# Sous ce RMS : écho (sortie modèle reprise au micro) ou silence → on ignore.
-MIN_INPUT_RMS = float(os.environ.get("MIN_INPUT_RMS", "0.03"))
-LOCK = threading.Lock()
-
 
 # ───────────────────────── adaptateur backend vLLM-Omni ──────────────────────
 
@@ -137,45 +123,6 @@ def build_agent(
     return VllmToolAgent(model, _build_registry(), fillers=_build_fillers(filler_dir))
 
 
-def run_turn(agent: Any, wave: Waveform) -> tuple[np.ndarray, str]:
-    """Un tour complet, rendu en (audio concaténé, trace lisible).
-
-    Chemin SANS WebRTC : l'audio transite par le tunnel HTTPS de Gradio, donc
-    aucun relais TURN n'est nécessaire — `turn.fastrtc.org` n'existe plus et
-    Cloudflare exige une clé. C'est le mode qui marche partout, au prix du
-    mains-libres (on enregistre, puis on envoie).
-    """
-    lines: list[str] = []
-    chunks: list[np.ndarray] = []
-    start = time.monotonic()
-    mark = start
-    first_sound: float | None = None
-
-    with LOCK:
-        for event in agent.respond(wave):
-            if isinstance(event, ToolCallBegin):
-                lines.append(f"🔧 {event.name}({event.arguments})  ⏱ décision {time.monotonic() - mark:.2f}s")
-            elif isinstance(event, ToolCallResult):
-                mark = time.monotonic()
-                lines.append(f"   ↳ ⏱ outil {event.elapsed_ms:.0f}ms · {str(event.payload)[:180]}")
-            elif isinstance(event, FillerSpeech):
-                lines.append(f"💬 {event.phrase}")
-                if event.wav_path:
-                    filler, _ = sf.read(event.wav_path, dtype="float32")
-                    chunks.append(np.asarray(filler, dtype=np.float32).reshape(-1))
-            elif isinstance(event, AudioChunk):
-                if first_sound is None:
-                    first_sound = time.monotonic() - mark
-                chunks.append(np.asarray(event.samples, dtype=np.float32).reshape(-1))
-            elif isinstance(event, TurnComplete):
-                ttfa = f"{first_sound:.2f}s" if first_sound is not None else "—"
-                lines.append(f"🤖 {event.text}")
-                lines.append(f"⏱ 1er son après outil {ttfa} · tour complet {time.monotonic() - start:.1f}s")
-
-    audio = np.concatenate(chunks) if chunks else np.zeros(1, dtype=np.float32)
-    return audio, "\n".join(lines)
-
-
 def stream_turn(agent: Any, wave: Waveform) -> Iterator[tuple[Any, str]]:
     """Stream one turn as (audio span, trace), so the wait ends at the first sound.
 
@@ -211,26 +158,22 @@ def stream_turn(agent: Any, wave: Waveform) -> Iterator[tuple[Any, str]]:
                 # Le filler est un clip complet : il part tel quel, sans passer
                 # par le tampon — c'est lui qui couvre l'attente de l'outil.
                 filler, _ = sf.read(event.wav_path, dtype="float32")
-                span = _as_pcm16(np.asarray(filler, dtype=np.float32).reshape(-1))
+                span = as_pcm16(np.asarray(filler, dtype=np.float32).reshape(-1))
         elif isinstance(event, AudioChunk):
             if first_sound is None:
                 first_sound = time.monotonic() - mark
             block = buffer.push(np.asarray(event.samples, dtype=np.float32))
             if block is None:
                 continue  # rien à jouer ni à dire : pas d'aller-retour réseau
-            span = _as_pcm16(block)
+            span = as_pcm16(block)
         elif isinstance(event, TurnComplete):
             ttfa = f"{first_sound:.2f}s" if first_sound is not None else "—"
             lines.append(f"🤖 {event.text}")
             lines.append(f"⏱ 1er son {ttfa} · tour complet {time.monotonic() - start:.1f}s")
             tail = buffer.flush()
             if tail is not None:
-                span = _as_pcm16(tail)
+                span = as_pcm16(tail)
         yield span, "\n".join(lines)
-
-
-def _as_pcm16(samples: np.ndarray) -> tuple[int, np.ndarray]:
-    return SR_OUT, (np.clip(samples, -1.0, 1.0) * 32_767).astype(np.int16)
 
 
 def build_simple_ui(agent: Any) -> Any:
@@ -264,92 +207,6 @@ def build_simple_ui(agent: Any) -> Any:
         mic.stop_recording(on_submit, inputs=[mic, trace], outputs=[reply, trace])
         gr.Button("Envoyer").click(on_submit, inputs=[mic, trace], outputs=[reply, trace])
     return ui
-
-
-def build_stream(agent: Any, turn: str) -> Any:
-    """UI voix mains-libres (WebRTC). Exige un relais TURN hors réseau local."""
-
-    def handler(audio: tuple[int, np.ndarray]) -> Any:
-
-        sample_rate, pcm = audio
-        # Même règle que l'UI simple : rééchantillonner AVANT l'encodeur.
-        wave = Waveform.from_pcm16(np.asarray(pcm), sample_rate).for_encoder()
-        print(
-            f"👤 entrée {wave.duration_s:.1f}s @ {wave.sample_rate}Hz (micro {sample_rate}Hz) · RMS {wave.rms:.3f}",
-            flush=True,
-        )
-        if wave.rms < MIN_INPUT_RMS:
-            print(f"   (ignoré : RMS {wave.rms:.3f} < {MIN_INPUT_RMS} — écho/silence)", flush=True)
-            return
-        # Chronométrage par étape : c'est la donnée que l'écoute seule ne donne
-        # pas — où partent les secondes d'un tour (décision, outil, reprise).
-        t_start = time.monotonic()
-        t_mark = t_start
-        first_sound_s: float | None = None
-        with LOCK:
-            # NB : pas de sonde « transcription » — le modèle Phase B ne transcrit
-            # plus (le fine-tuning tool-calling a écrasé l'ASR : il RÉPOND au lieu
-            # de transcrire). Le vrai « ce qu'il a compris » = la requête du tool
-            # call (ligne 🔧), qui est fidèle (« weather in Paris », « in Celsius »…).
-            for ev in agent.respond(wave):
-                if isinstance(ev, ToolCallBegin):
-                    decision_s = time.monotonic() - t_mark
-                    line = f"🔧 {ev.name}({ev.arguments})  ⏱ décision {decision_s:.2f}s"
-                    print(line, flush=True)
-                    yield AdditionalOutputs(line)
-                elif isinstance(ev, ToolCallResult):
-                    t_mark = time.monotonic()  # la reprise se mesure depuis le résultat
-                    print(f"   ↳ outil ok={ev.ok} ({ev.elapsed_ms:.0f}ms) → {str(ev.payload)[:300]}", flush=True)
-                    yield AdditionalOutputs(f"   ↳ ⏱ outil {ev.elapsed_ms:.0f}ms · {str(ev.payload)[:140]}")
-                elif isinstance(ev, FillerSpeech):
-                    yield AdditionalOutputs(f"💬 {ev.phrase}")
-                    if ev.wav_path:  # joué pendant le round-trip → masque le TTFA
-                        fwav, _ = sf.read(ev.wav_path, dtype="float32")
-                        pcm16 = (np.clip(fwav.reshape(-1), -1.0, 1.0) * 32_767).astype(np.int16)
-                        yield (SR_OUT, pcm16.reshape(1, -1))
-                elif isinstance(ev, AudioChunk):
-                    if first_sound_s is None:
-                        first_sound_s = time.monotonic() - t_mark
-                    # vLLM RTF<1 → on stream EN DIRECT (pas d'underrun, contrairement
-                    # à liquid-audio) : c'est tout l'intérêt du port.
-                    w = np.asarray(ev.samples, dtype=np.float32).reshape(-1)
-                    pcm16 = (np.clip(w, -1.0, 1.0) * 32_767).astype(np.int16)
-                    yield (SR_OUT, pcm16.reshape(1, -1))
-                elif isinstance(ev, TurnComplete):
-                    total_s = time.monotonic() - t_start
-                    ttfa = f"{first_sound_s:.2f}s" if first_sound_s is not None else "—"
-                    print(
-                        f"🤖 {ev.text}  ({ev.tool_rounds} round(s), 1er son {ttfa}, total {total_s:.1f}s)",
-                        flush=True,
-                    )
-                    yield AdditionalOutputs(f"🤖 {ev.text}\n⏱ 1er son après outil {ttfa} · tour complet {total_s:.1f}s")
-
-    rtc_conf = server_conf = None
-    if turn == "cloudflare":
-        key_id, key_token = os.environ.get("CLOUDFLARE_TURN_KEY_ID"), os.environ.get("CLOUDFLARE_TURN_KEY_API_TOKEN")
-        if key_id and key_token:
-            creds = get_cloudflare_turn_credentials(turn_key_id=key_id, turn_key_api_token=key_token, ttl=86_400)
-            rtc_conf = server_conf = creds
-            print("[TURN] Cloudflare clés directes", flush=True)
-
-    reply_kwargs: dict = {"can_interrupt": False, "output_sample_rate": SR_OUT}
-    try:
-        reply_kwargs["algo_options"] = AlgoOptions(
-            audio_chunk_duration=0.6, started_talking_threshold=0.2, speech_threshold=0.1
-        )
-        reply_kwargs["model_options"] = SileroVadOptions(threshold=0.5, min_silence_duration_ms=900, speech_pad_ms=300)
-    except (ImportError, TypeError) as e:
-        print(f"[VAD] défauts ({e})", flush=True)
-
-    return Stream(
-        handler=ReplyOnPause(handler, **reply_kwargs),
-        modality="audio",
-        mode="send-receive",
-        rtc_configuration=rtc_conf,
-        server_rtc_configuration=server_conf,
-        additional_outputs=[gr.Textbox(label="conversation + outils", lines=10)],
-        additional_outputs_handler=lambda old, new: ((old + "\n") if old else "") + new,
-    )
 
 
 def main() -> None:
@@ -398,8 +255,16 @@ def main() -> None:
         filler_dir=args.filler_dir,
         backend=args.backend,
     )
-    ui = build_simple_ui(agent) if args.ui == "simple" else build_stream(agent, turn).ui
-    mode = "simple (sans WebRTC)" if args.ui == "simple" else f"WebRTC (TURN: {turn})"
+    if args.ui == "simple":
+        ui = build_simple_ui(agent)
+        mode = "simple (sans WebRTC)"
+    else:
+        # Résolu ici seulement : ce module tire `fastrtc`, que le chemin simple
+        # n'a pas à exiger (cf. le découpage dans `webrtc_ui`).
+        from lfm2_audio.cli.serve.webrtc_ui import build_stream
+
+        ui = build_stream(agent, turn).ui
+        mode = f"WebRTC (TURN: {turn})"
     print(f"\n▶ démo S2S + tool calling prête — backend {args.backend}, UI {mode}", flush=True)
     # quiet supprime l'affichage de l'URL publique — inutilisable avec --share,
     # dont c'est justement le seul livrable.
