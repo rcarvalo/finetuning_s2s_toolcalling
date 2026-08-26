@@ -15,6 +15,7 @@ import argparse
 import os
 import threading
 import time
+from pathlib import Path
 from typing import Any
 
 # TORCHDYNAMO_DISABLE was set here historically (all-eager era). It is fatal
@@ -63,7 +64,13 @@ LOCK = threading.Lock()
 # ──────────────────────────────── construction ───────────────────────────────
 
 
-def build_agent(checkpoint: str, adapter: str | None = None, *, no_deploy_config: bool = False) -> VllmToolAgent:
+def build_agent(
+    checkpoint: str,
+    adapter: str | None = None,
+    *,
+    no_deploy_config: bool = False,
+    filler_dir: str | None = None,
+) -> VllmToolAgent:
     """Assemble modèle + registre d'outils + fillers en un agent prêt à répondre."""
 
     preload_cuda13()  # AVANT tout import de vllm
@@ -83,11 +90,15 @@ def build_agent(checkpoint: str, adapter: str | None = None, *, no_deploy_config
     web = TavilyBackend(max_results=2) if os.environ.get("TAVILY_API_KEY") else DuckDuckGoBackend(max_results=4)
     print(f"[web] {'Tavily' if os.environ.get('TAVILY_API_KEY') else 'DuckDuckGo (repli)'}", flush=True)
     registry = build_toolcalling_en_registry(web_backend=web, db_backend=FakeDbBackend())
-    # Filler TEXTE seul (pas de wav) : rendre l'audio via « Perform TTS. » sur le
-    # modèle tool-calling est HORS-DISTRIBUTION → le modèle émet un token audio en
-    # step TEXT → la machine de modalité lève et TUE l'engine. TTFA déjà court
-    # (recherche ~700 ms) → on n'émet que le texte du filler dans l'UI.
-    bank = FillerBank(phrases=dict(EN_FILLER_PHRASES))
+    # Fillers : wavs PRÉ-RENDUS si --filler-dir est fourni (voix Aiden — celle
+    # que le modèle a apprise, donc transition invisible), texte seul sinon.
+    # Ne JAMAIS les rendre via « Perform TTS. » sur le modèle tool-calling :
+    # c'est hors-distribution → il émet un token audio en step TEXT → la machine
+    # de modalité lève et TUE l'engine.
+    bank = FillerBank(
+        filler_dir=Path(filler_dir) if filler_dir else None,
+        phrases=dict(EN_FILLER_PHRASES),
+    )
     return VllmToolAgent(model, registry, fillers=bank)
 
 

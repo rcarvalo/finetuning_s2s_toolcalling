@@ -44,10 +44,22 @@ DEFAULT_PHRASES: dict[str, list[str]] = {
 
 # Fillers ANGLAIS (démo tool calling EN) : courts, joués pendant le round-trip
 # pour garder la latence PERÇUE de l'interleaved S2S (~200 ms au 1er son).
+# Variés exprès : une phrase unique répétée à chaque recherche sonne robotique
+# dès le deuxième tour — c'est la variation qui fait le naturel, pas la phrase.
 EN_FILLER_PHRASES: dict[str, list[str]] = {
-    "web_search": ["Let me look that up.", "One sec, searching the web."],
-    "db_query": ["Let me check our records.", "One moment, checking the database."],
-    "_default": ["One moment.", "Let me check that."],
+    "web_search": [
+        "Let me look that up.",
+        "One sec, searching the web.",
+        "Hmm, let me check online.",
+        "Good question — searching now.",
+    ],
+    "db_query": [
+        "Let me check our records.",
+        "One moment, checking the database.",
+        "Let me pull that up for you.",
+        "Checking our system, one sec.",
+    ],
+    "_default": ["One moment.", "Let me check that.", "Just a second."],
 }
 
 
