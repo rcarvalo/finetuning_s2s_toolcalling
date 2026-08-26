@@ -261,7 +261,9 @@ def main() -> None:
     )
     stream = build_stream(agent, turn)
     print(f"\n▶ démo S2S + tool calling vLLM-Omni prête (TURN: {turn})", flush=True)
-    stream.ui.launch(server_port=args.port, share=args.share, quiet=True)
+    # quiet supprime l'affichage de l'URL publique — inutilisable avec --share,
+    # dont c'est justement le seul livrable.
+    stream.ui.launch(server_port=args.port, share=args.share, quiet=not args.share)
 
 
 if __name__ == "__main__":
