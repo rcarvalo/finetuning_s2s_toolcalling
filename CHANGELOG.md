@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Added
+- Judge rubric selectable by version string: `RUBRICS_BY_VERSION` +
+  `resolve_rubric` in `rubric.py`, `ReasoningScorer(rubric="reasoning-v3")`,
+  and `voice_eval -T rubric=reasoning-v3` — JSON scorer options cannot carry a
+  rubric object, its version string travels instead. Unblocks the judged FR
+  S2S pass of phase 0B.
 - `lang_match` scorer — deterministic FR/EN mirroring check (function-word
   counting, no dependency, no API call): 1.0 when the reply's language matches
   `metadata.expected_lang` (falling back to `lang`), the metric the

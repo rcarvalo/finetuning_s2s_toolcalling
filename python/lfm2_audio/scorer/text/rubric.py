@@ -156,3 +156,24 @@ la mauvaise langue, et c'est précisément le premier mode d'échec attendu d'un
 modèle en cours de bilingualisation. Les gates lisent ce critère seul (≥4.5),
 jamais noyé dans la moyenne.
 """
+
+
+RUBRICS_BY_VERSION: dict[str, JudgeRubric] = {
+    rubric.version: rubric for rubric in (REASONING_RUBRIC, ANSWER_RUBRIC_V2, ANSWER_RUBRIC_V3)
+}
+"""Version string → rubric, so a config or an Inspect task option can name one.
+
+A rubric object cannot travel through JSON scorer options; its version string
+can, and the report already records it — the same string picks it here.
+"""
+
+
+def resolve_rubric(rubric: JudgeRubric | str) -> JudgeRubric:
+    """A rubric, or its version string looked up in the registry."""
+    if isinstance(rubric, JudgeRubric):
+        return rubric
+    try:
+        return RUBRICS_BY_VERSION[rubric]
+    except KeyError as error:
+        known = ", ".join(sorted(RUBRICS_BY_VERSION))
+        raise ValueError(f"rubrique inconnue : {rubric!r} (connues : {known})") from error

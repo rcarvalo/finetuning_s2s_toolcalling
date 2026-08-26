@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from lfm2_audio.scorer.sample import EvalSample
 from lfm2_audio.scorer.status import ScoreStatus
 from lfm2_audio.scorer.text.reasoning import ReasoningScorer
@@ -136,3 +138,16 @@ def test_should_state_the_expected_language_to_the_judge() -> None:
 
     assert "language: fr" in judge.prompts[0]
     assert "language_match" in judge.prompts[0]
+
+
+def test_should_resolve_a_rubric_by_its_version_string() -> None:
+    """JSON scorer options can only carry strings — the version names the rubric."""
+    scorer = ReasoningScorer(FakeJudge(_verdict(relevance=5)), rubric="reasoning-v3")
+
+    assert scorer.rubric.version == "reasoning-v3"
+    assert "language_match" in scorer.rubric.keys
+
+
+def test_should_reject_an_unknown_rubric_name() -> None:
+    with pytest.raises(ValueError, match="rubrique inconnue"):
+        ReasoningScorer(FakeJudge(_verdict(relevance=5)), rubric="does-not-exist")

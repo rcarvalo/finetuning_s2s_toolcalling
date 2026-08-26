@@ -38,6 +38,7 @@ def voice_eval(
     scorers: str = DEFAULT_SCORERS,
     limit: int | None = None,
     asr_language: str = "en",
+    rubric: str | None = None,
 ) -> Task:
     """Answer every case once, then grade it with our own scorers."""
     names = [name.strip() for name in scorers.split(",") if name.strip()]
@@ -48,5 +49,10 @@ def voice_eval(
         # One turn per case: no history, so latencies and answers stay
         # comparable from case to case — the invariant the old generators held.
         solver=generate(),
-        scorer=[lfm2_scorer(name, scoring=scoring) for name in names],
+        # `rubric` names a judge rubric version (e.g. "reasoning-v3") — it only
+        # concerns the reasoning scorer, the others take no such option.
+        scorer=[
+            lfm2_scorer(name, scoring=scoring, **({"rubric": rubric} if name == "reasoning" and rubric else {}))
+            for name in names
+        ],
     )

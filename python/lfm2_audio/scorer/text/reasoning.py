@@ -23,7 +23,7 @@ from lfm2_audio.scorer.base import BaseScorer
 from lfm2_audio.scorer.result import ScoreResult
 from lfm2_audio.scorer.sample import EvalSample
 from lfm2_audio.scorer.text.judge import Judge
-from lfm2_audio.scorer.text.rubric import REASONING_RUBRIC, JudgeRubric
+from lfm2_audio.scorer.text.rubric import REASONING_RUBRIC, JudgeRubric, resolve_rubric
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +54,9 @@ class ReasoningScorer(BaseScorer):
     higher_is_better: ClassVar[bool] = True
     description: ClassVar[str] = "qualité de la réponse jugée par un LLM (rubrique versionnée)"
 
-    def __init__(self, judge: Judge, *, rubric: JudgeRubric = REASONING_RUBRIC) -> None:
+    def __init__(self, judge: Judge, *, rubric: JudgeRubric | str = REASONING_RUBRIC) -> None:
         self._judge = judge
-        self._rubric = rubric
+        self._rubric = resolve_rubric(rubric)
 
     @property
     def rubric(self) -> JudgeRubric:
