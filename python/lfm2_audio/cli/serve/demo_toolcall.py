@@ -25,7 +25,7 @@ import gradio as gr
 import numpy as np
 import soundfile as sf
 
-from lfm2_audio.cli.serve.turn_io import LOCK, SR_OUT, as_pcm16
+from lfm2_audio.cli.serve.turn_io import LOCK, as_pcm16
 from lfm2_audio.core import chat_format
 from lfm2_audio.core.errors import BackendUnavailableError
 from lfm2_audio.ds.audio import Waveform
@@ -38,7 +38,7 @@ from lfm2_audio.orchestrator.events import (
     TurnComplete,
 )
 from lfm2_audio.orchestrator.fillers import EN_FILLER_PHRASES, FillerBank
-from lfm2_audio.orchestrator.playback import BlockBuffer, detach
+from lfm2_audio.orchestrator.playback import detach
 from lfm2_audio.tools.fake_db import FakeDbBackend
 from lfm2_audio.tools.toolcalling_en import build_toolcalling_en_registry
 from lfm2_audio.tools.web_search.duckduckgo import DuckDuckGoBackend
@@ -134,30 +134,31 @@ def build_agent(
     return VllmToolAgent(model, _build_registry(), fillers=_build_fillers(filler_dir))
 
 
-def stream_turn(agent: Any, wave: Waveform) -> Iterator[tuple[Any, str]]:
-    """Stream one turn as (audio span, trace), so the wait ends at the first sound.
+def stream_turn(agent: Any, wave: Waveform) -> Iterator[tuple[Any, Any, str]]:
+    """Play one turn as (filler, reply, trace), each yielded the moment it exists.
 
-    Generation is detached from delivery and audio is handed over in spans of a
-    second rather than 80 ms frames — see :mod:`lfm2_audio.orchestrator.playback`
-    for the measurements that forced both.
+    Two players rather than one streamed player. Gradio's streaming audio output
+    turns every yield into a complete WAV file (its API reports the output type
+    as ``filepath``), so chaining spans chained WAV headers: the reply chopped,
+    and the component never recovered for the next turn — turn 2 stayed silent.
 
-    An event carrying no sound yields ``gr.skip()`` rather than ``None``: the
-    trace still updates, while the player keeps the stream it is reading. Only
-    the opening yield sends ``None``, to clear the previous reply.
+    The filler leaves as soon as the tool call is emitted, covering the search,
+    and the reply leaves complete. Nothing carries stream state between turns,
+    which is what makes every turn behave like the first.
     """
     lines: list[str] = []
+    chunks: list[np.ndarray] = []
     start = time.monotonic()
     mark = start
     first_sound: float | None = None
-    buffer = BlockBuffer(SR_OUT)
 
     def turn() -> Iterator[Any]:
         with LOCK:
             yield from agent.respond(wave)
 
-    yield None, "\n".join(lines)
     for event in detach(turn):
-        span: Any = gr.skip()
+        filler_out: Any = gr.skip()
+        reply_out: Any = gr.skip()
         if isinstance(event, ToolCallBegin):
             lines.append(f"🔧 {event.name}({event.arguments})  ⏱ décision {time.monotonic() - mark:.2f}s")
         elif isinstance(event, ToolCallResult):
@@ -166,33 +167,28 @@ def stream_turn(agent: Any, wave: Waveform) -> Iterator[tuple[Any, str]]:
         elif isinstance(event, FillerSpeech):
             lines.append(f"💬 {event.phrase}")
             if event.wav_path:
-                # Le filler est un clip complet : il part tel quel, sans passer
-                # par le tampon — c'est lui qui couvre l'attente de l'outil.
                 filler, _ = sf.read(event.wav_path, dtype="float32")
-                span = as_pcm16(np.asarray(filler, dtype=np.float32).reshape(-1))
+                filler_out = as_pcm16(np.asarray(filler, dtype=np.float32).reshape(-1))
         elif isinstance(event, AudioChunk):
             if first_sound is None:
                 first_sound = time.monotonic() - mark
-            block = buffer.push(np.asarray(event.samples, dtype=np.float32))
-            if block is None:
-                continue  # rien à jouer ni à dire : pas d'aller-retour réseau
-            span = as_pcm16(block)
+            chunks.append(np.asarray(event.samples, dtype=np.float32).reshape(-1))
+            continue  # rien à montrer tant que la réponse n'est pas entière
         elif isinstance(event, TurnComplete):
             ttfa = f"{first_sound:.2f}s" if first_sound is not None else "—"
             lines.append(f"🤖 {event.text}")
             lines.append(f"⏱ 1er son {ttfa} · tour complet {time.monotonic() - start:.1f}s")
-            tail = buffer.flush()
-            if tail is not None:
-                span = as_pcm16(tail)
-        yield span, "\n".join(lines)
+            if chunks:
+                reply_out = as_pcm16(np.concatenate(chunks))
+        yield filler_out, reply_out, "\n".join(lines)
 
 
 def build_simple_ui(agent: Any) -> Any:
-    """Interface enregistrer → envoyer, sans WebRTC ni TURN, audio streamé."""
+    """Interface enregistrer → envoyer, sans WebRTC ni TURN."""
 
-    def on_submit(recording: tuple[int, np.ndarray] | None, history: str) -> Iterator[tuple[Any, str]]:
+    def on_submit(recording: tuple[int, np.ndarray] | None, history: str) -> Iterator[tuple[Any, Any, str]]:
         if recording is None:
-            yield None, history
+            yield gr.skip(), gr.skip(), history
             return
         sample_rate, pcm = recording
         # `for_encoder` AVANT tout : le micro du navigateur donne du 44,1 kHz et
@@ -205,18 +201,22 @@ def build_simple_ui(agent: Any) -> Any:
         )
         prefix = (history + "\n\n") if history else ""
         trace = ""
-        for chunk, trace in stream_turn(agent, wave):
-            yield chunk, prefix + trace
+        for filler_out, reply_out, trace in stream_turn(agent, wave):
+            yield filler_out, reply_out, prefix + trace
         print(trace, flush=True)
 
     with gr.Blocks(title="LFM2.5-Audio · tool calling") as ui:
         gr.Markdown("### Parlez, puis envoyez — les outils sont réels (web + base de démo).")
         with gr.Row():
             mic = gr.Audio(sources=["microphone"], type="numpy", label="votre question")
-            reply = gr.Audio(label="réponse", autoplay=True, streaming=True)
+            # Deux lecteurs : l'attente part pendant la recherche, la réponse
+            # arrive entière. Aucun état de flux ne survit d'un tour à l'autre.
+            filler = gr.Audio(label="pendant la recherche", autoplay=True)
+            reply = gr.Audio(label="réponse", autoplay=True)
         trace = gr.Textbox(label="conversation + outils + latences", lines=14)
-        mic.stop_recording(on_submit, inputs=[mic, trace], outputs=[reply, trace])
-        gr.Button("Envoyer").click(on_submit, inputs=[mic, trace], outputs=[reply, trace])
+        outputs = [filler, reply, trace]
+        mic.stop_recording(on_submit, inputs=[mic, trace], outputs=outputs)
+        gr.Button("Envoyer").click(on_submit, inputs=[mic, trace], outputs=outputs)
     return ui
 
 

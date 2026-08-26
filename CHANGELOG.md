@@ -5,6 +5,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 
 ## [Unreleased]
 
+### Added
+- `ToolCallDiagnosis` (`evaluation/tool_call_diagnosis.py`): the anatomy of a
+  tool-calling case, evidence kept. `score_case` computed which argument
+  diverged and by how much, then discarded it one line later — a report could
+  only say `call: false`. Every case now carries a single `outcome`
+  (`correct_call`, `wrong_arguments`, `spurious_call`, `missing_call`,
+  `wrong_tool`, `arity_mismatch`, `parse_error`, `unterminated_call`,
+  `no_generation`, `correct_abstention`), the expected and predicted calls, the
+  offending argument with its similarity and threshold, the parse errors and the
+  raw span. `score_case` and `ToolCallScorer` delegate to it, so evaluation and
+  training cannot drift apart. **Scores are unchanged** — only `details` grew.
+- `evaluation/argument_match.py`: `diff_arguments` returns the reasons a call was
+  rejected instead of a boolean; matching is now "no mismatch". `token_f1` and
+  `ArgMatch` moved here and are re-exported from `toolcalling`.
+
+### Fixed
+- A tool-call span left open (no `<|tool_call_end|>`) counted as **no call at
+  all**: a silent miss on a positive case, and a *false success* on a negative
+  one, since abstaining was the correct answer there. vLLM strips the stop token
+  and leaves spans open, so this was routine. Now labelled `unterminated_call`
+  and counted as an attempted call.
+- A positional argument (`web_search("query")`) is parsed as `_positional_0`,
+  which no expected schema declares, so it read as a wrong *value* when the
+  defect is a wrong *format*. Now reported as `positional_argument`.
+- Two calls to the same tool made the name lists differ and read as
+  `wrong_tool`, sending a reader after a routing bug that did not exist; that is
+  now `arity_mismatch`.
+
 ### Changed
 - `infra/colab_qwen_tts.py` batches Qwen3-TTS generation (`TTS_BATCH`, default
   8): the unitary loop measured ~4.5 wav/min on an L4 (~10 h for the Phase B

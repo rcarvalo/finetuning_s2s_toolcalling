@@ -23,9 +23,10 @@ abstenu quand il le fallait.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar
+from typing import ClassVar
 
-from lfm2_audio.evaluation.toolcalling import ArgMatch, score_case
+from lfm2_audio.evaluation.argument_match import ArgMatch
+from lfm2_audio.evaluation.tool_call_diagnosis import ToolCallDiagnosis
 from lfm2_audio.scorer.base import BaseScorer
 from lfm2_audio.scorer.result import ScoreResult
 from lfm2_audio.scorer.sample import EvalSample
@@ -51,24 +52,14 @@ class ToolCallScorer(BaseScorer):
         return "aucun texte généré à analyser"
 
     def measure(self, sample: EvalSample) -> ScoreResult:
-        case = score_case(
+        # The value is turn success, unchanged; `details` carries the anatomy of
+        # the failure, so a report can say WHICH argument diverged instead of
+        # only that the call was wrong.
+        diagnosis = ToolCallDiagnosis.of(
             sample.sample_id,
             sample.predicted_text,
             sample.expected_calls,
             arg_match=self._arg_match,
             threshold=self._threshold,
         )
-        # La pertinence n'est pas un champ de CaseResult : c'est l'accord entre
-        # « un appel était attendu » et « un appel a été émis ».
-        relevant = case.expected_call == case.predicted_call
-        succeeded = case.call_correct if case.expected_call else not case.predicted_call
-
-        details: dict[str, Any] = {
-            "parse": case.parsed,
-            "relevance": relevant,
-            "name": case.name_correct,
-            "call": case.call_correct,
-            "expected_call": case.expected_call,
-            "predicted_call": case.predicted_call,
-        }
-        return ScoreResult.ok(self.name, float(succeeded), details=details)
+        return ScoreResult.ok(self.name, float(diagnosis.succeeded), details=diagnosis.as_details())

@@ -17,6 +17,7 @@ partagé entre la préparation de données (Phase 2) et l'orchestrateur (Phase 3
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from lfm2_audio.core.tokenizer import Tokenizer
@@ -27,6 +28,14 @@ TOOL_CALL_START = "<|tool_call_start|>"
 TOOL_CALL_END = "<|tool_call_end|>"
 TOOL_RESPONSE_START = "<|tool_response_start|>"
 TOOL_RESPONSE_END = "<|tool_response_end|>"
+
+# The WHOLE call span, markers included. Shared by the judge — which must not
+# hand a tool call to a rubric written for speech — and by the failure
+# diagnosis, which quotes the offending span. One definition, two readers.
+TOOL_CALL_SPAN = re.compile(
+    re.escape(TOOL_CALL_START) + r".*?" + re.escape(TOOL_CALL_END),
+    flags=re.DOTALL,
+)
 
 SPECIAL_TOOL_TOKENS = (
     TOOL_LIST_START,
