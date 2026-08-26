@@ -63,6 +63,12 @@ class ModalityConfig:
     # Verrou tool-call (texte-only). ``None`` → inerte (parité amont stricte).
     tool_call_start_id: int | None = None
     tool_call_end_id: int | None = None
+    # Tour entier en texte seul — l'équivalent vLLM de ``generate_sequential``,
+    # que la tâche ASR officielle du modèle exige (« Perform ASR. »). Sans lui,
+    # l'interleaving force des frames audio tous les ``n_text`` tokens et hache
+    # la transcription, comme il hachait les spans de tool call.
+    # ``False`` → parité stricte avec le comportement interleavé existant.
+    text_only: bool = False
 
 
 @dataclass(slots=True)
@@ -118,7 +124,7 @@ def advance(state: ModalityState, token_id: int, cfg: ModalityConfig) -> Modalit
             left = cfg.n_text
         # Bascule audio supprimée tant qu'un appel d'outil est ouvert : le span
         # structuré reste 100 % texte (sinon l'interleaving 6:12 le hache).
-        if (left == 0 or text_done) and not in_tool_call:
+        if (left == 0 or text_done) and not in_tool_call and not cfg.text_only:
             current, left = Modality.AUDIO, cfg.n_audio
     else:  # AUDIO
         if not state.is_audio_placeholder(token_id, cfg):

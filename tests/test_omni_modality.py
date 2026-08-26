@@ -219,3 +219,39 @@ def test_replay_is_pure_prefix_consistent():
         for tok in ids[cut:]:
             state = advance(state, tok, cfg)
         assert state == replay(ids, cfg)
+
+
+# --------------------------------------------------------------------------- #
+# Mode texte seul (tâche ASR officielle « Perform ASR. »)
+# --------------------------------------------------------------------------- #
+
+
+def test_text_only_never_switches_to_audio():
+    # Sans le mode : 6 tokens texte puis un 7e → la machine attend de l'AUDIO et
+    # lève. C'est ce qui hache une transcription en mode interleavé.
+    with pytest.raises(ValueError, match="AUDIO step"):
+        replay([TXT] * 6 + [TXT], ModalityConfig(n_text=6, n_audio=12))
+    # Avec le mode : un tour bien plus long que n_text reste 100 % texte.
+    cfg = ModalityConfig(n_text=6, n_audio=12, text_only=True)
+    assert all(m is Modality.TEXT for m in expected_modalities([TXT] * 40, cfg))
+
+
+def test_text_only_ignores_text_end_switch():
+    # `<|text_end|>` bascule normalement en audio avant même l'épuisement du
+    # budget ; en transcription il ne doit rien déclencher.
+    cfg = ModalityConfig(n_text=6, n_audio=12, text_only=True)
+    state = replay([TXT, TEXT_END_TOKEN_ID, TXT, TXT], cfg)
+    assert state.current is Modality.TEXT
+    assert state.text_done is True
+
+
+def test_text_only_still_finishes_on_im_end():
+    cfg = ModalityConfig(n_text=6, n_audio=12, text_only=True)
+    assert replay([TXT, IM_END_TOKEN_ID], cfg).finished is True
+
+
+def test_default_config_is_unchanged_by_the_new_field():
+    # Garde-fou de non-régression : le défaut reste l'interleave d'aujourd'hui.
+    assert ModalityConfig().text_only is False
+    cfg = ModalityConfig(n_text=6, n_audio=12)
+    assert next_step_modality([TXT] * 6, cfg) is Modality.AUDIO

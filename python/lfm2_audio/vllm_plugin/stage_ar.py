@@ -97,6 +97,15 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
         # de `<|tool_call_start|>`/`<|tool_call_end|>` sont résolus ici (config si
         # baked, sinon tokenizer du checkpoint) — None → verrou inerte.
         tc_start, tc_end = self._resolve_tool_call_ids(vllm_config, config)
+        # Mode texte seul du worker — l'équivalent vLLM de `generate_sequential`,
+        # requis par la tâche ASR officielle (« Perform ASR. »). Piloté par
+        # l'environnement plutôt que par le checkpoint : le même modèle sert la
+        # conversation et la transcription, et l'endpoint bascule sans rebuild.
+        # Portée worker, pas requête : le per-requête viendra avec la passe ASR
+        # de l'orchestrateur, quand cette mesure aura prouvé que ça vaut le coup.
+        text_only = os.environ.get("LFM2_TEXT_ONLY", "") == "1"
+        if text_only:
+            logger.info("text-only generation forced (LFM2_TEXT_ONLY=1) — no audio interleave")
         self.modality_cfg = ModalityConfig(
             n_text=getattr(config, "interleaved_n_text", 6),
             n_audio=getattr(config, "interleaved_n_audio", 12),
@@ -104,6 +113,7 @@ class Lfm2AudioARForConditionalGeneration(nn.Module):
             eoa_placeholder_id=getattr(config, "audio_eoa_token_id", 129),
             tool_call_start_id=tc_start,
             tool_call_end_id=tc_end,
+            text_only=text_only,
         )
 
         # --- backbone Lfm2 (implémentation vLLM core, KV/conv cache géré) --- #
