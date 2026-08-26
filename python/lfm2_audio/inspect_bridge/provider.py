@@ -70,6 +70,9 @@ class Lfm2AudioAPI(ModelAPI):
         self._adapter = model_args.pop("adapter", None)
         self._backend = model_args.pop("backend", "auto")
         self._system = model_args.pop("system", None)
+        if isinstance(self._system, list):
+            # Inspect's -M parsing splits values on commas; glue the prompt back.
+            self._system = ",".join(self._system)
         self._model_args = model_args
         self._model: LFM2Audio | None = None
 

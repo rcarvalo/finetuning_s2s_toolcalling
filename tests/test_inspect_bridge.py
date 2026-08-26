@@ -163,3 +163,19 @@ def test_audio_root_should_resolve_against_the_repo_root(tmp_path, monkeypatch) 
     content = dataset[0].input[0].content
     audio = next(part for part in content if part.type == "audio")
     assert audio.audio.startswith("data:audio/wav;base64,")
+
+
+def test_provider_should_glue_a_comma_split_system_prompt() -> None:
+    """Inspect's -M parsing turns 'a, b' into ['a', ' b']; the tokenizer then
+    crashes on the nested list. The provider glues it back before use."""
+    from inspect_ai.model import GenerateConfig
+
+    from lfm2_audio.inspect_bridge.provider import Lfm2AudioAPI
+
+    api = Lfm2AudioAPI(
+        model_name="lfm2/whatever",
+        config=GenerateConfig(),
+        system=["Transcribe exactly as spoken", " in the language spoken."],
+    )
+
+    assert api._system == "Transcribe exactly as spoken, in the language spoken."
