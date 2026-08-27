@@ -159,8 +159,28 @@ def transcribe(lang: str, text_only: bool) -> dict[str, object]:
     return summary
 
 
+def claim_cuda() -> None:
+    """Create the CUDA context before anything forks.
+
+    This job builds its benchmarks through subprocesses and only then loads the
+    model — and it died twice on ``CUDA unknown error`` at that point, on a
+    fresh pod as well as a restarted one, while the bake-off job (which touches
+    CUDA first and forks nothing) never did. Claiming the device up front costs
+    nothing and removes the ordering as a suspect; if the GPU is genuinely
+    unavailable, it now fails here with a clear message instead of after the
+    downloads.
+    """
+    import torch
+
+    if not torch.cuda.is_available():
+        raise SystemExit("aucun GPU visible — inutile de télécharger les benchmarks")
+    torch.zeros(1, device="cuda")
+    print(f"GPU : {torch.cuda.get_device_name(0)}", flush=True)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
+    claim_cuda()
     build_benchmarks()
 
     results = []
