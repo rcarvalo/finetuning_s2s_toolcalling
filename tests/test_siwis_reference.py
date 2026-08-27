@@ -46,3 +46,32 @@ def test_should_ignore_text_files_outside_the_transcript_directory() -> None:
 
 def test_should_return_nothing_when_no_clip_has_a_transcript() -> None:
     assert pair_stems(["wavs/a.wav", "labs/a.lab"]) == []
+
+
+def test_neutral_register_should_come_first() -> None:
+    """Cloning carries the speaking style over with the timbre: the first
+    reference used here was an emphatic book reading and the clone was judged
+    'very robotic' by ear. Naturalness metrics cannot see a register mismatch."""
+    from lfm2_audio.data_prep.siwis_reference import candidates
+
+    files = [
+        "wavs/part1/emph_book_s01_0343.wav",
+        "text/part1/emph_book_s01_0343.txt",
+        "wavs/part1/neut_parl_s01_0106.wav",
+        "wavs/part1/expr_book_s01_0020.wav",
+    ]
+
+    order = [stem for stem, _, _ in candidates(files)]
+
+    assert order[0] == "neut_parl_s01_0106"
+    assert order.index("expr_book_s01_0020") < order.index("emph_book_s01_0343")
+
+
+def test_a_clip_without_transcript_must_stay_a_candidate() -> None:
+    """No neutral clip in this corpus ships a transcript, so dropping
+    transcript-less clips silently forces the theatrical registers."""
+    from lfm2_audio.data_prep.siwis_reference import candidates
+
+    listed = candidates(["wavs/part1/neut_parl_s01_0106.wav"])
+
+    assert listed == [("neut_parl_s01_0106", "wavs/part1/neut_parl_s01_0106.wav", None)]
