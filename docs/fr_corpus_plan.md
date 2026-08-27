@@ -48,12 +48,14 @@ sources — le dialogue TTS et le Common Voice de l'étudiant.
 |---|---|---|
 | `Voxtral-Mini-3B-2507` / `Small-24B-2507` | **Apache 2.0** | ASR FR — nettoyage et étiquetage |
 | `Voxtral-Mini-4B-Realtime-2602` | **Apache 2.0** | ASR temps réel, le plus téléchargé |
-| `Voxtral-4B-TTS-2603` | **CC-BY-NC-4.0** | ⚠️ **non commercial** — inutilisable pour une voix d'assistant d'entreprise |
+| `Voxtral-4B-TTS-2603` | **CC-BY-NC-4.0** | voix de l'assistant — **retenu** (décision utilisateur 27/08) |
 
-**Voxtral est notre moteur d'étiquetage, pas notre voix.** Les modèles ASR sont
-Apache 2.0, donc utilisables sans réserve ; le TTS est non commercial, ce qui
-l'exclut pour synthétiser la voix de l'assistant si le produit est commercial
-(robot d'accueil). La voix de sortie reste Qwen3-TTS.
+Les modèles ASR sont Apache 2.0, sans réserve d'usage. Le TTS est **CC-BY-NC** :
+retenu sur décision explicite, avec la contrainte consignée ici pour qu'elle ne
+soit pas redécouverte tard — **la parole de sortie ainsi synthétisée, et le
+modèle qu'elle entraîne, héritent d'une restriction non commerciale**. À
+re-arbitrer si le robot d'accueil devient un produit vendu ; le repli est
+Qwen3-TTS, déjà prévu au plan et sans cette contrainte.
 
 Trois usages concrets d'un ASR Voxtral, par valeur décroissante :
 
@@ -75,17 +77,22 @@ Quatre briques, dans l'ordre de ce que la baseline dit être critique.
 
 ### A. Parole assistant en français — LA brique (cible ~100-150 h)
 
+Dossier `A_assistant_speech`.
+
 Ce que le modèle doit apprendre à produire. Exigences : **une seule identité
 vocale**, registre parlé, et surtout **texte parfaitement aligné** puisque c'est
 l'alignement texte/parole en interleavé qui est cassé.
 
 - base : `french-dialogue-tts-1000h` (déjà le meilleur mesuré)
-- complément : synthèse Qwen3-TTS des dialogues qu'on génère
+- complément : synthèse **Voxtral-4B-TTS** des dialogues générés (décision 27/08),
+  une seule voix ; repli Qwen3-TTS si la contrainte non commerciale devient bloquante
 - contrôle : passe Voxtral sur chaque clip synthétisé ; tout écart au texte
   source écarte le clip. Un TTS qui dérape produit un exemple qui apprend à
   déraper.
 
 ### B. Parole utilisateur en français (cible ~50-100 h)
+
+Dossier `B_user_speech`.
 
 Ce que le modèle doit apprendre à entendre. Exigences inverses de A : **diversité
 maximale** de locuteurs, d'accents, de conditions.
@@ -97,6 +104,8 @@ maximale** de locuteurs, d'accents, de conditions.
 
 ### C. Contenu dialogal (à générer)
 
+Dossier `C_dialogues`.
+
 - ~500 dialogues FR (pipeline Gemini existant)
 - **~200 dialogues code-switch** — priorité relevée : c'est le seul axe où le
   prompt système plafonne (84 % contre 100 % en anglais pur), donc le seul que
@@ -105,8 +114,77 @@ maximale** de locuteurs, d'accents, de conditions.
 
 ### D. Préservation de l'anglais (20 % du mélange)
 
+Dossier `D_english`.
+
 Les ancres EN sont non négociables (WER 0,080, UTMOS 4,047). Sources : partie EN
 du pilote 125h + `tc-en-voice-agent-v1`.
+
+## « Si peu de données, est-ce que ça suffit ? »
+
+Oui, très probablement — et la raison est le résultat central de la baseline.
+
+On n'apprend pas le français au modèle : **il le possède déjà**. En génération
+texte seul, son français est propre et complet. Ce qu'on lui apprend, c'est à le
+tenir pendant qu'il produit de l'audio. C'est une **adaptation de comportement**,
+pas une acquisition de langue, et les deux n'ont pas les mêmes ordres de
+grandeur : acquérir une langue demande des milliers d'heures, déplacer un
+comportement déjà présent en demande des dizaines.
+
+Trois appuis empiriques, tous internes au projet :
+
+1. le **pilote à 125 h** (100 FR + 25 EN) a donné val_loss 2,02 avec l'anglais
+   préservé — c'est déjà une preuve à l'échelle visée ;
+2. les rungs de tool calling v3/v4 ont produit des changements de comportement
+   massifs avec des corpus bien plus petits ;
+3. la cible est étroite (aligner texte et parole en français), pas large.
+
+**Le risque n'est donc pas le volume, c'est la qualité et la couverture.** Deux
+points de vigilance qui méritent l'effort qu'on aurait mis à collecter des
+heures supplémentaires :
+
+- un clip TTS qui dérape enseigne à déraper — d'où le contrôle Voxtral
+  systématique sur la brique A, clip par clip ;
+- 200 dialogues code-switch, c'est peu pour l'axe le plus difficile. Si le gate
+  R3 bute uniquement là, la réponse est un top-up ciblé de cette brique, pas un
+  corpus plus gros partout.
+
+Doctrine de dimensionnement : **on ne dimensionne pas en heures, on dimensionne
+en gates**. On construit la cible ci-dessous, on entraîne, et on n'ajoute des
+données que là où un gate le réclame — ce qui suppose de savoir, à chaque gate,
+quelle brique est en cause. C'est pourquoi les briques sont séparées dès le
+stockage.
+
+## Le dépôt HF : une brique par dossier
+
+Dépôt unique **`Rcarvalo/lfm25-fr-corpus-v1`** (privé), quatre dossiers :
+
+```
+A_assistant_speech/   manifest.jsonl + audio/ + README.md
+B_user_speech/        idem
+C_dialogues/          idem
+D_english/            idem
+```
+
+La séparation n'est pas du rangement, c'est un **outil de travail** : quand un
+gate échoue, la question utile est « quelle brique est courte ? », et un corpus
+mis en commun ne sait pas y répondre. Elle permet aussi de compléter une brique
+et de la republier sans toucher aux autres.
+
+**Schéma unique**, partagé par les quatre briques, pour que le mixeur ne lise
+qu'un seul format :
+
+| champ | rôle |
+|---|---|
+| `id`, `audio`, `text`, `lang`, `duration_s` | le minimum, validé à l'écriture |
+| `role` | `user` ou `assistant` — c'est lui qui décide du côté du tour |
+| `speaker`, `source` | traçabilité et hold-out |
+| `voxtral_wer` | écart entre `text` et la ré-écoute Voxtral — **le filtre d'entrée** |
+| `utmos` | qualité de la parole, pour la brique A |
+
+Publication : `lfm2-corpus-push --brick A --local … --repo-id …`, une brique à la
+fois. Le manifeste et l'existence de chaque fichier audio sont **validés avant
+tout envoi** — un corpus malformé ne doit jamais atteindre le Hub, parce qu'une
+ligne fautive qui y entre est ensuite entraînée en silence.
 
 ## Ce qu'il faut mesurer avant de construire
 
