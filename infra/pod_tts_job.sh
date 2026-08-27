@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Voxtral TTS batch — runs as the start command of a RunPod pod whose image is
+# TTS batch — runs as the start command of a RunPod pod whose image is
 # vllm/vllm-openai:v0.22.0 (the CUDA stack its wheels were built for; the whole
 # reason this runs on RunPod and not Colab — see docs/pre_training_review.md §5).
 set -euo pipefail
@@ -27,16 +27,26 @@ if [ "${TTS_JOB:-fresh}" = "phase_b" ]; then
     exec bash /repo/infra/pod_synth_phase_b.sh
 fi
 
+# Qwen3-TTS jobs need NO vLLM server, and that is the point: starting one only
+# exposes the "StageEngineCoreProc died during READY" failure that blocks it.
+# Dispatch here, before the Voxtral deps and before the server.
+if [ "${TTS_JOB:-fresh}" = "misses_v5" ]; then
+    echo "=== deps qwen-tts ==="
+    python3 -m pip install -q qwen-tts soundfile huggingface-hub
+    # qwen-tts drags torchao 0.10 along; harmless here, fatal to peft elsewhere.
+    python3 -m pip uninstall -y -q torchao || true
+    exec python3 /repo/infra/pod_synth_misses_v5.py
+fi
+
 echo "=== deps ==="
-pip install -q vllm-omni==0.22.0 mistral_common soundfile httpx pyarrow \
+python3 -m pip install -q vllm-omni==0.22.0 mistral_common soundfile httpx pyarrow \
     numpy pydantic pydantic-settings pyyaml huggingface-hub
 
 echo "=== voxtral up ==="
 # vLLM 0.22 workarounds, EXPORTED here because they are read when vllm's
-# modules load: setting them any later is too late. Without them the engine
-# dies as "StageEngineCoreProc died during READY (exit code 1)" — the same
-# failure that has blocked the serving engine, and it reached this pod on
-# 26/08 once the auto-rebuilt image drifted.
+# modules load: setting them any later is too late. NOTE — measured 26/08:
+# these are NOT sufficient on their own, the engine still dies. They stay
+# because they are necessary; the remaining cause is in the CHILD process.
 export VLLM_USE_AOT_COMPILE=0
 export VLLM_USE_FLASHINFER_SAMPLER=0
 export VLLM_LOGGING_LEVEL="${VLLM_LOGGING_LEVEL:-INFO}"
@@ -52,11 +62,7 @@ done
 curl -sf http://localhost:8000/health >/dev/null || { echo "SERVER_DEAD"; tail -200 /voxtral.log; exit 1; }
 echo "server healthy"
 
-# The server is shared by every job below; only the producer differs.
-case "${TTS_JOB:-fresh}" in
-    misses_v5) python3 /repo/infra/pod_synth_misses_v5.py ;;
-    *)         python3 /repo/infra/pod_synth_fresh.py ;;
-esac
+python3 /repo/infra/pod_synth_fresh.py
 
 # Keep the pod alive briefly so logs are readable; the operator deletes it.
 sleep 600
