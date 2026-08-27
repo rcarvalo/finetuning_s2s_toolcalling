@@ -1,0 +1,48 @@
+# Run the conversation scenarios against v5, then judge them — the gate run.
+#
+#   set -a; source .env; set +a
+#   sky launch -c liquid-scen-v5 infra/sky_scenarios_v5.yaml --down \
+#       --env HF_TOKEN --env GEMINI_API_KEY
+#
+# This is where v4 failed its gate, so this is what decides v5: the fresh set
+# grades tool choice, these scenarios grade the ANSWER. Same 8 scenarios, same
+# rubric v2, same judge as v4 — campaigns judged with different rubrics are not
+# comparable, and the whole point is the comparison.
+#
+# v4's numbers to beat: relevance 3.77 (target 4.5), honesty 3.15 (target 4),
+# coherence 4.85, grounding 4.23, global 0.822.
+#
+# Tools run for real — DuckDuckGo live and the demo DB — so the payloads are
+# the noisy prose v5 was trained on rather than a fixture.
+
+name: liquid-scen-v5
+
+resources:
+  cloud: runpod
+  accelerators: {RTX4090:1, PRO-6000-MIG-24GB:1, RTXPRO4500:1, A40:1, L40S:1, L4:1}
+  disk_size: 80
+
+workdir: .
+
+envs:
+  HF_TOKEN: ""
+  GEMINI_API_KEY: ""
+
+setup: |
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="$HOME/.local/bin:$PATH"
+  uv sync --frozen --extra train --extra eval
+
+run: |
+  export PATH="$HOME/.local/bin:$PATH"
+  uv run python infra/pod_scenarios.py \
+      --adapter Rcarvalo/lfm25-tc-en-v5-adapter \
+      --out-dir reports/scenarios_v5 \
+      --push-to Rcarvalo/tc-en-voice-agent-v1
+
+  # --limit raised deliberately: every turn is a paid call, and a partial
+  # transcript would not be comparable to v4's.
+  uv run python infra/judge_scenarios.py \
+      --transcript reports/scenarios_v5/transcript.jsonl \
+      --out reports/scenarios_v5/judged.json \
+      --rubric v2 --limit 60
