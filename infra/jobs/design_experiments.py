@@ -21,16 +21,18 @@ pruned mid-run and everything in flight was lost.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import statistics
 import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, "/workspace/repo/python")
+# Paths differ per runner (RunPod pod vs Colab VM); one job, two launchers.
+ROOT = Path(os.environ.get("LFM2_ROOT", "/workspace/repo"))
+OUT = Path(os.environ.get("LFM2_OUT", "/workspace/out"))
 
-ROOT = Path("/workspace/repo")
-OUT = Path("/workspace/out")
+sys.path.insert(0, str(ROOT / "python"))
 BRANCH = "rd/pr_rca_eval_baseline"
 MODEL = "lfm2/LiquidAI/LFM2.5-Audio-1.5B"
 TASK = "python/lfm2_audio/inspect_bridge/task.py@voice_eval"
