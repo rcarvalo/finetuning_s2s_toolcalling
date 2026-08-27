@@ -101,9 +101,20 @@ def preload_cuda13() -> None:
     import ctypes
     import glob
 
-    found = glob.glob("/usr/local/lib/python*/dist-packages/nvidia/cu13/lib")
+    # site-packages rather than a hardcoded path: the notebook's
+    # /usr/local/lib/python*/dist-packages is Colab's layout and does not exist
+    # on the pod image, where the guard then reported "not found" for a package
+    # that was installed all along.
+    import site
+
+    roots = [*site.getsitepackages(), site.getusersitepackages()]
+    found = [
+        directory
+        for root in roots
+        for directory in glob.glob(f"{root}/nvidia/cu13/lib") + glob.glob(f"{root}/nvidia/*/lib")
+    ]
     if not found:
-        print("paquet nvidia cu13 introuvable — import vllm_omni probablement voué à l'échec", flush=True)
+        print(f"libs cu13 introuvables sous {roots} — import vllm_omni probablement voué à l'échec", flush=True)
         return
     directory = found[0]
     os.environ["LD_LIBRARY_PATH"] = directory + ":" + os.environ.get("LD_LIBRARY_PATH", "")
