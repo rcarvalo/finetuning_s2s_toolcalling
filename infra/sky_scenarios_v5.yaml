@@ -38,7 +38,25 @@ setup: |
   uv sync --frozen --extra train --extra eval --extra tooldata
 
 run: |
+  # set -e, because the previous run reported SUCCEEDED while the scenarios had
+  # died: the judge still ran, wrote an empty report, and returned zero.
+  set -e
   export PATH="$HOME/.local/bin:$PATH"
+
+  # The scenario INPUT audio is neither tracked nor produced here — it is
+  # rendered on the laptop with Kokoro (infra/voice_scenarios.py) and shipped
+  # to the Hub, so a fresh pod starts from the same voices v4 was measured on.
+  uv run python - <<'PY'
+  import pathlib, tarfile
+  from huggingface_hub import hf_hub_download
+  out = pathlib.Path("data/audio_scenarios"); out.mkdir(parents=True, exist_ok=True)
+  tarball = hf_hub_download("Rcarvalo/tc-en-voice-agent-v1",
+                            "scenarios/audio_scenarios.tar.gz", repo_type="dataset")
+  with tarfile.open(tarball) as archive:
+      archive.extractall(out, filter="data")
+  print(f"scenario audio: {len(list(out.glob('*.wav')))} clips", flush=True)
+  PY
+
   uv run python infra/pod_scenarios.py \
       --adapter Rcarvalo/lfm25-tc-en-v5-adapter \
       --out-dir reports/scenarios_v5 \
