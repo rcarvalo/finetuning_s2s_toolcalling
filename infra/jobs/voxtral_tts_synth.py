@@ -62,29 +62,22 @@ def pip(*args: str) -> None:
     subprocess.run([sys.executable, "-m", "pip", *args], check=False)
 
 
-# The recipe from notebooks/colab_vllm_omni_integration.ipynb, which is the one
-# combination this project has ever seen work. Two traps it encodes:
+# The pair Colab is shipping today, and which is therefore known to work
+# together: vllm 0.26.0 with vllm-omni 0.26.0, on torch 2.11.
 #
-#   * vllm-omni does NOT declare vllm as a dependency and the versions are
-#     paired major.minor — hence the exact 0.22.0 pin next to the 0.22.1 wheel.
-#     "Latest of both" broke on a missing vllm.entrypoints API.
-#   * the PyPI vllm 0.22 build wants CUDA 13 (libcudart.so.13), so the official
-#     +cu129 wheel is used with a matching torch from the cu129 index.
-VLLM_WHEEL = (
-    "vllm @ https://github.com/vllm-project/vllm/releases/download/"
-    "v0.22.1/vllm-0.22.1+cu129-cp38-abi3-manylinux_2_28_x86_64.whl"
-)
-CU129_INDEX = "https://download.pytorch.org/whl/cu129"
-VLLM_OMNI_PIN = "vllm-omni==0.22.0"
+# The 0.22.1+cu129 recipe from notebooks/colab_vllm_omni_integration.ipynb was
+# correct for the image it was written against, in August. Applied to a current
+# image it DOWNGRADES a healthy environment: it drags in a different torch,
+# which breaks torchaudio (undefined symbol: torch_library_impl), which breaks
+# everything that reads a wav. Every failure of that evening came from the
+# previous fix. An install recipe is dated by the image it was verified on.
+VLLM_PIN = "vllm==0.26.0"
+VLLM_OMNI_PIN = "vllm-omni==0.26.0"
 
 
 def install_stack() -> None:
-    pip("install", "-q", VLLM_WHEEL, "--extra-index-url", CU129_INDEX)
-    pip("install", "-q", VLLM_OMNI_PIN)
+    pip("install", "-q", VLLM_PIN, VLLM_OMNI_PIN)
     pip("install", "-q", "-U", "mistral-common")
-    # torchao ships extensions built for CPython 3.10 and segfaults the 3.13
-    # images; nothing on this path uses it.
-    pip("uninstall", "-y", "-q", "torchao")
 
 
 def preload_cuda13() -> None:
