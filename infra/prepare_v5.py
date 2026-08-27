@@ -149,12 +149,53 @@ def stage_transform() -> None:
     print("TRANSFORM_DONE", flush=True)
 
 
+def fetch_v5_artifacts() -> None:
+    """Pull what --stage transform produced, plus the voiced refusals.
+
+    Packing needs liquid-audio, which the laptop does not have: the transform
+    runs there, the pack runs on the training machine. So the pod must be able
+    to rebuild the whole corpus from the Hub alone, exactly as v4 did.
+    """
+    from huggingface_hub import hf_hub_download
+
+    target = OUT / "phase_b_v5.jsonl"
+    if not target.exists():
+        source = hf_hub_download(REPO, "phase_b/train_v5.jsonl", repo_type="dataset")
+        target.write_bytes(Path(source).read_bytes())
+        print(f"fetched phase_b/train_v5.jsonl -> {target}", flush=True)
+
+    if not any(AUDIO.glob("pb_miss_v5_*.wav")):
+        tarball = hf_hub_download(REPO, "phase_b/miss_audio_v5.tar.gz", repo_type="dataset")
+        with tarfile.open(tarball) as archive:
+            for member in archive.getmembers():
+                if not member.isfile():
+                    continue
+                extracted = archive.extractfile(member)
+                assert extracted is not None
+                (AUDIO / Path(member.name).name).write_bytes(extracted.read())
+        print(f"fetched {len(list(AUDIO.glob('pb_miss_v5_*.wav')))} refusal clips", flush=True)
+
+    # The Phase B audio that already existed: user turns and unchanged answers.
+    marker = AUDIO / ".phase_b_extracted"
+    if not marker.exists():
+        for name in ("phase_b/audio.tar.gz", "phase_b/assistant_audio.tar.gz"):
+            with tarfile.open(hf_hub_download(REPO, name, repo_type="dataset")) as archive:
+                for member in archive.getmembers():
+                    if not member.isfile():
+                        continue
+                    out = AUDIO / f"pb_{Path(member.name).name}"
+                    if not out.exists():
+                        extracted = archive.extractfile(member)
+                        assert extracted is not None
+                        out.write_bytes(extracted.read())
+        marker.touch()
+
+
 def stage_pack() -> None:
     AUDIO.mkdir(parents=True, exist_ok=True)
-    phase_b_path = OUT / "phase_b_v5.jsonl"
-    if not phase_b_path.exists():
-        raise FileNotFoundError(f"{phase_b_path} missing — run --stage transform first")
+    fetch_v5_artifacts()
 
+    phase_b_path = OUT / "phase_b_v5.jsonl"
     with phase_b_path.open(encoding="utf-8") as handle:
         phase_b = [json.loads(line) for line in handle]
 
