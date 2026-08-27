@@ -106,3 +106,35 @@ def test_empty_filter_should_announce_itself(tmp_path: Path) -> None:
 )
 def test_normalise_transcript_should_fold_accents_case_and_punctuation(left: str, right: str) -> None:
     assert normalise_transcript(left) == right
+
+
+def test_should_pick_up_reference_transcripts_from_the_benchmark(tmp_path: Path) -> None:
+    """Auto-loaded, because a defence that must be wired by hand at every call
+    site is a defence that will be forgotten."""
+    directory = tmp_path / "cv_fr_asr"
+    directory.mkdir()
+    (directory / "questions.jsonl").write_text(
+        '{"id": "c1", "turns": [{"role": "user", "audio": "c1.wav"}, '
+        '{"role": "assistant", "text": "Il a été président du Sénat des États-Unis."}]}\n',
+        encoding="utf-8",
+    )
+
+    holdout = HoldoutFilter.from_benchmarks([directory])
+
+    assert holdout.excludes({"speaker": "z", "id": "x", "text": "il a ete president du senat des etats unis"}) is True
+
+
+def test_short_transcripts_should_not_become_exclusion_keys(tmp_path: Path) -> None:
+    """'Bonjour.' is common speech, not a fingerprint: keying on it would drop
+    a large slice of legitimate training data."""
+    directory = tmp_path / "bench"
+    directory.mkdir()
+    (directory / "questions.jsonl").write_text(
+        '{"id": "c1", "turns": [{"role": "assistant", "text": "Bonjour tout le monde."}]}\n',
+        encoding="utf-8",
+    )
+
+    holdout = HoldoutFilter.from_benchmarks([directory])
+
+    assert holdout.transcripts == set()
+    assert holdout.is_empty is True

@@ -20,6 +20,7 @@ applied to every source at mix time.
 
 from __future__ import annotations
 
+import json
 import logging
 import unicodedata
 from collections.abc import Iterable, Mapping
@@ -31,6 +32,10 @@ logger = logging.getLogger(__name__)
 
 SPEAKERS_FILE = "speakers.txt"
 SOURCE_IDS_FILE = "source_ids.txt"
+QUESTIONS_FILE = "questions.jsonl"
+
+MIN_TRANSCRIPT_WORDS = 5
+"""Below this length an utterance is common speech, not a fingerprint."""
 
 
 def normalise_transcript(text: str) -> str:
@@ -77,31 +82,50 @@ class HoldoutFilter:
     stats: HoldoutStats = field(default_factory=HoldoutStats)
 
     @classmethod
-    def from_benchmarks(cls, directories: Iterable[Path], *, transcripts: Iterable[str] = ()) -> Self:
-        """Load the exclusion lists shipped by each benchmark directory.
+    def from_benchmarks(
+        cls,
+        directories: Iterable[Path],
+        *,
+        transcripts: Iterable[str] = (),
+        min_transcript_words: int = MIN_TRANSCRIPT_WORDS,
+    ) -> Self:
+        """Load every exclusion list a benchmark directory ships.
 
         A missing list is not an error: FLEURS has no speaker ids, and a
         benchmark built without ``--id-column`` has no source ids. What would
         be an error is silently loading nothing, so each directory logs what
         it contributed.
+
+        Reference transcripts are picked up from each ``questions.jsonl`` on
+        top of any passed in: the third line of defence is useless if it has to
+        be wired by hand at every call site.
         """
         speakers: set[str] = set()
         source_ids: set[str] = set()
+        texts: set[str] = set(transcripts)
         for directory in directories:
             found_speakers = _read_lines(directory / SPEAKERS_FILE)
             found_ids = _read_lines(directory / SOURCE_IDS_FILE)
+            found_texts = _read_reference_transcripts(directory / QUESTIONS_FILE)
             speakers |= found_speakers
             source_ids |= found_ids
+            texts |= found_texts
             logger.info(
-                "hold-out %s : %d locuteurs, %d ids source",
+                "hold-out %s : %d locuteurs, %d ids source, %d transcripts",
                 directory.name,
                 len(found_speakers),
                 len(found_ids),
+                len(found_texts),
             )
         return cls(
             speakers=speakers,
             source_ids=source_ids,
-            transcripts={normalise_transcript(text) for text in transcripts if text.strip()},
+            # Short utterances are dropped from the transcript key: "Bonjour."
+            # is not evidence of the same clip, and excluding every training row
+            # that says it would cost far more than the contamination it avoids.
+            transcripts={
+                key for text in texts if len((key := normalise_transcript(text)).split()) >= min_transcript_words
+            },
         )
 
     @property
@@ -142,3 +166,18 @@ def _read_lines(path: Path) -> set[str]:
     if not path.exists():
         return set()
     return {line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()}
+
+
+def _read_reference_transcripts(path: Path) -> set[str]:
+    """The assistant-turn texts of a benchmark — its reference transcripts."""
+    if not path.exists():
+        return set()
+    texts: set[str] = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        case = json.loads(line)
+        for turn in case.get("turns", []):
+            if turn.get("role") == "assistant" and turn.get("text"):
+                texts.add(str(turn["text"]))
+    return texts
