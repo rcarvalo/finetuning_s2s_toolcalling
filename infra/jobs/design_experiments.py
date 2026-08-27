@@ -44,9 +44,10 @@ RATIOS: list[tuple[str, tuple[int, int] | None]] = [
 # P1 (fr 0.79 / en 0.95 / switch 0.90) and P2 (0.90 / 1.00 / 0.95) are already
 # measured — Colab pruned the session that held them, and re-running arms whose
 # numbers we already have would cost 30 minutes for nothing.
-PROMPT_ARMS = {
-    "p3_fr_norule": "Tu es un assistant vocal utile et concis.",
-}
+# Measured: P1 fr 0.79 / en 0.95 / switch 0.90 · P2 0.90 / 1.00 / 0.95
+# · P3 0.94 / 1.00 / 0.90. Nothing left to run here — the sweep below is what
+# this job still owes.
+PROMPT_ARMS: dict[str, str] = {}
 
 
 def run(args: list[str], log_name: str, cwd: Path = ROOT) -> int:
@@ -122,10 +123,16 @@ def summarise_prompts() -> None:
 
 
 def snapshot_dir() -> Path:
-    hits = sorted(Path("/root/.cache/huggingface/hub").glob("models--LiquidAI--LFM2.5-Audio-1.5B/snapshots/*"))
-    if not hits:
-        raise SystemExit("snapshot du modèle introuvable")
-    return hits[-1]
+    """Where the base checkpoint actually lives, asked rather than guessed.
+
+    Globbing ``/root/.cache/huggingface/hub`` worked on Colab and found nothing
+    on RunPod, whose cache sits elsewhere — and the failure came at the END of
+    a paid run. ``snapshot_download`` returns the real path and is a no-op when
+    the files are already there.
+    """
+    from huggingface_hub import snapshot_download
+
+    return Path(snapshot_download("LiquidAI/LFM2.5-Audio-1.5B"))
 
 
 def variant_dir(name: str, ratio: tuple[int, int] | None, source: Path) -> Path:
