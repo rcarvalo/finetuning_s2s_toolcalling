@@ -39,6 +39,10 @@ SAMPLE_RATE = 24_000
 LIMIT = int(os.environ.get("BRICK_A_LIMIT", "0")) or None
 BATCH = int(os.environ.get("BRICK_A_BATCH", "16"))
 
+VOICE_SOURCE = os.environ.get("BRICK_A_VOICE", "dialogue")
+"""``dialogue`` won the reference bake-off by ear: SIWIS is read speech and its
+clone was judged robotic, while a conversational clip gives a spoken register."""
+
 ENGINE = os.environ.get("BRICK_A_ENGINE", "qwen")
 """``qwen`` or ``voxtral`` — both clone the same SIWIS voice.
 
@@ -134,15 +138,15 @@ def main() -> None:
     import soundfile as sf
 
     from lfm2_audio.data_prep.corpus_layout import CorpusEntry, write_manifest
-    from lfm2_audio.data_prep.siwis_reference import resolve_reference
+    from lfm2_audio.data_prep.voice_reference import resolve_voice_reference
     from lfm2_audio.ds.audio import Waveform
     from lfm2_audio.scorer.audio.faster_whisper_transcriber import FasterWhisperTranscriber
     from lfm2_audio.scorer.audio.wer import word_error_rate
 
     # Resolved before any engine install: the vLLM stack replaces torch and
     # breaks the torchaudio this needs.
-    reference = resolve_reference()
-    print(f"voix : SIWIS {reference.stem} [{ENGINE}] — « {reference.text[:60]} »", flush=True)
+    reference = resolve_voice_reference(VOICE_SOURCE)
+    print(f"voix : {VOICE_SOURCE}/{reference.stem} [{ENGINE}] — « {reference.text[:60]} »", flush=True)
 
     items = turns_to_speak(LIMIT)
     todo = [(cid, text, lang) for cid, text, lang in items if not (audio_dir / f"{cid}.wav").exists()]
@@ -173,7 +177,7 @@ def main() -> None:
                     lang=lang,
                     duration_s=round(len(wave) / sample_rate, 3),
                     role="assistant",
-                    speaker=f"siwis_{reference.stem}",
+                    speaker=f"{VOICE_SOURCE}_{reference.stem}",
                     source=f"{ENGINE}-tts-clone",
                     voxtral_wer=round(rate, 4),
                 )
