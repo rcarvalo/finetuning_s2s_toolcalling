@@ -179,3 +179,48 @@ def test_provider_should_glue_a_comma_split_system_prompt() -> None:
     )
 
     assert api._system == "Transcribe exactly as spoken, in the language spoken."
+
+
+def _task_state(input_content, target_text: str):
+    from inspect_ai.model import ChatMessageUser, ModelName, ModelOutput
+    from inspect_ai.scorer import Target
+    from inspect_ai.solver import TaskState
+
+    message = ChatMessageUser(content=input_content)
+    return TaskState(
+        model=ModelName("mockllm/model"),
+        sample_id="s1",
+        epoch=0,
+        input=[message],
+        messages=[message],
+        target=Target(target_text),
+        output=ModelOutput.from_content("mockllm/model", "the reply"),
+        metadata={"prompt_text": "spoken transcript"},
+    )
+
+
+def test_reference_text_should_be_the_target_text_not_its_repr() -> None:
+    """str(Target) is the object repr; the first campaign's WER compared
+    replies against `<inspect_ai...Target object at 0x...>`."""
+    from lfm2_audio.inspect_bridge.scorers import to_eval_sample
+
+    sample = to_eval_sample(_task_state("hello", "the reference"))
+
+    assert sample.reference_text == "the reference"
+
+
+def test_prompt_text_should_fall_back_to_metadata_on_audio_only_input() -> None:
+    """TaskState.input_text raises on an audio-only prompt (ASR campaigns)."""
+    import numpy as np
+    from inspect_ai.model import ContentAudio
+
+    from lfm2_audio.ds.audio import OUTPUT_SAMPLE_RATE, Waveform
+    from lfm2_audio.inspect_bridge.audio import waveform_to_data_uri
+    from lfm2_audio.inspect_bridge.scorers import to_eval_sample
+
+    wav = Waveform.of(np.zeros(OUTPUT_SAMPLE_RATE, dtype=np.float32), OUTPUT_SAMPLE_RATE)
+    audio_only = [ContentAudio(audio=waveform_to_data_uri(wav), format="wav")]
+
+    sample = to_eval_sample(_task_state(audio_only, "bonjour"))
+
+    assert sample.prompt_text == "spoken transcript"

@@ -46,12 +46,21 @@ def to_eval_sample(state: TaskState) -> EvalSample:
         audio = data_uri_to_waveform(parts[0].audio) if parts else None
 
     metadata: dict[str, Any] = dict(state.metadata or {})
+    # input_text raises on an audio-only prompt (spoken question, no transcript
+    # in the message) — the transcript then lives in metadata["prompt_text"].
+    try:
+        prompt_text = str(state.input_text or "")
+    except ValueError:
+        prompt_text = ""
+    prompt_text = prompt_text or str(metadata.get("prompt_text", ""))
+    # .text, not str(): stringifying the Target OBJECT hands its Python repr to
+    # the scorers — the first campaign's WER compared replies to it (mean 5.5).
     return EvalSample(
         sample_id=str(state.sample_id),
-        prompt_text=str(state.input_text or ""),
+        prompt_text=prompt_text,
         predicted_text=completion,
         predicted_audio=audio,
-        reference_text=str(state.target) if state.target else "",
+        reference_text=state.target.text if state.target else "",
         expected_calls=metadata.get("expected_calls", []),
         tool_results=metadata.get("tool_results", []),
         metadata=metadata,
