@@ -28,23 +28,45 @@ du prompt qui agit, un prompt français casserait l'anglais ; si c'est la règle
 explicite, un seul prompt anglais sert les deux. D'où quatre bras sur
 `lang_mirror`, qui séparent les deux causes.
 
-| bras | prompt | FR | EN | code-switch |
+| bras | prompt système | FR | EN | code-switch |
 |---|---|---|---|---|
-| P0 (défaut) | anglais, sans règle | 40 % | 100 % | 70 % |
-| **P1** | anglais + règle de miroir | **79 %** | 95 % | **90 %** |
-| P2 | bilingue + règle | *en cours* | | |
-| P3 | français, sans règle | *en cours* | | |
+| P0 (défaut) | `Respond with interleaved text and audio.` | 40 % | 100 % | 70 % |
+| P1 | anglais + règle de miroir | 79 % | 95 % | 90 % |
+| **P2** | **bilingue + règle** | **90 %** | **100 %** | **95 %** |
+| P3 | français, sans règle | *à remesurer* | | |
 
-**P1 double le miroir français (40 % → 79 %) sans entraîner quoi que ce soit**,
-et le code-switch passe de 70 % à 90 %. Le coût est marginal côté anglais
-(100 % → 95 %, une réponse sur 19). La règle explicite suffit donc, en anglais :
-la langue du prompt n'est pas nécessaire — ce que P2 et P3 confirmeront.
+Texte exact du bras gagnant (P2) :
 
-Conséquence pour la suite : le gate R3 (≥95 % de miroir) part non pas de 40 %
-mais de ~79 % dès qu'on fixe le prompt système, et l'entraînement n'a plus à
-combler que les 16 points restants. Le prompt retenu devient un **paramètre
-gelé** des campagnes suivantes, au même titre que la rubrique du juge : deux
-campagnes ne sont comparables qu'à prompt système identique.
+> You are a bilingual voice assistant. Always reply in the same language the
+> user speaks. Tu es un assistant vocal bilingue. Réponds toujours dans la
+> langue que l'utilisateur emploie.
+
+**Le miroir français passe de 40 % à 90 % sans entraîner quoi que ce soit**, le
+code-switch de 70 % à 95 %, et l'anglais ne bouge pas (100 %). Les deux facteurs
+comptent : la règle explicite apporte l'essentiel (40 → 79 avec P1, en anglais
+seul), et rédiger aussi le prompt en français ajoute 11 points (79 → 90).
+
+**Attention à ne pas surinterpréter ce chiffre.** Le taux de miroir dit quelle
+langue le modèle *vise*, pas s'il la parle bien. Les réponses P2 restent
+truffées d'anglais parachuté :
+
+> « La règle du hors-**healthcare**, ou hors-je, est une règle fondament
+> **matching in football**. Elle stip **is that a player who has Boeing**… »
+> « En été, à Marseille, **technological services**, la température moyenne… »
+
+Notre `lang_match` compte les mots-outils : une phrase française à noms anglais
+compte comme française — correct pour « quelle langue vise-t-il », trompeur si
+on le lit comme « parle-t-il bien français ». Le gate R3 ne doit donc jamais se
+lire sur `lang_match` seul ; le juge le voyait déjà (`language_match` à 4,79 et
+non 5,00 sur les réponses françaises).
+
+Conséquences pour la suite :
+1. Le prompt système P2 devient un **paramètre gelé** des campagnes, au même
+   titre que la version de rubrique : deux campagnes ne sont comparables qu'à
+   prompt identique.
+2. Le rung d'entraînement bilingue change de cible : non plus « choisir le
+   français » (le prompt le fait à 90 %), mais **« produire du français
+   propre »** — ce que mesurent le WER aller-retour et le juge, pas le miroir.
 
 ## 1bis. Le juge : un excellent assistant, dans la mauvaise langue
 
