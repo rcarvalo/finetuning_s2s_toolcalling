@@ -6,6 +6,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Added
+- `data_prep/holdout.py` — cross-source hold-out filter (phase 1). The FR
+  corpora overlap on Common Voice FR, so excluding a benchmark from the source
+  it was cut from lets the same clip and the same SPEAKER return through
+  another source under a different id, and the gate then reports memorisation
+  as progress. `HoldoutFilter.from_benchmarks` loads the `speakers.txt` +
+  `source_ids.txt` lists every ASR benchmark ships, matches rows by speaker,
+  source id, or normalised transcript (accent- and punctuation-folded, for
+  clips re-encoded by another pipeline), counts what it dropped and why, and
+  flags an empty filter — silently keeping everything is the failure mode.
 - `inspect_ai` entry point: Inspect now imports the provider at startup, so
   `--model lfm2/…` resolves from the bare CLI. Until now the @modelapi
   registration only existed when our own code had already imported the
