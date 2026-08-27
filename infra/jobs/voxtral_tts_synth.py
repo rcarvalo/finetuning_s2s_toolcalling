@@ -73,21 +73,16 @@ def install_stack() -> None:
 
 def siwis_reference() -> bytes | None:
     """The same SIWIS clip the Qwen candidate clones, as raw bytes."""
-    from huggingface_hub import HfApi, hf_hub_download
+    sys.path.insert(0, str(ROOT / "python"))
+    from lfm2_audio.data_prep.siwis_reference import SiwisError, resolve_reference
 
     try:
-        files = HfApi().list_repo_files(SIWIS_REPO, repo_type="dataset")
-        wavs = {Path(f).stem: f for f in files if f.endswith(".wav")}
-        labs = {Path(f).stem: f for f in files if f.endswith(".lab")}
-        paired = sorted(set(wavs) & set(labs))
-        if not paired:
-            return None
-        wav = hf_hub_download(SIWIS_REPO, wavs[paired[0]], repo_type="dataset")
-    except Exception:
+        reference = resolve_reference()
+    except (SiwisError, OSError, ValueError):
         print("référence SIWIS indisponible :", traceback.format_exc(limit=1), flush=True)
         return None
-    print(f"référence SIWIS : {Path(wav).name}", flush=True)
-    return Path(wav).read_bytes()
+    print(f"référence SIWIS : {reference.stem} — « {reference.text[:70]} »", flush=True)
+    return reference.audio_bytes
 
 
 def build_inputs(reference: bytes) -> list[dict]:

@@ -43,8 +43,6 @@ OUT = Path(os.environ.get("LFM2_OUT", "/workspace/out")) / "bakeoff"
 
 sys.path.insert(0, str(ROOT / "python"))
 
-SIWIS_REPO = "Aviv-anthonnyolime/SIWIS_French_Speech_Synthesis_Database"
-SIWIS_CLIP = ""  # apparié dynamiquement : tous les wav n'ont pas de .lab
 QWEN_BASE = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 QWEN_CUSTOM = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
 PRESET_SPEAKER = "Aiden"
@@ -75,32 +73,16 @@ def install_qwen_tts() -> None:
 
 
 def siwis_reference() -> tuple[str, str] | None:
-    """A SIWIS clip and its transcript — cloning needs both.
-
-    The pair is found by intersecting the wav and lab file lists rather than
-    hardcoded: the repository ships 314 wavs and 400 labs and they do not cover
-    each other, so a name picked by eye can point at a clip whose transcript is
-    missing. That is how the first run lost its main candidate.
-    """
-    from huggingface_hub import HfApi, hf_hub_download
+    """The shared resolver: pairing lives in the package, tested."""
+    from lfm2_audio.data_prep.siwis_reference import SiwisError, resolve_reference
 
     try:
-        files = HfApi().list_repo_files(SIWIS_REPO, repo_type="dataset")
-        wavs = {Path(f).stem: f for f in files if f.endswith(".wav")}
-        labs = {Path(f).stem: f for f in files if f.endswith(".lab")}
-        paired = sorted(set(wavs) & set(labs))
-        if not paired:
-            print("aucune paire wav/lab dans SIWIS", flush=True)
-            return None
-        stem = paired[0]
-        wav = hf_hub_download(SIWIS_REPO, wavs[stem], repo_type="dataset")
-        lab = hf_hub_download(SIWIS_REPO, labs[stem], repo_type="dataset")
-    except Exception:
+        reference = resolve_reference()
+    except (SiwisError, OSError, ValueError):
         print("référence SIWIS indisponible :", traceback.format_exc(limit=1), flush=True)
         return None
-    text = Path(lab).read_text(encoding="utf-8", errors="replace").strip()
-    print(f"référence SIWIS : {Path(wav).name} ({len(paired)} paires) — « {text[:70]} »", flush=True)
-    return wav, text
+    print(f"référence SIWIS : {reference.stem} — « {reference.text[:70]} »", flush=True)
+    return str(reference.wav_path), reference.text
 
 
 def save(name: str, index: int, wave, sample_rate: int) -> None:  # noqa: ANN001 — tableau numpy
