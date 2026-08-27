@@ -21,11 +21,35 @@ avec l'implémentation de référence.
 
 __version__ = "0.1.0"
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def register() -> None:
-    """Entry point ``vllm_omni.general_plugins`` (chargé dans tous les process)."""
+    """Entry point ``vllm_omni.general_plugins`` (chargé dans tous les process).
+
+    **Décline si l'hôte n'expose pas l'API 0.22.** Ce plugin est chargé par
+    vLLM-Omni dans *tous* ses process, y compris ceux qui servent un tout autre
+    modèle. Sur vllm-omni 0.26, ``register_pipeline`` n'existe plus à cette
+    adresse, et l'ImportError remontait en « Orchestrator initialization
+    failed » : installer ce repo suffisait à casser Voxtral sur la même machine,
+    six lancements de suite, pour un plugin dont ce job n'avait aucun besoin.
+    Un plugin ne doit jamais tuer l'hôte qu'il ne sait pas étendre.
+    """
     from vllm.model_executor.models import ModelRegistry
-    from vllm_omni.config.stage_config import register_pipeline
+
+    try:
+        from vllm_omni.config.stage_config import register_pipeline
+    except ImportError as error:
+        logger.warning(
+            "plugin lfm2_audio désactivé : vLLM-Omni de cet environnement n'expose pas "
+            "register_pipeline (%s). Servir LFM2.5-Audio échouera sur une architecture "
+            "inconnue — les autres modèles ne sont pas affectés.",
+            error,
+        )
+        return
+
     from vllm_omni.model_executor.models.registry import OmniModelRegistry
 
     # IMPORT EAGER de la classe d'archi → exécute son décorateur
