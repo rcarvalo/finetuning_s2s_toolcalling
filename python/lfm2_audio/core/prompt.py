@@ -36,6 +36,7 @@ _SPECIAL_TOKEN = re.compile(r"<\|[^|>]*\|>")
 DEFAULT_SYSTEM = "Respond with interleaved text and audio."
 
 BILINGUAL_SYSTEM = (
+    f"{DEFAULT_SYSTEM} "
     "You are a bilingual voice assistant. Always reply in the same language the user speaks. "
     "Tu es un assistant vocal bilingue. Réponds toujours dans la langue que l'utilisateur emploie."
 )
@@ -51,6 +52,15 @@ French" is a side effect nobody controls.
 
 Mirror rate is not French QUALITY: replies still inject English nouns
 mid-sentence. What the prompt fixes is which language the model aims for.
+
+**It starts with DEFAULT_SYSTEM, and that is not cosmetic.** A first version
+replaced it outright and kept only the language instruction: mirroring doubled
+and the SPEECH collapsed — UTMOS 4.08 to 1.51, roundtrip WER 0.06 to 1.00, the
+audio saying "ahhhhhh heyyyyy" where the text was a clean English sentence. The
+"respond with interleaved text and audio" sentence is what drives the
+interleaved audio path; a prompt that drops it gets good text and no speech.
+The arms that chose this prompt scored language on TEXT only, so nothing in
+that measurement could have caught it.
 """
 
 SYSTEM_PROMPTS = {"default": DEFAULT_SYSTEM, "bilingual": BILINGUAL_SYSTEM}

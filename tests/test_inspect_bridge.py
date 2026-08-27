@@ -247,3 +247,12 @@ def test_provider_should_pass_an_unknown_system_through_unchanged() -> None:
     api = Lfm2AudioAPI(model_name="lfm2/whatever", config=GenerateConfig(), system="Transcris l'audio.")
 
     assert api._system == "Transcris l'audio."
+
+
+def test_bilingual_prompt_must_keep_the_interleaving_instruction() -> None:
+    """Dropping it doubled mirroring and destroyed the speech: UTMOS 4.08 to
+    1.51, roundtrip WER 0.06 to 1.00. The language arms scored text only, so
+    they could not see it — this test is what stands in for that blind spot."""
+    from lfm2_audio.core.prompt import BILINGUAL_SYSTEM, DEFAULT_SYSTEM
+
+    assert BILINGUAL_SYSTEM.startswith(DEFAULT_SYSTEM)
