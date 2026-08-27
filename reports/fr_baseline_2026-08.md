@@ -116,11 +116,11 @@ Les WER sont donnés en **médiane** : ~7 % des échantillons partent en boucle 
 répétition (« methane methane methane… ») et une moyenne mesurerait surtout la
 fréquence de ces boucles, pas la qualité de transcription.
 
-| volet | WER médian | transcriptions propres (≤0,30) | boucles |
-|---|---|---|---|
-| `en_control` (EN) | **0,15** | 69 % | 7 % |
-| `fr_frprompt` (FR, prompt FR) | 0,70 | 14 % | 12 % |
-| `fr_fleurs` (FR, prompt EN) | 0,75 | 8 % | 6 % |
+| volet | n | WER médian | transcriptions propres (≤0,30) | boucles |
+|---|---|---|---|---|
+| `en_control` (EN) | 100 | **0,15** | 69 % | 7 % |
+| `fr_frprompt` (FR, prompt FR) | 50 | 0,70 | 14 % | 12 % |
+| `fr_fleurs` (FR, prompt EN) | 200 | 0,80 | 14 % | 12 % |
 
 **Premier enseignement : le modèle suit bien l'instruction.** Il transcrit
 l'anglais à 0,15 de WER médian, avec 69 % de transcriptions propres. Le probe du
@@ -139,10 +139,14 @@ c'est de la traduction.** En regardant ce que le modèle produit :
 Compréhension parfaite, WER 0,93. En découpant par la langue effectivement
 produite :
 
-| volet | réponses en FR | WER méd. (sorties FR) | réponses en EN | WER méd. (sorties EN) |
-|---|---|---|---|---|
-| `fr_fleurs` (prompt EN) | 55 % | **0,55** | 37 % | 0,95 |
-| `fr_frprompt` (prompt FR) | **82 %** | **0,59** | 16 % | 1,00 |
+| volet | réponses en FR | WER méd. (sorties FR) | propres | réponses en EN | WER méd. (sorties EN) |
+|---|---|---|---|---|---|
+| `fr_fleurs` (prompt EN, n=200) | 56 % | **0,50** | 25 % | 38 % | 0,97 |
+| `fr_frprompt` (prompt FR, n=50) | **82 %** | 0,59 | 17 % | 16 % | 1,00 |
+
+Le WER brut passe de 0,80 à **0,50** dès qu'on ne compare plus une traduction
+anglaise à une référence française — c'est-à-dire dès qu'on mesure ce qu'on
+croyait mesurer.
 
 **Troisième enseignement, directement exploitable : le prompt système en français
 fait passer le miroir de langue de 55 % à 82 %.** Sans rien entraîner. C'est une
@@ -151,16 +155,17 @@ français) et un levier pour la génération des données du rung R1.
 
 ### Verdict D1
 
-Le chiffre à lire est **0,55-0,59 de WER médian sur les sorties réellement
-françaises** — pas le 0,75 brut, gonflé par la traduction. Comparé aux **0,15**
-de l'anglais sur le même corpus et le même registre (FLEURS), et avec 12-17 % de
-transcriptions propres contre 69 %, **la faiblesse française est réelle et large**.
+Le chiffre à lire est **0,50 de WER médian sur les sorties réellement
+françaises** (200 clips) — pas le 0,80 brut, gonflé par la traduction. Comparé
+aux **0,15** de l'anglais sur le même corpus et le même registre (FLEURS), et
+avec 25 % de transcriptions propres contre 69 %, **la faiblesse française est
+réelle et large**.
 
 Seuils du gate (<25 % → sauter ; 25-40 % → rung 1 ; >40 % → escalade) : on est
 **au-dessus de 40 %**, donc en zone d'escalade. Concrètement, pour la suite :
 
 1. **Le rung R1 (ASR FR) est justifié** — mais son objectif se précise : porter le
-   WER FR des sorties françaises de ~0,55 vers <0,25, pas « apprendre à obéir ».
+   WER FR des sorties françaises de 0,50 vers <0,25, pas « apprendre à obéir ».
 2. **Le miroir de langue est un problème distinct et transverse** : il pollue même
    la mesure ASR. Il se traite par les données (prompt système FR, corpus miroir)
    plus que par un rung dédié.
