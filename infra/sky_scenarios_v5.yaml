@@ -31,7 +31,7 @@ envs:
 setup: |
   curl -LsSf https://astral.sh/uv/install.sh | sh
   export PATH="$HOME/.local/bin:$PATH"
-  uv sync --frozen --extra train --extra eval
+  uv sync --frozen --extra train --extra eval --extra tooldata
 
 run: |
   export PATH="$HOME/.local/bin:$PATH"
