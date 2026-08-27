@@ -138,10 +138,41 @@ def test_should_transcribe_in_the_sample_language() -> None:
 
 
 def test_should_fall_back_to_the_transcriber_default_without_lang() -> None:
-    transcriber = FakeTranscriber("hello world")
+    """No language in the metadata and none detectable in the reply: the
+    transcriber's own default is all that is left."""
+    transcriber = FakeTranscriber("1969")
     scorer = WerScorer(transcriber)
-    sample = EvalSample(sample_id="en1", predicted_text="hello world", predicted_audio=_audio())
+    sample = EvalSample(sample_id="en1", predicted_text="1969", predicted_audio=_audio())
 
     scorer.score(sample)
 
     assert transcriber.languages == [None]
+
+
+def test_should_transcribe_in_the_language_the_model_actually_spoke() -> None:
+    """A model that does not mirror answers a FR question in EN. Forcing FR ASR
+    on that reply measures the ASR's confusion: on the 0B baseline it inflated
+    the roundtrip WER from 0.53 to 0.86."""
+    transcriber = FakeTranscriber("the weather is sunny today")
+    scorer = WerScorer(transcriber)
+    sample = EvalSample(
+        sample_id="s1",
+        predicted_text="The weather is sunny today and it will stay warm.",
+        predicted_audio=_audio(),
+        metadata={"lang": "fr"},  # la QUESTION est en français
+    )
+
+    scorer.score(sample)
+
+    assert transcriber.languages == ["en"]
+
+
+def test_question_language_should_remain_the_fallback() -> None:
+    """Too short to classify: the question's language is the best guess left."""
+    transcriber = FakeTranscriber("42")
+    scorer = WerScorer(transcriber)
+    sample = EvalSample(sample_id="s1", predicted_text="42", predicted_audio=_audio(), metadata={"lang": "fr"})
+
+    scorer.score(sample)
+
+    assert transcriber.languages == ["fr"]

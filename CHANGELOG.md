@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 
 ## [Unreleased]
 
+### Fixed
+- Roundtrip WER now transcribes in the language the model actually SPOKE,
+  detected from its reply text, instead of the question's `metadata["lang"]`.
+  A model that does not yet mirror answers a French question in English, and
+  forcing French ASR on that reply measured the ASR's confusion: on the 0B
+  baseline the FR figure was 0.86 forced-FR versus 0.53 in the spoken
+  language. The question's language stays the fallback for replies with no
+  clear signal. This affects the training loop too, where the metric is meant
+  to be the early warning that the audio heads drifted.
+
 ### Added
 - `data_prep/holdout.py` — cross-source hold-out filter (phase 1). The FR
   corpora overlap on Common Voice FR, so excluding a benchmark from the source

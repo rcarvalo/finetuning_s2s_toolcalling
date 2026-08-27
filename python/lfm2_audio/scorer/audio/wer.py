@@ -17,6 +17,7 @@ from lfm2_audio.scorer.audio.transcriber import Transcriber
 from lfm2_audio.scorer.base import BaseScorer
 from lfm2_audio.scorer.result import ScoreResult
 from lfm2_audio.scorer.sample import EvalSample
+from lfm2_audio.scorer.text.lang_match import detect_language
 
 _PUNCTUATION = re.compile(r"[^\w\s']", flags=re.UNICODE)
 _WHITESPACE = re.compile(r"\s+")
@@ -45,10 +46,7 @@ class WerScorer(BaseScorer):
         audio = sample.predicted_audio
         if audio is None:  # supports() l'a déjà vérifié — ceinture et bretelles
             return ScoreResult.skipped(self.name, "aucun audio généré à transcrire")
-        # Per-sample language: a bilingual set carries `lang` in its metadata,
-        # and transcribing FR speech with an EN-forced ASR would not measure
-        # intelligibility — it would measure the ASR's confusion.
-        language = sample.metadata.get("lang")
+        language = self._language_of(sample)
         hypothesis = self._transcriber.transcribe(audio, language=language)
         reference = sample.spoken_reference
 
@@ -57,8 +55,22 @@ class WerScorer(BaseScorer):
             self.name,
             rate,
             higher_is_better=False,
-            details={"reference": reference, "hypothesis": hypothesis},
+            details={"reference": reference, "hypothesis": hypothesis, "asr_language": language},
         )
+
+    @staticmethod
+    def _language_of(sample: EvalSample) -> str | None:
+        """The language to transcribe in: the one the model actually SPOKE.
+
+        Not the question's ``metadata["lang"]``. A model that does not yet
+        mirror answers a French question in English, and forcing French ASR on
+        that reply measures the ASR's confusion, not the speech: on the 0B
+        baseline it inflated the roundtrip WER from 0.53 to 0.86. The reply
+        text is what produced the audio, so it is what says which ASR to use;
+        the question's language remains the fallback when the text carries no
+        clear signal.
+        """
+        return detect_language(sample.predicted_text) or sample.metadata.get("lang")
 
 
 def normalize_transcript(text: str) -> str:
