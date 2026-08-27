@@ -110,10 +110,26 @@ def build_inputs(reference: bytes) -> list[dict]:
     return inputs
 
 
+def claim_cuda() -> None:
+    """Create the CUDA context before the pip subprocesses.
+
+    Same failure and same cure as the ASR job: both fork before touching the
+    GPU and both died on "CUDA unknown error" at the first CUDA call, twice
+    each. Claiming the device first fixed it there, and costs nothing here.
+    """
+    import torch
+
+    if not torch.cuda.is_available():
+        raise SystemExit("aucun GPU visible")
+    torch.zeros(1, device="cuda")
+    print(f"GPU : {torch.cuda.get_device_name(0)}", flush=True)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     result: dict[str, object] = {"candidate": "voxtral_tts", "clips": 0, "reference": "siwis"}
     try:
+        claim_cuda()
         install_stack()
         reference = siwis_reference()
         if reference is None:
