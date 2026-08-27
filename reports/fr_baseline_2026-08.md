@@ -353,6 +353,30 @@ Seuils du gate (<25 % → sauter ; 25-40 % → rung 1 ; >40 % → escalade) : on
 3. **La pathologie de boucle** (6-12 % partout, EN compris) est un troisième axe,
    indépendant de la langue : à surveiller comme métrique de non-régression.
 
+## 5bis. Point de départ officiel — prompt `bilingual`, audio sain
+
+C'est **ce tableau**, et non les chiffres du prompt par défaut, qui sert de
+référence aux gates : deux campagnes ne sont comparables qu'à prompt système
+identique, et tous les rungs tourneront sous `bilingual`.
+
+| mesure | défaut | **bilingual (référence)** | verdict |
+|---|---|---|---|
+| miroir FR (`lang_mirror`) | 40 % | **75 %** | +35 pts gratuits |
+| miroir EN | 100 % | **100 %** | intact |
+| miroir code-switch | 70 % | **84 %** | +14 pts |
+| miroir FR (`fr_s2s`, 100 q.) | 36 % | **68 %** | presque doublé |
+| UTMOS FR (`lang_mirror`) | 3,94 | **4,08** | intact |
+| **WER aller-retour EN** | 0,084 | **0,080** | **ancre EN intacte** |
+| **UTMOS EN** | 4,076 | **4,047** | **ancre EN intacte** |
+
+Les deux dernières lignes sont celles qui comptaient : le prompt bilingue
+**ne coûte rien à l'anglais**, ni en intelligibilité ni en naturalité. Le gain
+français est donc acquis sans contrepartie mesurable.
+
+Ce qui reste à gagner par l'entraînement, à partir d'ici : le miroir FR de 75 %
+vers ≥95 % (gate R3), et surtout la **qualité** du français — WER aller-retour
+et propreté du texte, que le prompt ne touche pas.
+
 ## 5. Ancres EN gelées (non-régression, à re-mesurer à chaque gate)
 
 | ancre | valeur | source |
