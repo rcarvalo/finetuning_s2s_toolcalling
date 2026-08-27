@@ -19,6 +19,33 @@ verrouillée sur l'anglais. Corroboré sur `fr_s2s` (100 questions FR) :
 **36 % de réponses en français** seulement.
 → Baseline du gate R3 (≥95 %) : 40 % FR. Le chemin est long, c'est le cœur du chantier.
 
+## 1ter. Le miroir se répare en partie par le prompt système
+
+Le résultat du prompt français sur la tâche ASR (miroir 56 % → 82 %) changeait
+deux choses à la fois : le prompt était écrit EN français ET demandait du
+français. Impossible d'en tirer une décision de conception — si c'est la langue
+du prompt qui agit, un prompt français casserait l'anglais ; si c'est la règle
+explicite, un seul prompt anglais sert les deux. D'où quatre bras sur
+`lang_mirror`, qui séparent les deux causes.
+
+| bras | prompt | FR | EN | code-switch |
+|---|---|---|---|---|
+| P0 (défaut) | anglais, sans règle | 40 % | 100 % | 70 % |
+| **P1** | anglais + règle de miroir | **79 %** | 95 % | **90 %** |
+| P2 | bilingue + règle | *en cours* | | |
+| P3 | français, sans règle | *en cours* | | |
+
+**P1 double le miroir français (40 % → 79 %) sans entraîner quoi que ce soit**,
+et le code-switch passe de 70 % à 90 %. Le coût est marginal côté anglais
+(100 % → 95 %, une réponse sur 19). La règle explicite suffit donc, en anglais :
+la langue du prompt n'est pas nécessaire — ce que P2 et P3 confirmeront.
+
+Conséquence pour la suite : le gate R3 (≥95 % de miroir) part non pas de 40 %
+mais de ~79 % dès qu'on fixe le prompt système, et l'entraînement n'a plus à
+combler que les 16 points restants. Le prompt retenu devient un **paramètre
+gelé** des campagnes suivantes, au même titre que la rubrique du juge : deux
+campagnes ne sont comparables qu'à prompt système identique.
+
 ## 1bis. Le juge : un excellent assistant, dans la mauvaise langue
 
 Passe jugée sur les 100 questions de `fr_s2s`, rubrique **reasoning-v3**
