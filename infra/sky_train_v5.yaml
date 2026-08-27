@@ -20,7 +20,11 @@ resources:
   # 26/08 for lack of stock. LoRA on a 1.5B at ctx 2048 fits in 24 GB — v4 ran
   # on a Colab L4 — so any of these does; SkyPilot takes the cheapest with
   # capacity.
-  accelerators: {RTX4090:1, PRO-6000-MIG-24GB:1, RTXPRO4500:1, A40:1, L40S:1, L4:1}
+  # Blackwell only, and that is a driver constraint, not a taste: the pinned
+  # torch is a CUDA 13 build, and a host still on a 12.8 driver refuses it
+  # outright ("NVIDIA driver on your system is too old"). These two report
+  # CUDA 13.0 and were the ones with real stock.
+  accelerators: {RTXPRO4500:1, PRO-6000-MIG-24GB:1}
   disk_size: 120               # HF checkpoints + Phase A/B audio + outputs
 
 workdir: .                     # syncs the repo (honours .gitignore)
