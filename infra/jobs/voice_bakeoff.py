@@ -15,8 +15,9 @@ Three candidates, deliberately chosen to separate two different questions.
                French. The CustomVoice catalogue has no French timbre, so this
                is the control for "a multilingual voice doing French" — exactly
                what cloning is supposed to beat.
-  voxtral_tts  Voxtral-4B-TTS, the yardstick, CC-BY-NC and therefore not a
-               default even if it wins.
+Voxtral-4B-TTS is the third candidate but lives in its own job
+(`voxtral_tts_synth`): it runs on vLLM-Omni, whose dependency set replaces
+transformers wholesale and would break qwen-tts if they shared an environment.
 
 The incumbent — the voice already in french-dialogue-tts-1000h, UTMOS 3.73 —
 is not synthesised here: its clips exist. It enters the comparison at scoring
@@ -43,12 +44,10 @@ OUT = Path(os.environ.get("LFM2_OUT", "/workspace/out")) / "bakeoff"
 sys.path.insert(0, str(ROOT / "python"))
 
 SIWIS_REPO = "Aviv-anthonnyolime/SIWIS_French_Speech_Synthesis_Database"
-SIWIS_CLIP = "wavs/part1/neut_parl_s01_0106.wav"
-SIWIS_TRANSCRIPT = "labs/part1/neut_parl_s01_0106.lab"
+SIWIS_CLIP = ""  # apparié dynamiquement : tous les wav n'ont pas de .lab
 QWEN_BASE = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 QWEN_CUSTOM = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
 PRESET_SPEAKER = "Aiden"
-VOXTRAL_TTS = "mistralai/Voxtral-4B-TTS-2603"
 
 # Conversational register, not read prose: brick A feeds a voice assistant, and
 # a voice that shines on literary sentences may not on "Il est quinze heures".
@@ -76,17 +75,31 @@ def install_qwen_tts() -> None:
 
 
 def siwis_reference() -> tuple[str, str] | None:
-    """A SIWIS clip and its transcript — cloning needs both."""
-    from huggingface_hub import hf_hub_download
+    """A SIWIS clip and its transcript — cloning needs both.
+
+    The pair is found by intersecting the wav and lab file lists rather than
+    hardcoded: the repository ships 314 wavs and 400 labs and they do not cover
+    each other, so a name picked by eye can point at a clip whose transcript is
+    missing. That is how the first run lost its main candidate.
+    """
+    from huggingface_hub import HfApi, hf_hub_download
 
     try:
-        wav = hf_hub_download(SIWIS_REPO, SIWIS_CLIP, repo_type="dataset")
-        lab = hf_hub_download(SIWIS_REPO, SIWIS_TRANSCRIPT, repo_type="dataset")
+        files = HfApi().list_repo_files(SIWIS_REPO, repo_type="dataset")
+        wavs = {Path(f).stem: f for f in files if f.endswith(".wav")}
+        labs = {Path(f).stem: f for f in files if f.endswith(".lab")}
+        paired = sorted(set(wavs) & set(labs))
+        if not paired:
+            print("aucune paire wav/lab dans SIWIS", flush=True)
+            return None
+        stem = paired[0]
+        wav = hf_hub_download(SIWIS_REPO, wavs[stem], repo_type="dataset")
+        lab = hf_hub_download(SIWIS_REPO, labs[stem], repo_type="dataset")
     except Exception:
         print("référence SIWIS indisponible :", traceback.format_exc(limit=1), flush=True)
         return None
     text = Path(lab).read_text(encoding="utf-8", errors="replace").strip()
-    print(f"référence SIWIS : {Path(wav).name} — « {text[:70]} »", flush=True)
+    print(f"référence SIWIS : {Path(wav).name} ({len(paired)} paires) — « {text[:70]} »", flush=True)
     return wav, text
 
 
@@ -146,19 +159,6 @@ def qwen_preset() -> None:
         save("qwen_preset", index, wave, sample_rate)
 
 
-def voxtral_tts() -> None:
-    import torch
-    from transformers import AutoModel, AutoProcessor
-
-    processor = AutoProcessor.from_pretrained(VOXTRAL_TTS, trust_remote_code=True)
-    model = AutoModel.from_pretrained(VOXTRAL_TTS, trust_remote_code=True, dtype=torch.bfloat16).eval()
-    for index, sentence in enumerate(SENTENCES):
-        inputs = processor(text=sentence, return_tensors="pt")
-        output = model.generate(**inputs)
-        wave = output["waveform"] if isinstance(output, dict) else output
-        save("voxtral_tts", index, wave.squeeze().float().cpu().numpy(), 24000)
-
-
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     install_qwen_tts()
@@ -168,7 +168,6 @@ def main() -> None:
     if reference is not None:
         results.append(run_candidate("qwen_siwis", lambda: qwen_clone(reference)))
     results.append(run_candidate("qwen_preset", qwen_preset))
-    results.append(run_candidate("voxtral_tts", voxtral_tts))
 
     (OUT / "bakeoff.json").write_text(json.dumps(results, indent=1, ensure_ascii=False), encoding="utf-8")
     print("===RESULT bakeoff.json===", flush=True)
