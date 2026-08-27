@@ -95,7 +95,7 @@ Identiques dans les deux langues, dans l'objectif 200-500 ms (le rêve ~300 ms e
 déjà là sur le TTFA vanilla ; référence serving : endpoint RunPod 0,13-0,3 s).
 RTF > 1 sur L4 attendu (GPU d'éval) — le gate serving se mesure sur l'endpoint.
 
-## 4. ASR FR (gate D1) — EN COURS, design à 4 volets
+## 4. ASR FR — verdict D1
 
 Les deux campagnes initiales ont buté sur des bugs du pont Inspect (corrigés :
 ffd09c6). Relancées avec un design qui rend le verdict interprétable, parce que
@@ -110,11 +110,62 @@ que « n'entend pas le français », et seul le second justifie un rung ASR.
 | `en_control` | FLEURS-en 100 | EN | suivi d'instruction, hors question de langue |
 | `fr_frprompt` | FLEURS-fr 50 | FR | sensibilité à la LANGUE du prompt |
 
-Lecture prévue : si `en_control` échoue autant que `fr_fleurs`, le problème est
-le suivi d'instruction et le rung ASR est le mauvais remède (la piste devient
-(a) inclure de l'ASR dans le mélange d'entraînement). Si l'EN passe et le FR
-non, la faiblesse FR est réelle. Gate : WER FLEURS-fr **<25 % → sauter le rung
-ASR ; 25-40 % → rung 1 ; >40 % → escalade**.
+### Résultats
+
+Les WER sont donnés en **médiane** : ~7 % des échantillons partent en boucle de
+répétition (« methane methane methane… ») et une moyenne mesurerait surtout la
+fréquence de ces boucles, pas la qualité de transcription.
+
+| volet | WER médian | transcriptions propres (≤0,30) | boucles |
+|---|---|---|---|
+| `en_control` (EN) | **0,15** | 69 % | 7 % |
+| `fr_frprompt` (FR, prompt FR) | 0,70 | 14 % | 12 % |
+| `fr_fleurs` (FR, prompt EN) | 0,75 | 8 % | 6 % |
+
+**Premier enseignement : le modèle suit bien l'instruction.** Il transcrit
+l'anglais à 0,15 de WER médian, avec 69 % de transcriptions propres. Le probe du
+25/08 concluait « ne transcrit pas de façon fiable sur commande » ; avec
+l'instruction en prompt système et un jeu propre, c'est démenti pour l'anglais.
+Un mauvais chiffre FR ne peut donc pas être imputé au suivi d'instruction.
+
+**Deuxième enseignement : une grande partie du WER FR n'est pas de la surdité,
+c'est de la traduction.** En regardant ce que le modèle produit :
+
+> ATTENDU : « nous sommes d'accord avec la déclaration de l'usoc comité olympique
+> des états-unis selon laquelle les intérêts de nos athlètes… »
+> PRODUIT : « We are in agreement with the declaration of the USOC, Comité
+> Olympique des États-Unis, on the principle that the interests of our… »
+
+Compréhension parfaite, WER 0,93. En découpant par la langue effectivement
+produite :
+
+| volet | réponses en FR | WER méd. (sorties FR) | réponses en EN | WER méd. (sorties EN) |
+|---|---|---|---|---|
+| `fr_fleurs` (prompt EN) | 55 % | **0,55** | 37 % | 0,95 |
+| `fr_frprompt` (prompt FR) | **82 %** | **0,59** | 16 % | 1,00 |
+
+**Troisième enseignement, directement exploitable : le prompt système en français
+fait passer le miroir de langue de 55 % à 82 %.** Sans rien entraîner. C'est une
+validation du choix déjà fait dans `cli/data/prepare_fr.py` (prompt ASR en
+français) et un levier pour la génération des données du rung R1.
+
+### Verdict D1
+
+Le chiffre à lire est **0,55-0,59 de WER médian sur les sorties réellement
+françaises** — pas le 0,75 brut, gonflé par la traduction. Comparé aux **0,15**
+de l'anglais sur le même corpus et le même registre (FLEURS), et avec 12-17 % de
+transcriptions propres contre 69 %, **la faiblesse française est réelle et large**.
+
+Seuils du gate (<25 % → sauter ; 25-40 % → rung 1 ; >40 % → escalade) : on est
+**au-dessus de 40 %**, donc en zone d'escalade. Concrètement, pour la suite :
+
+1. **Le rung R1 (ASR FR) est justifié** — mais son objectif se précise : porter le
+   WER FR des sorties françaises de ~0,55 vers <0,25, pas « apprendre à obéir ».
+2. **Le miroir de langue est un problème distinct et transverse** : il pollue même
+   la mesure ASR. Il se traite par les données (prompt système FR, corpus miroir)
+   plus que par un rung dédié.
+3. **La pathologie de boucle** (6-12 % partout, EN compris) est un troisième axe,
+   indépendant de la langue : à surveiller comme métrique de non-régression.
 
 ## 5. Ancres EN gelées (non-régression, à re-mesurer à chaque gate)
 
