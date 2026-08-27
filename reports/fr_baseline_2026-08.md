@@ -32,19 +32,37 @@ explicite, un seul prompt anglais sert les deux. D'où quatre bras sur
 |---|---|---|---|---|
 | P0 (défaut) | `Respond with interleaved text and audio.` | 40 % | 100 % | 70 % |
 | P1 | anglais + règle de miroir | 79 % | 95 % | 90 % |
-| **P2** | **bilingue + règle** | **90 %** | **100 %** | **95 %** |
-| P3 | français, sans règle | *à remesurer* | | |
+| **P2** | bilingue + règle | 90 % | **100 %** | **95 %** |
+| **P3** | **français, sans aucune règle** | **94 %** | **100 %** | 90 % |
 
-Texte exact du bras gagnant (P2) :
+Textes exacts des deux bras de tête :
 
-> You are a bilingual voice assistant. Always reply in the same language the
-> user speaks. Tu es un assistant vocal bilingue. Réponds toujours dans la
-> langue que l'utilisateur emploie.
+> **P2** — You are a bilingual voice assistant. Always reply in the same
+> language the user speaks. Tu es un assistant vocal bilingue. Réponds toujours
+> dans la langue que l'utilisateur emploie.
+>
+> **P3** — Tu es un assistant vocal utile et concis.
 
-**Le miroir français passe de 40 % à 90 % sans entraîner quoi que ce soit**, le
-code-switch de 70 % à 95 %, et l'anglais ne bouge pas (100 %). Les deux facteurs
-comptent : la règle explicite apporte l'essentiel (40 → 79 avec P1, en anglais
-seul), et rédiger aussi le prompt en français ajoute 11 points (79 → 90).
+**Le miroir français passe de 40 % à 90-94 % sans entraîner quoi que ce soit.**
+
+Et le résultat contre-intuitif est P3 : **une simple phrase en français, sans la
+moindre consigne de miroir, obtient le meilleur taux français (94 %) — et ne
+casse pas l'anglais du tout (100 %)**. C'était le risque redouté de ce bras ;
+il ne se matérialise pas. La langue du prompt agit donc comme une amorce plus
+forte qu'une règle explicite, et l'anglais reste accessible parce qu'il est le
+mode dominant du modèle : la question anglaise le ramène chez lui.
+
+Hiérarchie des leviers, du plus fort au plus faible : langue du prompt (P3, +54
+pts) > langue + règle (P2, +50) > règle seule en anglais (P1, +39). En revanche
+P2 domine sur le **code-switch** (95 % contre 90 %), là où il faut suivre un
+changement de langue en cours de phrase : la règle explicite sert précisément
+dans le cas ambigu que l'amorce ne couvre pas.
+
+**Choix retenu : P2.** Non pas parce qu'il gagne partout, mais parce que le
+projet vise un assistant qui suit l'utilisateur quand il change de langue — le
+code-switch est le cas d'usage, pas un cas limite — et parce qu'un prompt
+bilingue explicite reste lisible et modifiable par un humain, là où « ça marche
+parce que le prompt est en français » est un effet de bord qu'on ne contrôle pas.
 
 **Attention à ne pas surinterpréter ce chiffre.** Le taux de miroir dit quelle
 langue le modèle *vise*, pas s'il la parle bien. Les réponses P2 restent
