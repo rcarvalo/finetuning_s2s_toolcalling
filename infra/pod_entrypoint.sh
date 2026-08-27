@@ -36,7 +36,9 @@ cd "$ROOT"
 git fetch origin "$BRANCH" && git reset --hard "origin/$BRANCH"
 echo "=== commit: $(git log --oneline -1)"
 
-pip install -q -e ".[serving-liquid,eval,inspect]" 2>&1 | tail -5
+# pytest is a dev dependency, absent from the runtime extras — and the
+# assertion below is not optional, so it is installed here rather than skipped.
+pip install -q -e ".[serving-liquid,eval,inspect]" pytest 2>&1 | tail -5
 
 # Behavioural assertion, not a version check: a campaign once replayed stale
 # code and published wrong numbers.
