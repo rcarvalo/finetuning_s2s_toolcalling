@@ -167,16 +167,71 @@ qu'elle part en vrille. C'est la signature d'un **ratio d'interleaving calibré
 pour l'anglais** appliqué au français — ce que la Phase 1 prévoyait de calibrer
 (`lfm2-calibrate`), désormais motivé par une mesure et non par une intuition.
 
-**Conséquence pratique** : le ratio vit dans le `config.json` du checkpoint, donc
-il est testable **sans réentraîner**. Une expérience à quelques euros (réécrire
-le ratio, rejouer 30 questions FR, mesurer le WER aller-retour) doit précéder le
-rung R2 : si l'intelligibilité FR remonte nettement, une partie du problème est
-un réglage de serving, pas un manque d'entraînement.
+**Cette hypothèse a été testée et RÉFUTÉE** — voir section 2ter. Le ratio est
+bien un réglage de serving modifiable sans réentraîner, mais le baisser dégrade
+les deux langues au lieu d'assainir le français. Le vrai coupable est le mode
+interleavé lui-même.
 
 **Nuance à ne pas écraser** : le modèle a aussi une pathologie de **boucle de
 répétition** indépendante de l'audio — 7 % de ses transcriptions ANGLAISES
 partent en boucle (« methane methane methane… »). La dérive FR et les boucles EN
 partagent peut-être une cause (mauvais arrêt), mais le ratio n'explique pas tout.
+
+## 2ter. Le français du modèle est intact — c'est l'interleaving qui le casse
+
+Deux expériences ont retourné le diagnostic de la section 2bis. Elles sont plus
+importantes que tout le reste de ce rapport.
+
+### Le ratio n'est pas le levier (et le baisser détruit tout)
+
+Balayage sur 20 questions par langue, WER aller-retour recalculé localement :
+
+| ratio | FR — WER méd. | FR propres | EN — WER méd. | EN propres |
+|---|---|---|---|---|
+| **6:12 (livré)** | **0,581** | **9/20** | **0,052** | **18/20** |
+| 6:9 | 0,723 | 0/20 | 0,494 | 2/20 |
+| 6:7 | 0,778 | 0/20 | 0,665 | 0/20 |
+
+L'hypothèse « la parole FR déborde parce que le ratio est calibré pour l'EN,
+donc réduire le budget audio va l'assainir » est **réfutée**. Réduire le budget
+dégrade les deux langues, et massivement l'anglais (0,052 → 0,665). Le modèle a
+besoin de ces trames pour rendre son texte ; lui en retirer ne comprime pas la
+parole, ça la casse. **Le ratio livré 6:12 reste le meilleur des trois, pour les
+deux langues.**
+
+Conséquence pour la Phase 1 : la « calibration du ratio » ne doit jamais se
+décider sur une durée ou une statistique de corpus seule — **seule
+l'intelligibilité (WER aller-retour) fait foi**, et le point de départ à battre
+est 6:12.
+
+### Le vrai coupable : le mode interleavé
+
+Mêmes 20 questions françaises, même modèle, deux modes de décodage :
+
+| mode | réponses FR | longueur méd. | ce que ça donne |
+|---|---|---|---|
+| **texte seul** | 20/20 | 303 car. | « Bonjour ! Je vais bien, merci. Comment puis-je vous aider aujourd'hui ? » |
+| **interleavé** | 19/20 | 159 car. | « Bonjour ! Je vais bien **data**, merci. Comment ça! » |
+
+En texte seul, le français du modèle est **parfaitement propre** : pas un mot
+anglais parachuté, phrases complètes, deux fois plus longues. En interleavé, le
+même modèle sur les mêmes questions produit un texte contaminé et tronqué de
+moitié.
+
+**Le modèle sait le français.** Ce qu'il ne sait pas, c'est le parler *pendant
+qu'il génère de l'audio*. C'est une cible d'entraînement bien plus étroite et
+plus tractable que « lui apprendre le français » :
+
+1. R2 ne vise pas à enseigner la langue mais à **rendre le français robuste au
+   régime interleavé** — exactement ce que fournit un corpus FR packé en
+   interleavé, et ce que la leçon SIWIS annonçait en disant qu'il faut dégeler
+   les têtes audio.
+2. Le backbone n'est pas le problème : inutile d'y investir un full fine-tune
+   pour la connaissance de la langue. Le probe A/B du rung R2 (LoRA vs full-FT)
+   garde son sens, mais sur le chemin audio.
+3. Une mesure « texte seul » devient un **contrôle permanent** : si le français
+   texte-seul reste propre après entraînement, on n'a pas abîmé la langue ; s'il
+   se dégrade, on a cassé quelque chose d'acquis.
 
 ## 3. Latence (Colab L4, backend liquid, 5 runs/langue)
 
