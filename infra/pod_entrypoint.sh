@@ -24,6 +24,13 @@ OUT=/workspace/out
 mkdir -p "$OUT"
 echo "=== bootstrap: branche $BRANCH, job $JOB"
 
+# The RunPod image exports HF_HUB_ENABLE_HF_TRANSFER=1 without shipping the
+# package, so every Hub download dies with "hf_transfer is enabled but not
+# available" — including the model weights a job exists to run. Install it
+# (it is also genuinely faster on multi-GB checkpoints) and fall back to
+# disabling the flag if that fails.
+pip install -q hf_transfer 2>/dev/null || export HF_HUB_ENABLE_HF_TRANSFER=0
+
 # Artifact retrieval starts BEFORE the job: if the job crashes, its logs and
 # whatever it wrote are still downloadable.
 python -m http.server 8000 --directory "$OUT" >/dev/null 2>&1 &

@@ -37,6 +37,10 @@ REPO_URL="https://github.com/rcarvalo/finetuning_s2s_toolcalling.git"
 mkdir -p "$LFM2_OUT"
 echo "=== bootstrap Colab : branche $BRANCH, job $JOB"
 
+# Same guard as the pod entrypoint: an image that enables hf_transfer without
+# shipping it makes every Hub download fail.
+pip install -q hf_transfer 2>/dev/null || export HF_HUB_ENABLE_HF_TRANSFER=0
+
 if [ ! -f "$LFM2_ROOT/pyproject.toml" ]; then
   rm -rf "$LFM2_ROOT"
   git clone --branch "$BRANCH" "$REPO_URL" "$LFM2_ROOT" || { echo "=== ÉCHEC: clone"; exit 1; }
