@@ -6,6 +6,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Fixed
+- `VersaRunner` now judges scorer.py on the scores it wrote rather than on its
+  exit code. On macOS the scorer regularly crashes during teardown
+  (`recursive_mutex lock failed`) after logging "Scoring completed" and writing
+  every score; treating that as a failure discarded a complete measurement.
 - Roundtrip WER now transcribes in the language the model actually SPOKE,
   detected from its reply text, instead of the question's `metadata["lang"]`.
   A model that does not yet mirror answers a French question in English, and
@@ -16,6 +20,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
   to be the early warning that the audio heads drifted.
 
 ### Added
+- `lfm2-eval-versa` — the gate's VERSA pass as one command
+  (`evaluation/versa_gate.py` + `cli/eval/versa_pass.py`). Reports MEDIANS,
+  because a few percent of samples degenerate into repetition loops and a mean
+  would mostly report how often that happened; and splits by the language
+  actually SPOKEN, because a model that does not mirror answers French
+  questions in English and pooling the two hides the very gap the bilingual
+  gates exist to catch.
+- `evaluation/eval_log_audio.py` — pull the generated speech back out of an
+  Inspect `.eval` log (it is stored there in base64 next to the reply) so a
+  gate's VERSA pass scores the audio the campaign actually produced.
+  Re-generating would sample the model's randomness again and measure a
+  different run than the one under judgement. `latest_log` picks the newest
+  attempt in a directory, since campaigns are re-run after fixes.
 - `data_prep/holdout.py` — cross-source hold-out filter (phase 1). The FR
   corpora overlap on Common Voice FR, so excluding a benchmark from the source
   it was cut from lets the same clip and the same SPEAKER return through

@@ -119,8 +119,9 @@ class VersaRunner:
         with tempfile.TemporaryDirectory(prefix="versa-") as workdir:
             work = Path(workdir)
             command = self._build_command(work, wavs, config_yaml, gt=gt, text=text)
-            self._run(command)
-            return self._read_scores(work / "scores.jsonl")
+            output = work / "scores.jsonl"
+            self._run(command, output)
+            return self._read_scores(output)
 
     def _build_command(
         self,
@@ -158,7 +159,15 @@ class VersaRunner:
             command += ["--text", str(work / "text")]
         return command
 
-    def _run(self, command: list[str]) -> None:
+    def _run(self, command: list[str], output: Path) -> None:
+        """Run scorer.py; judge it on the scores it produced, not on how it died.
+
+        On macOS the scorer regularly crashes during teardown (``recursive_mutex
+        lock failed``) *after* logging "Scoring completed" and writing every
+        score. Treating that exit code as failure threw away a complete,
+        correct measurement — so an exit code only matters when no scores
+        reached disk.
+        """
         logger.info("VERSA : %s", " ".join(command))
         completed = subprocess.run(
             command,
@@ -167,9 +176,12 @@ class VersaRunner:
             timeout=self._timeout_s,
             check=False,
         )
-        if completed.returncode != 0:
-            tail = completed.stderr.strip().splitlines()[-8:]
-            raise VersaError("scorer.py a échoué :\n" + "\n".join(tail))
+        if completed.returncode == 0:
+            return
+        tail = "\n".join(completed.stderr.strip().splitlines()[-8:])
+        if not output.exists() or not output.read_text(encoding="utf-8").strip():
+            raise VersaError("scorer.py a échoué :\n" + tail)
+        logger.warning("scorer.py est sorti en %d après avoir écrit ses scores :\n%s", completed.returncode, tail)
 
     def _read_scores(self, output: Path) -> dict[str, dict[str, Any]]:
         if not output.exists():

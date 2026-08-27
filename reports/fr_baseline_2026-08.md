@@ -19,6 +19,33 @@ verrouillée sur l'anglais. Corroboré sur `fr_s2s` (100 questions FR) :
 **36 % de réponses en français** seulement.
 → Baseline du gate R3 (≥95 %) : 40 % FR. Le chemin est long, c'est le cœur du chantier.
 
+## 1bis. Le juge : un excellent assistant, dans la mauvaise langue
+
+Passe jugée sur les 100 questions de `fr_s2s`, rubrique **reasoning-v3**
+(Gemini, 0 échec de parsing). Moyenne par critère :
+
+| critère | moyenne | médiane |
+|---|---|---|
+| grounding | **5,00** | 5,00 |
+| honesty | **5,00** | 5,00 |
+| conciseness | 4,75 | 5,00 |
+| coherence | 4,40 | 5,00 |
+| relevance | 4,33 | 5,00 |
+| **language_match** | **2,56** | **1,00** |
+
+Tous les axes de qualité sont au plafond ou près : le modèle répond de façon
+pertinente, ancrée, honnête et concise à des questions françaises. Un seul axe
+s'effondre, et c'est la langue. Découpé par la langue de la réponse :
+**1,00 pour les 58 réponses anglaises**, **4,79 pour les 39 françaises** — le
+critère discrimine parfaitement.
+
+C'est la justification empirique de la rubrique v3 : **sans le critère
+`language_match`, cette baseline afficherait ~4,5/5** tout en échouant à sa
+mission. Les gates suivants lisent donc ce critère SEUL (≥4,5), jamais noyé
+dans la moyenne pondérée (qui vaut ici 0,86 — un chiffre rassurant et faux).
+
+Détail : `reports/judge_fr_s2s_v3.json`.
+
 ## 2. Qualité de la parole générée (`fr_s2s` 100 + `baseline_en` 24)
 
 **Passe VERSA (autorité des gates)**, sur les audios générés extraits des `.eval` :

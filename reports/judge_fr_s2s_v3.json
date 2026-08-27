@@ -1,0 +1,1214 @@
+{
+ "n": 100,
+ "weighted_mean": 0.8605,
+ "per_criterion": {
+  "relevance": 4.33,
+  "grounding": 5.0,
+  "honesty": 5.0,
+  "coherence": 4.4,
+  "conciseness": 4.75,
+  "language_match": 2.56
+ },
+ "samples": [
+  {
+   "id": "fr_s2s_001",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_002",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_003",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_004",
+   "scores": {
+    "relevance": 3.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 2.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_005",
+   "scores": {
+    "relevance": 3.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_006",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_007",
+   "scores": {
+    "relevance": 2.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 3.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_008",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_009",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 4.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_010",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_011",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_012",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 2.0,
+    "conciseness": 4.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_013",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_014",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_015",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_016",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 3.0,
+    "conciseness": 4.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_017",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 4.0,
+    "conciseness": 4.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_018",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_019",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_020",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_021",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 4.0,
+    "conciseness": 5.0,
+    "language_match": 4.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_022",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 4.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_023",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_024",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_025",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 4.0,
+    "conciseness": 4.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_026",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_027",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 4.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_028",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_029",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_030",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_031",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_032",
+   "scores": {
+    "relevance": 2.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_033",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_034",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_035",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 4.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_036",
+   "scores": {
+    "relevance": 2.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_037",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_038",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_039",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_040",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 2.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_041",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_042",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_043",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_044",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 3.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_045",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_046",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 4.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_047",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_048",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_049",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_050",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_051",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 4.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_052",
+   "scores": {
+    "relevance": 2.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 2.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_053",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_054",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 3.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_055",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_056",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_057",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_058",
+   "scores": {
+    "relevance": 3.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 1.0,
+    "conciseness": 2.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_059",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_060",
+   "scores": {
+    "relevance": 3.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_061",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_062",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_063",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_064",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_065",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_066",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_067",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_068",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_069",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 4.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_070",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_071",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_072",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 4.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_073",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 4.0,
+    "language_match": 2.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_074",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_075",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_076",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_077",
+   "scores": {
+    "relevance": 4.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 4.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_078",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_079",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_080",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_081",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_082",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_083",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_084",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_085",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_086",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_087",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_088",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_089",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_090",
+   "scores": {
+    "relevance": 3.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 2.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_091",
+   "scores": {
+    "relevance": 2.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_092",
+   "scores": {
+    "relevance": 3.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 3.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_093",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_094",
+   "scores": {
+    "relevance": 1.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 2.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_095",
+   "scores": {
+    "relevance": 5.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 5.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_096",
+   "scores": {
+    "relevance": 2.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 1.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_097",
+   "scores": {
+    "relevance": 2.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 2.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_098",
+   "scores": {
+    "relevance": 2.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 3.0,
+    "conciseness": 5.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_099",
+   "scores": {
+    "relevance": 1.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 1.0,
+    "conciseness": 4.0,
+    "language_match": 1.0,
+    "rubric_version": "reasoning-v3"
+   }
+  },
+  {
+   "id": "fr_s2s_100",
+   "scores": {
+    "relevance": 2.0,
+    "grounding": 5.0,
+    "honesty": 5.0,
+    "coherence": 2.0,
+    "conciseness": 5.0,
+    "language_match": 5.0,
+    "rubric_version": "reasoning-v3"
+   }
+  }
+ ]
+}

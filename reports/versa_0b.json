@@ -1,0 +1,36 @@
+{
+ "fr_s2s": {
+  "dnsmos": {
+   "n": 100,
+   "median": 3.287,
+   "mean": 3.23
+  },
+  "utmos": {
+   "n": 100,
+   "median": 3.978,
+   "mean": 3.796
+  },
+  "nisqa": {
+   "n": 100,
+   "median": 4.011,
+   "mean": 3.966
+  }
+ },
+ "baseline_en": {
+  "dnsmos": {
+   "n": 24,
+   "median": 3.359,
+   "mean": 3.336
+  },
+  "utmos": {
+   "n": 24,
+   "median": 4.12,
+   "mean": 4.075
+  },
+  "nisqa": {
+   "n": 24,
+   "median": 4.135,
+   "mean": 4.12
+  }
+ }
+}

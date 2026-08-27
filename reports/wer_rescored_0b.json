@@ -1,0 +1,14 @@
+{
+ "baseline_en": {
+  "n": 24,
+  "skipped": 0,
+  "mean": 0.0839,
+  "median": 0.0589
+ },
+ "fr_s2s": {
+  "n": 100,
+  "skipped": 0,
+  "mean": 0.8545,
+  "median": 0.931
+ }
+}

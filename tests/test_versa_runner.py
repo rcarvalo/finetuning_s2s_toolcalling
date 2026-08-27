@@ -121,3 +121,23 @@ def test_config_builders_should_produce_valid_yaml() -> None:
     for config in (MOS_CONFIG, nisqa_config(Path("/opt/versa")), wer_config()):
         parsed = yaml.safe_load(config)
         assert isinstance(parsed, list) and parsed[0]["name"]
+
+
+def test_should_keep_scores_when_the_scorer_dies_after_writing_them(
+    versa_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """On macOS scorer.py regularly crashes during teardown, after logging
+    'Scoring completed' and writing every score. Discarding a complete
+    measurement over that exit code throws away real work."""
+    fake = FakeRun([{"key": "u1", "utmos": 4.1}])
+    fake._returncode = 0  # write the file...
+
+    def crash_after_writing(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        fake(command, **kwargs)
+        return subprocess.CompletedProcess(command, -6, stdout="", stderr="recursive_mutex lock failed\n")
+
+    monkeypatch.setattr(subprocess, "run", crash_after_writing)
+
+    scores = VersaRunner(versa_root).score({"u1": Path("/x/u1.wav")}, MOS_CONFIG)
+
+    assert scores == {"u1": {"utmos": 4.1}}

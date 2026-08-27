@@ -1,0 +1,77 @@
+{
+ "languages_seen": {
+  "en": 58,
+  "fr": 39,
+  "?": 3
+ },
+ "pooled": {
+  "dnsmos": {
+   "n": 100,
+   "median": 3.287,
+   "mean": 3.23
+  },
+  "utmos": {
+   "n": 100,
+   "median": 3.978,
+   "mean": 3.796
+  },
+  "nisqa": {
+   "n": 0,
+   "median": null,
+   "mean": null
+  }
+ },
+ "by_language": {
+  "en": {
+   "dnsmos": {
+    "n": 58,
+    "median": 3.305,
+    "mean": 3.267
+   },
+   "utmos": {
+    "n": 58,
+    "median": 3.995,
+    "mean": 3.98
+   },
+   "nisqa": {
+    "n": 0,
+    "median": null,
+    "mean": null
+   }
+  },
+  "fr": {
+   "dnsmos": {
+    "n": 39,
+    "median": 3.283,
+    "mean": 3.181
+   },
+   "utmos": {
+    "n": 39,
+    "median": 3.937,
+    "mean": 3.552
+   },
+   "nisqa": {
+    "n": 0,
+    "median": null,
+    "mean": null
+   }
+  },
+  "?": {
+   "dnsmos": {
+    "n": 3,
+    "median": 3.192,
+    "mean": 3.149
+   },
+   "utmos": {
+    "n": 3,
+    "median": 3.452,
+    "mean": 3.419
+   },
+   "nisqa": {
+    "n": 0,
+    "median": null,
+    "mean": null
+   }
+  }
+ }
+}
