@@ -62,9 +62,21 @@ def pip(*args: str) -> None:
     subprocess.run([sys.executable, "-m", "pip", *args], check=False)
 
 
+# The exact pair verified in infra/setup_vllm_demo.py. Taking the latest of
+# each instead broke on `No module named vllm.entrypoints.serve.utils
+# .error_response`: vllm-omni tracks a specific vLLM API and the two release
+# on their own schedules, so "newest of both" is not a combination anyone has
+# tested.
+VLLM_WHEEL = (
+    "vllm @ https://github.com/vllm-project/vllm/releases/download/"
+    "v0.22.1/vllm-0.22.1+cu129-cp38-abi3-manylinux_2_28_x86_64.whl"
+)
+CU129_INDEX = "https://download.pytorch.org/whl/cu129"
+
+
 def install_stack() -> None:
-    pip("install", "-q", "-U", "vllm")
-    pip("install", "-q", "-U", "vllm-omni")
+    pip("install", "-q", VLLM_WHEEL, "--extra-index-url", CU129_INDEX)
+    pip("install", "-q", "vllm-omni>=0.22,<0.23")
     pip("install", "-q", "-U", "mistral-common")
     # torchao ships extensions built for CPython 3.10 and segfaults the 3.13
     # images; nothing on this path uses it.
