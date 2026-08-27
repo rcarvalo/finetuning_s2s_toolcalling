@@ -37,7 +37,7 @@ sys.path.insert(0, str(ROOT / "python"))
 
 BRICKS = os.environ.get("CORPUS_BRICKS", "A,B").split(",")
 TARGET_HOURS_A = float(os.environ.get("CORPUS_HOURS_A", "30"))
-TARGET_HOURS_B = float(os.environ.get("CORPUS_HOURS_B", "50"))
+TARGET_HOURS_B = float(os.environ.get("CORPUS_HOURS_B", "15"))
 MAX_VERIFY_WER = float(os.environ.get("CORPUS_MAX_WER", "0.20"))
 """A clip whose transcript the audio does not say is dropped.
 
