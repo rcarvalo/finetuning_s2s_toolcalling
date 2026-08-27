@@ -32,8 +32,10 @@ explicite, un seul prompt anglais sert les deux. D'où quatre bras sur
 |---|---|---|---|---|
 | P0 (défaut) | `Respond with interleaved text and audio.` | 40 % | 100 % | 70 % |
 | P1 | anglais + règle de miroir | 79 % | 95 % | 90 % |
-| **P2** | bilingue + règle | 90 % | **100 %** | **95 %** |
-| **P3** | **français, sans aucune règle** | **94 %** | **100 %** | 90 % |
+| **P2** | bilingue + règle | 90 %* | 100 %* | 95 %* |
+| **P3** | **français, sans aucune règle** | 94 %* | 100 %* | 90 %* |
+
+\* mesurés avec l'audio cassé — voir la correction ci-dessous.
 
 Textes exacts des deux bras de tête :
 
@@ -63,6 +65,36 @@ projet vise un assistant qui suit l'utilisateur quand il change de langue — le
 code-switch est le cas d'usage, pas un cas limite — et parce qu'un prompt
 bilingue explicite reste lisible et modifiable par un humain, là où « ça marche
 parce que le prompt est en français » est un effet de bord qu'on ne contrôle pas.
+
+### Correction importante : ces quatre bras ont été mesurés avec l'audio cassé
+
+Les prompts P1 à P3 **remplaçaient** le prompt par défaut au lieu de le
+compléter. Or `Respond with interleaved text and audio.` n'est pas décoratif :
+c'est l'instruction qui active le chemin audio. Résultat, ces bras ont doublé le
+miroir en **détruisant la parole** — UTMOS 4,08 → 1,51, WER aller-retour
+0,06 → 1,00, l'audio disant « ahhhhhh heyyyyy » sous un texte anglais impeccable.
+Les quatre bras ne notaient que le *texte* (`scorers=lang_match`), donc rien
+dans cette mesure ne pouvait l'attraper. Un test garde désormais l'invariant.
+
+**Chiffres corrigés** (prompt bilingue précédé de l'instruction d'interleaving,
+audio sain) :
+
+| sous-ensemble | P0 défaut | P2 mesuré à l'audio cassé | **P2 corrigé** | UTMOS |
+|---|---|---|---|---|
+| FR | 40 % | 90 % | **75 %** | 4,08 |
+| EN | 100 % | 100 % | **100 %** | 4,07 |
+| code-switch | 70 % | 95 % | **84 %** | 3,75 |
+
+Sur `fr_s2s` (100 questions), le miroir français passe de **36 % à 68 %**.
+
+Le gain reste net et gratuit — le miroir FR double presque, l'anglais et la
+qualité audio ne bougent pas (UTMOS 4,08 contre 4,12 en baseline). Mais il est
+**plus modeste que ce que l'audio cassé laissait croire** : 75 % au lieu de 90 %.
+
+Et l'écart entre les deux mesures est lui-même un résultat : quand le modèle
+n'a pas à produire d'audio, il reflète mieux la langue (90 % contre 75 %).
+Produire de la parole interleavée lui coûte du miroir — cohérent avec la
+section 2ter, où le régime interleavé dégrade le français.
 
 **Attention à ne pas surinterpréter ce chiffre.** Le taux de miroir dit quelle
 langue le modèle *vise*, pas s'il la parle bien. Les réponses P2 restent
