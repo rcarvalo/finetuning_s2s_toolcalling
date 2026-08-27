@@ -45,6 +45,45 @@ WER aller-retour (Whisper small, corrigé du bug de pont ffd09c6) :
 `baseline_en` **moy. 8,4 % / méd. 5,9 %** → ancre EN saine. Le chiffre FR arrive
 (`reports/wer_rescored_0b.json`).
 
+## 2bis. La parole française dérive — et elle est trop longue
+
+Le WER aller-retour FR (parole générée re-transcrite, comparée au texte que le
+modèle a lui-même produit) est de **0,79 en médiane** contre **0,065** pour ses
+réponses en anglais. Les exemples disent quoi :
+
+| texte produit | ce que l'audio dit réellement |
+|---|---|
+| « Oui, je comprends le français. Je peux t'aider avec des questions, traduire ou discuter de tout. » | « Yay, je comprends le français. Je peux t'aider with the questions. Tradi, or, discussion, t'as un… Krisek su tu va, tu shay te tu y aim » |
+| « Bonjour, c'est un plaisir de vous parler. » | « Bonjour, c'est une caissière de l'homme Just we came to cheer » |
+
+La parole **part juste puis se délite**. Ce n'est donc pas « un accent
+approximatif » : au-delà de quelques secondes, le contenu n'est plus le texte.
+
+**Mesure de l'excédent.** Secondes d'audio par caractère de texte :
+
+| | modèle | parole réelle (FLEURS) |
+|---|---|---|
+| EN | 0,0639 | 0,0779 |
+| FR | **0,0947** | 0,0684 |
+
+Le vrai français est *plus rapide* par caractère que le vrai anglais (0,0684 vs
+0,0779) ; le modèle fait l'inverse. Rapporté à son propre calibrage anglais, sa
+parole française produit **~1,7× trop d'audio**, et c'est dans cet excédent
+qu'elle part en vrille. C'est la signature d'un **ratio d'interleaving calibré
+pour l'anglais** appliqué au français — ce que la Phase 1 prévoyait de calibrer
+(`lfm2-calibrate`), désormais motivé par une mesure et non par une intuition.
+
+**Conséquence pratique** : le ratio vit dans le `config.json` du checkpoint, donc
+il est testable **sans réentraîner**. Une expérience à quelques euros (réécrire
+le ratio, rejouer 30 questions FR, mesurer le WER aller-retour) doit précéder le
+rung R2 : si l'intelligibilité FR remonte nettement, une partie du problème est
+un réglage de serving, pas un manque d'entraînement.
+
+**Nuance à ne pas écraser** : le modèle a aussi une pathologie de **boucle de
+répétition** indépendante de l'audio — 7 % de ses transcriptions ANGLAISES
+partent en boucle (« methane methane methane… »). La dérive FR et les boucles EN
+partagent peut-être une cause (mauvais arrêt), mais le ratio n'explique pas tout.
+
 ## 3. Latence (Colab L4, backend liquid, 5 runs/langue)
 
 | langue | TTFA p50 | TTFA p95 | RTF méd. |
