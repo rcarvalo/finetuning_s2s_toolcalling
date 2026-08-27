@@ -171,11 +171,16 @@ def main() -> None:
     result: dict[str, object] = {"candidate": "voxtral_tts", "clips": 0, "reference": "siwis"}
     try:
         claim_cuda()
-        install_stack()
-        preload_cuda13()
+        # Reference FIRST: installing the vLLM stack swaps torch for a cu129
+        # build and breaks torchaudio (undefined symbol: torch_library_impl),
+        # which the resolver needs to read and transcribe the clip. Resolve it
+        # while the environment is still intact, then let the install do what
+        # it likes.
         reference = siwis_reference()
         if reference is None:
             raise RuntimeError("pas de référence SIWIS")
+        install_stack()
+        preload_cuda13()
 
         import soundfile as sf
         from vllm import SamplingParams
