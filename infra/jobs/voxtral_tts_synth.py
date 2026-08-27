@@ -1,24 +1,30 @@
 """Voxtral-4B-TTS through vLLM-Omni — the third candidate of the brick A bake-off.
 
-Its own job, not a branch of ``voice_bakeoff``: Voxtral-TTS has no
-transformers-format weights (the first attempt died on a missing
+Its own job, not a branch of ``voice_bakeoff``: Voxtral-TTS ships no
+transformers-format weights (a first attempt died on a missing
 ``model.safetensors``) and runs on vLLM-Omni, whose dependency set replaces
-transformers wholesale. Sharing an environment with ``qwen-tts`` would break
-one of the two, and a bake-off where candidates sabotage each other measures
-the installer, not the voices.
+transformers wholesale. Sharing an environment with ``qwen-tts`` would break one
+of the two, and a bake-off whose candidates sabotage each other measures the
+installer, not the voices.
 
-The install follows ``infra/setup_vllm_demo.py``, verified layer by layer on
-26/08 — in particular **never through a shell**: a pip specifier contains ``<``,
-which bash turns into a redirection and the install then fails silently.
+**In-process, never a served child.** The obvious route is
+``vllm serve --omni`` plus HTTP calls, and it is what the model card shows. This
+project already has an open wound there: on the v4 demo the vLLM engine started
+as a child process and *died without leaving a trace*. ``Omni`` runs the engine
+inside this process instead, so a failure produces a traceback in the job log
+rather than silence.
 
-Synthesises the same ten sentences as the Qwen candidates. Scoring is off-GPU,
-against the same yardsticks.
+Same SIWIS reference as the Qwen candidate, through ``ref_audio``: comparing two
+engines on one voice isolates the engine, where comparing two different voices
+would confound engine and timbre.
 
-Licence note recorded while reading the model card: the non-commercial clause
-comes from the voice references shipped with the model (EARS, CML-TTS and
-others under CC-BY-NC). The weights themselves are published CC-BY-NC, so
-output stays encumbered whatever reference is used — which is why this
-candidate is a yardstick rather than a default.
+Resumable clip by clip — Colab pruned two sessions in an hour on 27/08, so a
+lost VM must cost one sentence, not ten.
+
+Licence, read from the model card: the non-commercial clause comes from the
+voice references shipped with the model, but the weights themselves are
+CC-BY-NC, so output stays encumbered whatever reference is supplied. That is
+why this candidate is a yardstick rather than a default.
 """
 
 from __future__ import annotations
@@ -27,7 +33,6 @@ import json
 import os
 import subprocess
 import sys
-import time
 import traceback
 from pathlib import Path
 
@@ -35,9 +40,8 @@ ROOT = Path(os.environ.get("LFM2_ROOT", "/workspace/repo"))
 OUT = Path(os.environ.get("LFM2_OUT", "/workspace/out")) / "bakeoff" / "voxtral_tts"
 
 MODEL = "mistralai/Voxtral-4B-TTS-2603"
-VOICE = os.environ.get("VOXTRAL_VOICE", "casual_male")
-BASE_URL = "http://127.0.0.1:8000/v1"
-READY_TIMEOUT_S = 900
+SIWIS_REPO = "Aviv-anthonnyolime/SIWIS_French_Speech_Synthesis_Database"
+SAMPLE_RATE = 24_000
 
 SENTENCES = [
     "Bonjour, comment puis-je vous aider aujourd'hui ?",
@@ -54,91 +58,84 @@ SENTENCES = [
 
 
 def pip(*args: str) -> None:
-    """Install without a shell — a ``<`` in a specifier would become a redirect."""
+    """Install without a shell — a ``<`` in a specifier becomes a redirection."""
     subprocess.run([sys.executable, "-m", "pip", *args], check=False)
 
 
 def install_stack() -> None:
     pip("install", "-q", "-U", "vllm")
-    pip("install", "-q", "vllm-omni>=0.18")
-    # torchao ships extensions built for CPython 3.10 and segfaults the
-    # interpreter on the 3.13 images; nothing here uses it.
+    pip("install", "-q", "-U", "vllm-omni")
+    pip("install", "-q", "-U", "mistral-common")
+    # torchao ships extensions built for CPython 3.10 and segfaults the 3.13
+    # images; nothing on this path uses it.
     pip("uninstall", "-y", "-q", "torchao")
 
 
-def serve() -> subprocess.Popen[bytes]:
-    log = OUT.parent / "vllm_serve.log"
-    log.parent.mkdir(parents=True, exist_ok=True)
-    return subprocess.Popen(
-        ["vllm", "serve", MODEL, "--omni"],
-        stdout=log.open("wb"),
-        stderr=subprocess.STDOUT,
-        start_new_session=True,
-    )
+def siwis_reference() -> bytes | None:
+    """The same SIWIS clip the Qwen candidate clones, as raw bytes."""
+    from huggingface_hub import HfApi, hf_hub_download
+
+    try:
+        files = HfApi().list_repo_files(SIWIS_REPO, repo_type="dataset")
+        wavs = {Path(f).stem: f for f in files if f.endswith(".wav")}
+        labs = {Path(f).stem: f for f in files if f.endswith(".lab")}
+        paired = sorted(set(wavs) & set(labs))
+        if not paired:
+            return None
+        wav = hf_hub_download(SIWIS_REPO, wavs[paired[0]], repo_type="dataset")
+    except Exception:
+        print("référence SIWIS indisponible :", traceback.format_exc(limit=1), flush=True)
+        return None
+    print(f"référence SIWIS : {Path(wav).name}", flush=True)
+    return Path(wav).read_bytes()
 
 
-def wait_ready() -> bool:
-    """Poll until the server answers, or give up with the reason visible."""
-    import httpx
+def build_inputs(reference: bytes) -> list[dict]:
+    """One speech request per sentence, cloning the reference voice."""
+    from mistral_common.protocol.speech.request import SpeechRequest
+    from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
 
-    deadline = time.time() + READY_TIMEOUT_S
-    while time.time() < deadline:
-        try:
-            if httpx.get(f"{BASE_URL}/models", timeout=5.0).status_code == 200:
-                print("serveur vLLM prêt", flush=True)
-                return True
-        except Exception:
-            pass
-        time.sleep(10)
-    print(f"serveur vLLM non prêt après {READY_TIMEOUT_S}s", flush=True)
-    return False
-
-
-def synthesise() -> int:
-    import httpx
-    import soundfile as sf
-
-    OUT.mkdir(parents=True, exist_ok=True)
-    written = 0
-    for index, sentence in enumerate(SENTENCES):
-        target = OUT / f"s{index:02d}.wav"
-        if target.exists():
-            written += 1
-            continue
-        response = httpx.post(
-            f"{BASE_URL}/audio/speech",
-            json={"input": sentence, "model": MODEL, "response_format": "wav", "voice": VOICE},
-            timeout=180.0,
-        )
-        response.raise_for_status()
-        target.write_bytes(response.content)
-        (OUT / f"s{index:02d}.txt").write_text(sentence, encoding="utf-8")
-        info = sf.info(str(target))
-        print(f"  s{index:02d} {info.duration:.1f}s @ {info.samplerate} Hz", flush=True)
-        written += 1
-    return written
+    tokenizer = MistralTokenizer.from_hf_hub(MODEL).instruct_tokenizer
+    inputs = []
+    for sentence in SENTENCES:
+        tokenized = tokenizer.encode_speech_request(SpeechRequest(input=sentence, ref_audio=reference))
+        inputs.append({"prompt_token_ids": tokenized.tokens})
+    return inputs
 
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    install_stack()
-    server = serve()
-    result: dict[str, object] = {"candidate": "voxtral_tts", "voice": VOICE, "clips": 0}
+    result: dict[str, object] = {"candidate": "voxtral_tts", "clips": 0, "reference": "siwis"}
     try:
-        if wait_ready():
-            result["clips"] = synthesise()
-            result["status"] = "ok"
-        else:
-            result["status"] = "serveur non prêt"
+        install_stack()
+        reference = siwis_reference()
+        if reference is None:
+            raise RuntimeError("pas de référence SIWIS")
+
+        import soundfile as sf
+        from vllm import SamplingParams
+        from vllm_omni.entrypoints.omni import Omni
+
+        inputs = build_inputs(reference)
+        engine = Omni(model=MODEL)
+        outputs = engine.generate(inputs, [SamplingParams(max_tokens=4096)] * len(inputs))
+
+        for index, output in enumerate(outputs):
+            audio = output.multimodal_output["audio"].tolist()
+            path = OUT / f"s{index:02d}.wav"
+            sf.write(str(path), audio, SAMPLE_RATE)
+            (OUT / f"s{index:02d}.txt").write_text(SENTENCES[index], encoding="utf-8")
+            print(f"  s{index:02d} {len(audio) / SAMPLE_RATE:.1f}s", flush=True)
+        result["clips"] = len(list(OUT.glob("*.wav")))
+        result["status"] = "ok"
     except Exception:
-        result["status"] = traceback.format_exc(limit=2)
+        result["clips"] = len(list(OUT.glob("*.wav")))
+        result["status"] = traceback.format_exc(limit=3)
         print("ÉCHEC :", result["status"], flush=True)
-    finally:
-        server.terminate()
 
     (OUT / "voxtral.json").write_text(json.dumps(result, indent=1, ensure_ascii=False), encoding="utf-8")
     print("===RESULT voxtral.json===", flush=True)
-    print(json.dumps(result, ensure_ascii=False), flush=True)
+    print(json.dumps({k: v for k, v in result.items() if k != "status"}, ensure_ascii=False), flush=True)
     print("===END===", flush=True)
 
 
