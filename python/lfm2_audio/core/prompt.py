@@ -35,6 +35,40 @@ _SPECIAL_TOKEN = re.compile(r"<\|[^|>]*\|>")
 
 DEFAULT_SYSTEM = "Respond with interleaved text and audio."
 
+BILINGUAL_SYSTEM = (
+    "You are a bilingual voice assistant. Always reply in the same language the user speaks. "
+    "Tu es un assistant vocal bilingue. Réponds toujours dans la langue que l'utilisateur emploie."
+)
+"""Retained after a four-arm measurement on ``lang_mirror`` (2026-08-27).
+
+French mirroring, from the base model, by system prompt: 40 % with the default,
+79 % with an English rule, 90 % here, 94 % with a plain French sentence and no
+rule at all. This one is kept over the 94 % arm because it wins on code-switch
+(95 % vs 90 %) — following a user who changes language mid-conversation is the
+use case, not an edge case — and because an explicit bilingual instruction is
+something a human can read and revise, where "it works because the prompt is in
+French" is a side effect nobody controls.
+
+Mirror rate is not French QUALITY: replies still inject English nouns
+mid-sentence. What the prompt fixes is which language the model aims for.
+"""
+
+SYSTEM_PROMPTS = {"default": DEFAULT_SYSTEM, "bilingual": BILINGUAL_SYSTEM}
+"""Named prompts, so a campaign can be reproduced by name.
+
+Two campaigns are only comparable at identical system prompt, so the prompt is
+a frozen parameter like the judge's rubric version. Naming it also keeps it off
+the command line, where Inspect splits ``-M`` values on commas and would tear a
+sentence in half.
+"""
+
+
+def resolve_system(system: str | None) -> str | None:
+    """A named prompt, or the text itself when it is not a known name."""
+    if system is None:
+        return None
+    return SYSTEM_PROMPTS.get(system, system)
+
 
 def strip_special_tokens(text: str) -> str:
     """Texte « parlable » : tous les marqueurs spéciaux retirés."""

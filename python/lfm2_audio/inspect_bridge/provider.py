@@ -36,6 +36,7 @@ from inspect_ai.model import (
 from inspect_ai.model import ContentText as InspectText
 from inspect_ai.tool import ToolChoice, ToolInfo
 
+from lfm2_audio.core.prompt import resolve_system
 from lfm2_audio.ds.audio import Waveform
 from lfm2_audio.ds.reply import Reply
 from lfm2_audio.inspect_bridge.audio import data_uri_to_waveform, waveform_to_data_uri
@@ -69,11 +70,13 @@ class Lfm2AudioAPI(ModelAPI):
         super().__init__(model_name, base_url, api_key, api_key_vars or [], config)
         self._adapter = model_args.pop("adapter", None)
         self._backend = model_args.pop("backend", "auto")
-        self._system = model_args.pop("system", None)
-        if isinstance(self._system, list):
+        system = model_args.pop("system", None)
+        if isinstance(system, list):
             # Inspect's -M parsing splits values on commas; glue the prompt back.
-            self._system = ",".join(self._system)
-        self._model_args = model_args
+            system = ",".join(system)
+        # A name ('bilingual') resolves to its text; anything else passes through.
+        self._system = resolve_system(system)
+        self._model_args: dict[str, Any] = model_args
         self._model: LFM2Audio | None = None
 
     async def generate(
@@ -96,7 +99,7 @@ class Lfm2AudioAPI(ModelAPI):
                 self.model_name,
                 adapter=self._adapter,
                 backend=self._backend,
-                **({"system": self._system} if self._system else {}),
+                **({"system": self._system} if self._system else {}),  # type: ignore[arg-type]
                 **self._model_args,
             )
         # Inspect keeps one provider per variant, so history from the previous

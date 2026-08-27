@@ -224,3 +224,26 @@ def test_prompt_text_should_fall_back_to_metadata_on_audio_only_input() -> None:
     sample = to_eval_sample(_task_state(audio_only, "bonjour"))
 
     assert sample.prompt_text == "spoken transcript"
+
+
+def test_provider_should_resolve_a_named_system_prompt() -> None:
+    """Campaigns name their prompt so they can be reproduced — and so the text
+    never travels on a command line that Inspect would split on commas."""
+    from inspect_ai.model import GenerateConfig
+
+    from lfm2_audio.core.prompt import BILINGUAL_SYSTEM
+    from lfm2_audio.inspect_bridge.provider import Lfm2AudioAPI
+
+    api = Lfm2AudioAPI(model_name="lfm2/whatever", config=GenerateConfig(), system="bilingual")
+
+    assert api._system == BILINGUAL_SYSTEM
+
+
+def test_provider_should_pass_an_unknown_system_through_unchanged() -> None:
+    from inspect_ai.model import GenerateConfig
+
+    from lfm2_audio.inspect_bridge.provider import Lfm2AudioAPI
+
+    api = Lfm2AudioAPI(model_name="lfm2/whatever", config=GenerateConfig(), system="Transcris l'audio.")
+
+    assert api._system == "Transcris l'audio."
