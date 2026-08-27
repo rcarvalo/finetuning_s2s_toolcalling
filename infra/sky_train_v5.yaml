@@ -1,0 +1,43 @@
+# v5 training on RunPod via SkyPilot — payload realism, launched from the laptop.
+#
+#   set -a; source .env; set +a
+#   sky launch -c liquid-train-v5 infra/sky_train_v5.yaml --down \
+#       --env HF_TOKEN --env WANDB_API_KEY
+#
+# No image_id on purpose: the SkyPilot default image carries an SSH daemon,
+# which vllm/vllm-openai does not — that is what made the TTS job unreachable
+# on 26/08 (two "connection refused" after 600s each).
+#
+# The durable artifact is the LoRA adapter pushed to the Hub every 200 steps
+# (hub_repo + push_interval in the training config): losing the pod costs time,
+# never the run.
+
+name: liquid-train-v5
+
+resources:
+  cloud: runpod
+  # Several candidates, not one: pinning a single GPU failed repeatedly on
+  # 26/08 for lack of stock. LoRA on a 1.5B at ctx 2048 fits in 24 GB — v4 ran
+  # on a Colab L4 — so any of these does; SkyPilot takes the cheapest with
+  # capacity.
+  accelerators: {RTX4090:1, PRO-6000-MIG-24GB:1, RTXPRO4500:1, A40:1, L40S:1, L4:1}
+  disk_size: 120               # HF checkpoints + Phase A/B audio + outputs
+
+workdir: .                     # syncs the repo (honours .gitignore)
+
+envs:
+  HF_TOKEN: ""                 # required: gated dataset + adapter push
+  WANDB_API_KEY: ""            # empty → wandb disabled
+
+setup: |
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="$HOME/.local/bin:$PATH"
+  uv sync --frozen --extra train
+
+run: |
+  export PATH="$HOME/.local/bin:$PATH"
+  # Rebuilds the corpus from the Hub: transformed Phase B, the 222 voiced
+  # refusals, Phase A, then packs both splits. Needs liquid-audio, which is
+  # why this cannot run on the laptop.
+  uv run python infra/prepare_v5.py --stage pack
+  uv run lfm2-train-sft --config configs/training/tc_en_voice_agent_v5.yaml
