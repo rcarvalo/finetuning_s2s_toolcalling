@@ -62,36 +62,66 @@ def pip(*args: str) -> None:
     subprocess.run([sys.executable, "-m", "pip", *args], check=False)
 
 
-# The exact pair verified in infra/setup_vllm_demo.py. Taking the latest of
-# each instead broke on `No module named vllm.entrypoints.serve.utils
-# .error_response`: vllm-omni tracks a specific vLLM API and the two release
-# on their own schedules, so "newest of both" is not a combination anyone has
-# tested.
+# The recipe from notebooks/colab_vllm_omni_integration.ipynb, which is the one
+# combination this project has ever seen work. Two traps it encodes:
+#
+#   * vllm-omni does NOT declare vllm as a dependency and the versions are
+#     paired major.minor — hence the exact 0.22.0 pin next to the 0.22.1 wheel.
+#     "Latest of both" broke on a missing vllm.entrypoints API.
+#   * the PyPI vllm 0.22 build wants CUDA 13 (libcudart.so.13), so the official
+#     +cu129 wheel is used with a matching torch from the cu129 index.
 VLLM_WHEEL = (
     "vllm @ https://github.com/vllm-project/vllm/releases/download/"
     "v0.22.1/vllm-0.22.1+cu129-cp38-abi3-manylinux_2_28_x86_64.whl"
 )
 CU129_INDEX = "https://download.pytorch.org/whl/cu129"
+VLLM_OMNI_PIN = "vllm-omni==0.22.0"
 
 
 def install_stack() -> None:
     pip("install", "-q", VLLM_WHEEL, "--extra-index-url", CU129_INDEX)
-    pip("install", "-q", "vllm-omni>=0.22,<0.23")
+    pip("install", "-q", VLLM_OMNI_PIN)
     pip("install", "-q", "-U", "mistral-common")
     # torchao ships extensions built for CPython 3.10 and segfaults the 3.13
     # images; nothing on this path uses it.
     pip("uninstall", "-y", "-q", "torchao")
 
 
+def preload_cuda13() -> None:
+    """Load the cu13 shared objects before importing vllm_omni.
+
+    The wheel is built against CUDA 13 while the image ships cu12x, so
+    ``import vllm_omni`` fails on a missing ``libcudart.so.13``. Preloading the
+    ``nvidia/cu13`` libraries with RTLD_GLOBAL satisfies it for this process,
+    and exporting LD_LIBRARY_PATH satisfies the stage subprocesses the engine
+    spawns. Must run **before** any vllm_omni import — the notebook that first
+    got this working states exactly that.
+    """
+    import contextlib
+    import ctypes
+    import glob
+
+    found = glob.glob("/usr/local/lib/python*/dist-packages/nvidia/cu13/lib")
+    if not found:
+        print("paquet nvidia cu13 introuvable — import vllm_omni probablement voué à l'échec", flush=True)
+        return
+    directory = found[0]
+    os.environ["LD_LIBRARY_PATH"] = directory + ":" + os.environ.get("LD_LIBRARY_PATH", "")
+    for shared_object in sorted(glob.glob(directory + "/lib*.so*")):
+        with contextlib.suppress(OSError):
+            ctypes.CDLL(shared_object, mode=ctypes.RTLD_GLOBAL)
+    print(f"libs cu13 préchargées depuis {directory}", flush=True)
+
+
 def siwis_reference() -> bytes | None:
     """The same SIWIS clip the Qwen candidate clones, as raw bytes."""
     sys.path.insert(0, str(ROOT / "python"))
-    from lfm2_audio.data_prep.siwis_reference import SiwisError, resolve_reference
+    from lfm2_audio.data_prep.siwis_reference import resolve_reference
 
     try:
         reference = resolve_reference()
-    except (SiwisError, OSError, ValueError):
-        print("référence SIWIS indisponible :", traceback.format_exc(limit=1), flush=True)
+    except Exception:
+        print("référence SIWIS indisponible :", traceback.format_exc(limit=3), flush=True)
         return None
     print(f"référence SIWIS : {reference.stem} — « {reference.text[:70]} »", flush=True)
     return reference.audio_bytes
@@ -131,6 +161,7 @@ def main() -> None:
     try:
         claim_cuda()
         install_stack()
+        preload_cuda13()
         reference = siwis_reference()
         if reference is None:
             raise RuntimeError("pas de référence SIWIS")
