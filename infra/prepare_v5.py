@@ -176,19 +176,25 @@ def fetch_v5_artifacts() -> None:
         print(f"fetched {len(list(AUDIO.glob('pb_miss_v5_*.wav')))} refusal clips", flush=True)
 
     # The Phase B audio that already existed: user turns and unchanged answers.
-    marker = AUDIO / ".phase_b_extracted"
-    if not marker.exists():
-        for name in ("phase_b/audio.tar.gz", "phase_b/assistant_audio.tar.gz"):
-            with tarfile.open(hf_hub_download(REPO, name, repo_type="dataset")) as archive:
-                for member in archive.getmembers():
-                    if not member.isfile():
-                        continue
-                    out = AUDIO / f"pb_{Path(member.name).name}"
-                    if not out.exists():
-                        extracted = archive.extractfile(member)
-                        assert extracted is not None
-                        out.write_bytes(extracted.read())
-        marker.touch()
+    #
+    # No marker file guards this. An earlier version used one and the pod
+    # skipped the whole extraction: the marker had been written on the laptop,
+    # then synced over with the workdir, so it claimed audio the pod did not
+    # have. Extraction is idempotent — existing files are left alone — so
+    # asking the filesystem every time is both cheaper and honest.
+    written = 0
+    for name in ("phase_b/audio.tar.gz", "phase_b/assistant_audio.tar.gz"):
+        with tarfile.open(hf_hub_download(REPO, name, repo_type="dataset")) as archive:
+            for member in archive.getmembers():
+                if not member.isfile():
+                    continue
+                out = AUDIO / f"pb_{Path(member.name).name}"
+                if not out.exists():
+                    extracted = archive.extractfile(member)
+                    assert extracted is not None
+                    out.write_bytes(extracted.read())
+                    written += 1
+    print(f"phase B audio: {written} extracted, {len(list(AUDIO.glob('pb_*.wav')))} present", flush=True)
 
 
 def stage_pack() -> None:
