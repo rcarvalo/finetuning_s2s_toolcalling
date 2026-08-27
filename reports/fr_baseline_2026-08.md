@@ -21,15 +21,29 @@ verrouillée sur l'anglais. Corroboré sur `fr_s2s` (100 questions FR) :
 
 ## 2. Qualité de la parole générée (`fr_s2s` 100 + `baseline_en` 24)
 
-| mesure | réponses EN | réponses FR |
-|---|---|---|
-| UTMOS (nos scorers, sur audio généré) | méd. 4.00 / moy. 3.98 | méd. 3.94 / moy. 3.55 |
+**Passe VERSA (autorité des gates)**, sur les audios générés extraits des `.eval` :
 
-La médiane FR tient presque l'EN, mais la moyenne décroche : ~queue de réponses FR
-à l'audio dégradé. L'ancre EN gelée : **UTMOS EN = 4.08** (baseline_en).
-Passe VERSA d'autorité (DNSMOS/UTMOS/NISQA) : voir `reports/versa_0b.json`.
-WER aller-retour corrigé : voir `reports/wer_rescored_0b.json` (le premier run
-comparait au repr de l'objet Target — bug du pont, corrigé en ffd09c6).
+| campagne | DNSMOS méd. | UTMOS méd. / moy. | NISQA méd. / moy. |
+|---|---|---|---|
+| `baseline_en` (24) | 3.36 | **4.12** / 4.08 | **4.14** / 4.12 |
+| `fr_s2s` (100) | 3.29 | **3.98** / 3.80 | **4.01** / 3.97 |
+
+Écart FR−EN : −0,14 UTMOS en médiane, −0,28 en moyenne. Sur les médianes la
+parole FR du modèle de base tient donc presque l'anglais ; c'est la **queue**
+qui décroche (moyenne < médiane des deux côtés, davantage en FR).
+
+Coupe par langue **réellement produite** sur `fr_s2s` (nos scorers) : réponses
+en EN → UTMOS méd. 4.00 ; réponses en FR → méd. 3.94, moy. 3.55. La dégradation
+suit la langue, pas la question.
+
+**Contre-vérification de nos scorers** : notre UTMOS moyen vaut 4.076 (EN) et
+3.797 (FR) contre 4.075 et 3.796 pour VERSA — identiques à trois décimales. Nos
+métriques légères de boucle d'entraînement sont donc fiables sur cet axe ; VERSA
+reste l'autorité aux gates.
+
+WER aller-retour (Whisper small, corrigé du bug de pont ffd09c6) :
+`baseline_en` **moy. 8,4 % / méd. 5,9 %** → ancre EN saine. Le chiffre FR arrive
+(`reports/wer_rescored_0b.json`).
 
 ## 3. Latence (Colab L4, backend liquid, 5 runs/langue)
 
@@ -42,27 +56,40 @@ Identiques dans les deux langues, dans l'objectif 200-500 ms (le rêve ~300 ms e
 déjà là sur le TTFA vanilla ; référence serving : endpoint RunPod 0,13-0,3 s).
 RTF > 1 sur L4 attendu (GPU d'éval) — le gate serving se mesure sur l'endpoint.
 
-## 4. ASR FR (gate D1) — EN ATTENTE
+## 4. ASR FR (gate D1) — EN COURS, design à 4 volets
 
-Les deux campagnes (`fleurs_fr_asr` 200, `cv_fr_asr` 300) ont buté sur des bugs
-du pont Inspect (corrigés : ffd09c6) et doivent être relancées sur Colab.
-Rappel du gate : WER FLEURS-fr **<25 % → sauter le rung ASR ; 25-40 % → rung 1 ;
->40 % → escalade**. NB : le probe du 25/08 a montré que le modèle de base suit
-mal l'instruction « transcris » — un WER élevé dira « ne suit pas la consigne »
-autant que « n'entend pas le FR » ; le verdict D1 en tiendra compte.
+Les deux campagnes initiales ont buté sur des bugs du pont Inspect (corrigés :
+ffd09c6). Relancées avec un design qui rend le verdict interprétable, parce que
+le probe du 25/08 a établi que le modèle de base suit MAL l'instruction
+« transcris » : un WER élevé pourrait dire « ne suit pas la consigne » plutôt
+que « n'entend pas le français », et seul le second justifie un rung ASR.
+
+| volet | jeu | prompt système | ce qu'il isole |
+|---|---|---|---|
+| `fr_fleurs` | FLEURS-fr 200 | EN | le chiffre du gate |
+| `fr_cv` | CV-fr 300 (étudiant) | EN | seconde oreille FR |
+| `en_control` | FLEURS-en 100 | EN | suivi d'instruction, hors question de langue |
+| `fr_frprompt` | FLEURS-fr 50 | FR | sensibilité à la LANGUE du prompt |
+
+Lecture prévue : si `en_control` échoue autant que `fr_fleurs`, le problème est
+le suivi d'instruction et le rung ASR est le mauvais remède (la piste devient
+(a) inclure de l'ASR dans le mélange d'entraînement). Si l'EN passe et le FR
+non, la faiblesse FR est réelle. Gate : WER FLEURS-fr **<25 % → sauter le rung
+ASR ; 25-40 % → rung 1 ; >40 % → escalade**.
 
 ## 5. Ancres EN gelées (non-régression, à re-mesurer à chaque gate)
 
 | ancre | valeur | source |
 |---|---|---|
-| UTMOS EN | 4.08 | baseline_en, ce rapport |
+| UTMOS EN (VERSA) | 4.12 méd. / 4.08 moy. | baseline_en, ce rapport |
+| NISQA EN (VERSA) | 4.14 méd. | baseline_en, ce rapport |
+| WER aller-retour EN | 8,4 % moy. / 5,9 % méd. | baseline_en, ce rapport |
 | TTFA EN p50 (L4 liquid) | 231 ms | ce rapport |
 | fresh-300 tool score (v4) | 0.830 | workstream EN (repris tel quel) |
-| WER aller-retour EN | `wer_rescored_0b.json` | ce rapport |
 
 ## Reste à faire pour clore la Phase 0
 
-1. Relancer FLEURS + CV ASR sur Colab (runtime à reconnecter) → verdict D1.
-2. Passe juge (`-T rubric=reasoning-v3`) sur fr_s2s — bloquée sur GEMINI_API_KEY
-   dans les secrets Colab.
-3. Intégrer versa_0b.json + wer_rescored_0b.json (jobs en cours) à ce rapport.
+1. Campagnes ASR relancées sur VM Colab (CLI `colab`) avec le design à 4 volets
+   ci-dessus → verdict D1.
+2. Passe juge (`-T rubric=reasoning-v3`) sur fr_s2s — nécessite GEMINI_API_KEY.
+3. WER aller-retour FR (`reports/wer_rescored_0b.json`, calcul en cours).
