@@ -334,6 +334,33 @@ fait passer le miroir de langue de 55 % à 82 %.** Sans rien entraîner. C'est u
 validation du choix déjà fait dans `cli/data/prepare_fr.py` (prompt ASR en
 français) et un levier pour la génération des données du rung R1.
 
+### L'écoute française est-elle vraiment faible, ou seulement en interleavé ?
+
+Question posée après la découverte de la section 2ter : D1 a été mesuré à
+travers le chemin interleavé, qui casse le français. Même benchmark, 60 clips
+par case, une seule variable.
+
+| langue | mode | WER médian | transcriptions propres | boucles |
+|---|---|---|---|---|
+| FR | interleavé | 0,732 | 15 % | 8 % |
+| **FR** | **texte seul** | **0,527** | 28 % | 10 % |
+| EN | interleavé | 0,172 | 63 % | 10 % |
+| **EN** | **texte seul** | **0,107** | **97 %** | 2 % |
+
+**L'interleaving coûte cher aux deux langues** : −0,20 de WER en français,
+−0,065 en anglais, et la part de transcriptions propres s'effondre partout
+(97 % → 63 % en anglais). Le régime dégrade donc l'écoute comme il dégrade la
+production — le tableau est cohérent de bout en bout.
+
+**Mais il n'explique pas l'écart entre les langues.** Dans les meilleures
+conditions pour chacune, le français reste à **0,527** quand l'anglais est à
+**0,107**, avec 28 % de transcriptions propres contre 97 %.
+
+→ **La faiblesse de l'oreille française est réelle. Le rung R1 est confirmé**,
+cible : 0,53 → <0,25. L'expérience visait à peut-être supprimer un rung ; elle
+ne l'a pas fait, mais elle a écarté une hypothèse plausible avant qu'on ne
+construise dessus — sauter R1 sur une intuition aurait laissé l'écoute en l'état.
+
 ### Verdict D1
 
 Le chiffre à lire est **0,50 de WER médian sur les sorties réellement
