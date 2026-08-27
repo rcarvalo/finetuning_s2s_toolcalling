@@ -48,14 +48,43 @@ sources — le dialogue TTS et le Common Voice de l'étudiant.
 |---|---|---|
 | `Voxtral-Mini-3B-2507` / `Small-24B-2507` | **Apache 2.0** | ASR FR — nettoyage et étiquetage |
 | `Voxtral-Mini-4B-Realtime-2602` | **Apache 2.0** | ASR temps réel, le plus téléchargé |
-| `Voxtral-4B-TTS-2603` | **CC-BY-NC-4.0** | voix de l'assistant — **retenu** (décision utilisateur 27/08) |
+| `Voxtral-4B-TTS-2603` | CC-BY-NC-4.0 | candidat voix, **non retenu par défaut** (voir ci-dessous) |
 
-Les modèles ASR sont Apache 2.0, sans réserve d'usage. Le TTS est **CC-BY-NC** :
-retenu sur décision explicite, avec la contrainte consignée ici pour qu'elle ne
-soit pas redécouverte tard — **la parole de sortie ainsi synthétisée, et le
-modèle qu'elle entraîne, héritent d'une restriction non commerciale**. À
-re-arbitrer si le robot d'accueil devient un produit vendu ; le repli est
-Qwen3-TTS, déjà prévu au plan et sans cette contrainte.
+Les modèles ASR sont Apache 2.0, sans réserve : Voxtral est notre **moteur
+d'étiquetage**, et c'est là qu'il apporte le plus.
+
+## La voix de l'assistant : SIWIS clonée par Qwen3-TTS
+
+Décision du 27/08, prise sur deux critères qui pointent dans le même sens.
+
+| composant | licence | ce que ça donne |
+|---|---|---|
+| SIWIS French Speech Synthesis Database | **CC-BY-4.0** | voix française **native, studio, professionnelle** |
+| `Qwen3-TTS-12Hz-1.7B-CustomVoice` | **Apache 2.0** | clonage de cette voix, texte illimité |
+| (alternative) `Voxtral-4B-TTS-2603` | CC-BY-NC-4.0 | voix multilingue, contrainte non commerciale |
+
+**Qualité** : SIWIS est de la parole française enregistrée en studio par une
+locutrice professionnelle — la prosodie et l'accent sont nativement français,
+là où la voix française d'un modèle multilingue reste une approximation. Le
+clonage transporte cette identité sur du texte arbitraire, ce qui est exactement
+le besoin de la brique A : une seule voix, sur nos dialogues.
+
+**Licence** : Apache 2.0 + CC-BY-4.0 (attribution) — aucune restriction
+commerciale. Voxtral-TTS, lui, aurait fait hériter au corpus **et au modèle
+entraîné** une clause non commerciale ; sur un robot d'accueil d'entreprise
+c'est une dette qu'on aurait payée plus tard.
+
+Le projet a déjà de l'expérience SIWIS (`Rcarvalo/vibevoice-lora-siwis-samples`,
+Kokoro `ff_siwis` côté utilisateur), donc la référence est disponible et connue.
+
+**Mais le choix se tranche en mesurant.** « Que de la qualité » ne se décide pas
+par réputation : le banc d'essai (`infra/jobs/voice_bakeoff.py`) synthétise les
+**mêmes phrases françaises** avec chaque candidat et les note sur les métriques
+des gates — UTMOS/NISQA via VERSA pour la naturalité, WER Voxtral pour la
+fidélité au texte, plus une écoute. Candidats : SIWIS clonée (Qwen CustomVoice),
+voix Qwen de base, Voxtral-TTS, et **la voix actuelle de
+`french-dialogue-tts-1000h` comme tenante du titre** (UTMOS 3,73 mesuré). Le
+gagnant prend la brique A ; s'il ne bat pas le tenant, on garde le tenant.
 
 Trois usages concrets d'un ASR Voxtral, par valeur décroissante :
 
@@ -84,8 +113,8 @@ vocale**, registre parlé, et surtout **texte parfaitement aligné** puisque c'e
 l'alignement texte/parole en interleavé qui est cassé.
 
 - base : `french-dialogue-tts-1000h` (déjà le meilleur mesuré)
-- complément : synthèse **Voxtral-4B-TTS** des dialogues générés (décision 27/08),
-  une seule voix ; repli Qwen3-TTS si la contrainte non commerciale devient bloquante
+- complément : synthèse des dialogues générés avec la **voix SIWIS clonée par
+  Qwen3-TTS CustomVoice** (Apache 2.0 + CC-BY-4.0), sous réserve du banc d'essai
 - contrôle : passe Voxtral sur chaque clip synthétisé ; tout écart au texte
   source écarte le clip. Un TTS qui dérape produit un exemple qui apprend à
   déraper.
