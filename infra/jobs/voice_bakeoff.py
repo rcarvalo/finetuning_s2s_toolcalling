@@ -95,7 +95,18 @@ def save(name: str, index: int, wave, sample_rate: int) -> None:  # noqa: ANN001
 
 
 def run_candidate(name: str, synthesise) -> dict[str, object]:  # noqa: ANN001 — callable
-    """Run one candidate; a failure is recorded, never fatal to the others."""
+    """Run one candidate; a failure is recorded, never fatal to the others.
+
+    A candidate whose clips are all present is skipped, so the job can be
+    called again and again until it is done. That is what makes it usable the
+    way Colab actually wants to be used: one chunk of work per `colab exec`,
+    the kernel genuinely busy while it runs — a detached job leaves the kernel
+    idle, and an idle kernel is what Colab reclaims sessions for.
+    """
+    done = len(list((OUT / name).glob("*.wav"))) if (OUT / name).exists() else 0
+    if done >= len(SENTENCES):
+        print(f"[{name}] déjà complet ({done} clips), passé", flush=True)
+        return {"candidate": name, "clips": done, "status": "déjà fait"}
     try:
         synthesise()
         clips = len(list((OUT / name).glob("*.wav")))

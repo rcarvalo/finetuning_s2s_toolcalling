@@ -5,17 +5,27 @@
 #   LFM2_JOB      script under infra/jobs/         (required)
 #   LFM2_ARGS     extra args forwarded to it       (optional)
 #
-# Colab prunes sessions without warning — twice in an hour on 27/08, each time
-# taking a running campaign. Two consequences are built in here rather than
-# rediscovered:
+# Run this IN THE FOREGROUND of a `colab exec`, not detached.
 #
-#   * results are printed between ===RESULT=== markers, so the numbers survive
-#     in the probe output even when the VM does not;
-#   * the job is re-entered, not restarted: jobs write their outputs as they go
-#     and skip what is already done, so a pruned session costs one shard.
+# Measured on 27/08: a five-minute cell ran to completion although the client
+# gave up after about one minute — `colab exec` timing out does not stop the
+# kernel. Detaching was therefore never needed, and it was actively harmful:
+# Colab's activity signal is kernel occupancy, so a detached job leaves the
+# kernel idle and the session looks abandoned. Three sessions were reclaimed
+# that day, one of them seconds after finishing its work.
 #
-# Artifacts come back with `colab download`; there is no public port here, which
-# is the one thing a RunPod pod does better.
+# The working shape is one chunk of work per exec call: the kernel is busy
+# while it runs (session stays alive), the call returns (or the client times
+# out, harmlessly), artifacts are downloaded, and the next call resumes.
+# Jobs must therefore skip what they have already produced.
+#
+# Note that probes queue behind a busy kernel — also measured — so do not
+# expect to observe a chunk while it runs. Observe between chunks.
+#
+# Results are still printed between ===RESULT=== markers: they survive in the
+# client output even when the VM does not. Files do not, and `colab download`
+# needs the VM alive — the one thing a RunPod pod, with its HTTP port, does
+# better.
 set -uo pipefail
 
 BRANCH="${LFM2_BRANCH:-main}"
