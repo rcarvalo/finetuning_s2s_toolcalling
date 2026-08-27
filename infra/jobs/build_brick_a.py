@@ -31,7 +31,9 @@ OUT = Path(os.environ.get("LFM2_OUT", "/workspace/out")) / "A_assistant_speech"
 
 sys.path.insert(0, str(ROOT / "python"))
 
-DIALOGUES = ROOT / "data/corpus/C_dialogues/dialogues.jsonl"
+# Versioned under corpus/, not data/: data/ is gitignored and the pod, which
+# clones the repo, found nothing there.
+DIALOGUES = ROOT / "corpus/C_dialogues/dialogues.jsonl"
 QWEN_BASE = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 SAMPLE_RATE = 24_000
 LIMIT = int(os.environ.get("BRICK_A_LIMIT", "0")) or None
