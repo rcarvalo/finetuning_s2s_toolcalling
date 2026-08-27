@@ -20,7 +20,11 @@ import os
 import statistics
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
+
+Synthesiser = Callable[[list[str], list[str]], tuple[list, int]]
+"""Speak a batch of texts; returns waveforms and their sample rate."""
 
 ROOT = Path(os.environ.get("LFM2_ROOT", "/workspace/repo"))
 OUT = Path(os.environ.get("LFM2_OUT", "/workspace/out")) / "A_assistant_speech"
@@ -32,6 +36,14 @@ QWEN_BASE = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 SAMPLE_RATE = 24_000
 LIMIT = int(os.environ.get("BRICK_A_LIMIT", "0")) or None
 BATCH = int(os.environ.get("BRICK_A_BATCH", "16"))
+
+ENGINE = os.environ.get("BRICK_A_ENGINE", "qwen")
+"""``qwen`` or ``voxtral`` — both clone the same SIWIS voice.
+
+Choosing ``voxtral`` puts the whole brick, and any model trained on it, under
+the CC-BY-NC clause its weights carry. ``qwen`` (Apache 2.0, on a CC-BY-4.0
+reference) leaves the corpus unencumbered.
+"""
 
 MAX_VERIFY_WER = float(os.environ.get("BRICK_A_MAX_WER", "0.15"))
 """Above this, the clip does not say its text and is dropped.
@@ -60,14 +72,64 @@ def install_qwen_tts() -> None:
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-U", "qwen-tts"], check=False)
 
 
+def qwen_synthesiser(reference) -> Synthesiser:  # noqa: ANN001 — VoiceReference
+    """Qwen3-TTS cloning the reference. Apache 2.0, corpus unencumbered."""
+    import torch
+    from qwen_tts import Qwen3TTSModel
+
+    install_qwen_tts()
+    model = Qwen3TTSModel.from_pretrained(QWEN_BASE, device_map="cuda:0", dtype=torch.bfloat16)
+    prompt = model.create_voice_clone_prompt(ref_audio=str(reference.wav_path), ref_text=reference.text)
+
+    def speak(texts: list[str], langs: list[str]):  # noqa: ANN202
+        return model.generate_voice_clone(
+            text=texts,
+            language=["French" if lang == "fr" else "English" for lang in langs],
+            voice_clone_prompt=prompt,
+        )
+
+    return speak
+
+
+def voxtral_synthesiser(reference) -> Synthesiser:  # noqa: ANN001 — VoiceReference
+    """Voxtral-4B-TTS on the same reference, through vLLM-Omni.
+
+    Reuses the bake-off job rather than re-deriving its install: that recipe
+    took several attempts to get right (paired vllm/vllm-omni pins, cu13
+    preloading, and resolving the reference before the install breaks
+    torchaudio), and a second copy would drift from it.
+    """
+    sys.path.insert(0, str(ROOT / "infra" / "jobs"))
+    import voxtral_tts_synth as vox
+
+    vox.install_stack()
+    vox.preload_cuda13()
+
+    from mistral_common.protocol.speech.request import SpeechRequest
+    from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
+    from vllm import SamplingParams
+    from vllm_omni.entrypoints.omni import Omni
+
+    tokenizer = MistralTokenizer.from_hf_hub(vox.MODEL).instruct_tokenizer
+    engine = Omni(model=vox.MODEL)
+    audio_bytes = reference.audio_bytes
+
+    def speak(texts: list[str], langs: list[str]):  # noqa: ANN202 — langue portée par le texte
+        inputs = [
+            {"prompt_token_ids": tokenizer.encode_speech_request(SpeechRequest(input=t, ref_audio=audio_bytes)).tokens}
+            for t in texts
+        ]
+        outputs = engine.generate(inputs, [SamplingParams(max_tokens=4096)] * len(inputs))
+        return [o.multimodal_output["audio"].tolist() for o in outputs], vox.SAMPLE_RATE
+
+    return speak
+
+
 def main() -> None:
     audio_dir = OUT / "audio"
     audio_dir.mkdir(parents=True, exist_ok=True)
-    install_qwen_tts()
 
     import soundfile as sf
-    import torch
-    from qwen_tts import Qwen3TTSModel
 
     from lfm2_audio.data_prep.corpus_layout import CorpusEntry, write_manifest
     from lfm2_audio.data_prep.siwis_reference import resolve_reference
@@ -75,25 +137,22 @@ def main() -> None:
     from lfm2_audio.scorer.audio.faster_whisper_transcriber import FasterWhisperTranscriber
     from lfm2_audio.scorer.audio.wer import word_error_rate
 
+    # Resolved before any engine install: the vLLM stack replaces torch and
+    # breaks the torchaudio this needs.
     reference = resolve_reference()
-    print(f"voix : SIWIS {reference.stem} — « {reference.text[:60]} »", flush=True)
+    print(f"voix : SIWIS {reference.stem} [{ENGINE}] — « {reference.text[:60]} »", flush=True)
 
     items = turns_to_speak(LIMIT)
     todo = [(cid, text, lang) for cid, text, lang in items if not (audio_dir / f"{cid}.wav").exists()]
     print(f"{len(items)} tours assistant, {len(items) - len(todo)} déjà faits, {len(todo)} à produire", flush=True)
 
-    model = Qwen3TTSModel.from_pretrained(QWEN_BASE, device_map="cuda:0", dtype=torch.bfloat16)
-    prompt = model.create_voice_clone_prompt(ref_audio=str(reference.wav_path), ref_text=reference.text)
     transcriber = FasterWhisperTranscriber(model_size="small", device="cuda", compute_type="float16")
+    speak = voxtral_synthesiser(reference) if ENGINE == "voxtral" else qwen_synthesiser(reference)
 
     kept, dropped, rates = [], 0, []
     for start in range(0, len(todo), BATCH):
         chunk = todo[start : start + BATCH]
-        waves, sample_rate = model.generate_voice_clone(
-            text=[text for _, text, _ in chunk],
-            language=["French" if lang == "fr" else "English" for _, _, lang in chunk],
-            voice_clone_prompt=prompt,
-        )
+        waves, sample_rate = speak([text for _, text, _ in chunk], [lang for _, _, lang in chunk])
         for (clip_id, text, lang), wave in zip(chunk, waves, strict=False):
             path = audio_dir / f"{clip_id}.wav"
             sf.write(str(path), wave, sample_rate, subtype="PCM_16")
@@ -113,7 +172,7 @@ def main() -> None:
                     duration_s=round(len(wave) / sample_rate, 3),
                     role="assistant",
                     speaker=f"siwis_{reference.stem}",
-                    source="qwen3-tts-clone",
+                    source=f"{ENGINE}-tts-clone",
                     voxtral_wer=round(rate, 4),
                 )
             )
@@ -124,6 +183,7 @@ def main() -> None:
         write_manifest(kept, OUT / "manifest.jsonl")
 
     summary = {
+        "engine": ENGINE,
         "clips": len(kept),
         "dropped": dropped,
         "hours": round(sum(e.duration_s for e in kept) / 3600, 3),
