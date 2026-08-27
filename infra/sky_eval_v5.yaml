@@ -1,0 +1,44 @@
+# Score the v5 adapter on the fresh set, on RunPod.
+#
+#   set -a; source .env; set +a
+#   sky launch -c liquid-eval-v5 infra/sky_eval_v5.yaml --down \
+#       --env HF_TOKEN --env GEMINI_API_KEY
+#
+# The fresh set is the strongest generalization probe we have: unseen wording
+# AND an unseen TTS engine. The run mirrors v2/v3/v4 exactly — same question
+# set, same tool definitions, same scorer — because the whole point is the
+# comparison against v4's 0.830.
+#
+# `reasoning` is added to the scorers on purpose: the mechanical scorer cannot
+# see an answer that quotes the payload without answering the question, which
+# is precisely the defect v5 targets. It needs GEMINI_API_KEY.
+#
+# The report is pushed to the Hub as soon as it exists: a lost pod must never
+# take the only copy of the result with it.
+
+name: liquid-eval-v5
+
+resources:
+  cloud: runpod
+  # Several candidates: pinning one GPU failed repeatedly for lack of stock.
+  accelerators: {RTX4090:1, PRO-6000-MIG-24GB:1, RTXPRO4500:1, A40:1, L40S:1, L4:1}
+  disk_size: 80
+
+workdir: .
+
+envs:
+  HF_TOKEN: ""
+  GEMINI_API_KEY: ""           # the LLM judge; without it `reasoning` is skipped
+
+setup: |
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="$HOME/.local/bin:$PATH"
+  uv sync --frozen --extra train --extra eval
+
+run: |
+  export PATH="$HOME/.local/bin:$PATH"
+  uv run python infra/eval_fresh.py \
+      --adapter Rcarvalo/lfm25-tc-en-v5-adapter \
+      --out reports/fresh/fresh_v5.json \
+      --scorers tool_call,reasoning \
+      --push-to Rcarvalo/tc-en-voice-agent-v1
