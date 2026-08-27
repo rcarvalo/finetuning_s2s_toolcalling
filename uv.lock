@@ -2872,6 +2872,7 @@ tooldata = [
     { name = "huggingface-hub" },
     { name = "kokoro" },
     { name = "soundfile" },
+    { name = "soxr" },
     { name = "tavily-python" },
     { name = "torchaudio" },
 ]
@@ -2948,6 +2949,7 @@ requires-dist = [
     { name = "soundfile", marker = "extra == 'serving-liquid'", specifier = ">=0.12" },
     { name = "soundfile", marker = "extra == 'tooldata'", specifier = ">=0.12" },
     { name = "soundfile", marker = "extra == 'train'", specifier = ">=0.12" },
+    { name = "soxr", marker = "extra == 'tooldata'", specifier = ">=0.5" },
     { name = "tavily-python", marker = "extra == 'tooldata'", specifier = ">=0.5" },
     { name = "torch", marker = "extra == 'eval'", specifier = ">=2.4" },
     { name = "torchaudio", marker = "extra == 'eval'", specifier = ">=2.4" },

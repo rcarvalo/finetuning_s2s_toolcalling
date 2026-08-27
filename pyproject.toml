@@ -125,6 +125,10 @@ tooldata = [
     "datasets>=3.0",
     "huggingface-hub>=0.25",
     "kokoro>=0.9",
+    # imported by cli/data/make_asr_bench.py to resample to the encoder's
+    # 16 kHz; it was reaching the CLI only by way of another package's
+    # transitive install.
+    "soxr>=0.5",
 ]
 
 [project.scripts]
