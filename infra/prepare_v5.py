@@ -205,22 +205,30 @@ def stage_pack() -> None:
     with phase_b_path.open(encoding="utf-8") as handle:
         phase_b = [json.loads(line) for line in handle]
 
-    # Fail here rather than at packing, on a pod, an hour later: a refusal whose
-    # clip never arrived would train the model on text it does not speak.
-    missing = [
-        turn["audio"]
-        for dialogue in phase_b
-        for turn in dialogue["turns"]
-        if turn.get("audio", "").startswith("pb_miss_v5_") and not (AUDIO / turn["audio"]).exists()
-    ]
-    if missing:
-        raise FileNotFoundError(f"{len(missing)} refusal clips not voiced yet, e.g. {missing[:3]}")
-
+    # Phase A is rebuilt unconditionally, because fetching it is also what
+    # WRITES its audio. Guarding on train_all.jsonl skipped that on the pod —
+    # the merged file had been synced from the laptop, so packing died on a
+    # Phase A clip that had never been written. Never let a derived artifact
+    # decide whether its own prerequisite gets produced.
     merged_path = OUT / "train_all.jsonl"
-    if not merged_path.exists():
-        merged = fetch_phase_a() + phase_b
-        merged_path.write_text("".join(json.dumps(d, ensure_ascii=False) + "\n" for d in merged), encoding="utf-8")
+    merged = fetch_phase_a() + phase_b
+    merged_path.write_text("".join(json.dumps(d, ensure_ascii=False) + "\n" for d in merged), encoding="utf-8")
     print("merged corpus ready", flush=True)
+
+    # Every referenced clip, not just the refusals: fail here rather than an
+    # hour later inside the packer, where the cause is buried under a
+    # DatasetGenerationError.
+    missing = sorted(
+        {
+            turn["audio"]
+            for dialogue in merged
+            for turn in dialogue["turns"]
+            if turn.get("audio") and not (AUDIO / turn["audio"]).exists()
+        }
+    )
+    if missing:
+        raise FileNotFoundError(f"{len(missing)} audio clips missing, e.g. {missing[:3]}")
+    print(f"audio complete: every clip referenced by {len(merged)} dialogues is present", flush=True)
 
     train_path, val_path = OUT / "train.jsonl", OUT / "val.jsonl"
     if not (train_path.exists() and val_path.exists()):
