@@ -101,14 +101,21 @@ def decoding_modes() -> None:
     print("===END===", flush=True)
 
 
-def rebaseline() -> None:
-    """Re-measure the anchors under the frozen prompt; the old ones used another."""
+def rebaseline(only: set[str] | None = None) -> None:
+    """Re-measure the anchors under the frozen prompt; the old ones used another.
+
+    ``only`` restricts the run to named campaigns. A pod was reclaimed with one
+    campaign left to go, and re-running the two that had already reported would
+    have been paid twice for nothing.
+    """
     inspect_bin = shutil.which("inspect") or "inspect"
     campaigns = [
         ("lang_mirror", "benchmark/lang_mirror/questions.jsonl", "lang_match,utmos", "en"),
         ("fr_s2s", "benchmark/fr_s2s/questions.jsonl", "wer,utmos,dnsmos,lang_match", "fr"),
         ("baseline_en", "benchmark/baseline_en/questions.jsonl", "wer,utmos,dnsmos,lang_match", "en"),
     ]
+    if only:
+        campaigns = [c for c in campaigns if c[0] in only]
     for name, questions_path, scorers, lang in campaigns:
         log_dir = OUT / "rebaseline" / name
         if log_dir.exists():
@@ -161,10 +168,15 @@ def summarise_rebaseline() -> None:
 
 
 def main() -> None:
+    """``LFM2_ARGS`` names the steps to run; empty means all of them."""
     OUT.mkdir(parents=True, exist_ok=True)
-    decoding_modes()
-    (OUT / "MODES_DONE").write_text("ok\n", encoding="utf-8")
-    rebaseline()
+    wanted = set(sys.argv[1:])
+    if not wanted or "modes" in wanted:
+        decoding_modes()
+        (OUT / "MODES_DONE").write_text("ok\n", encoding="utf-8")
+    campaigns = {name for name in wanted if name != "modes"}
+    if not wanted or campaigns:
+        rebaseline(campaigns or None)
     (OUT / "ALL_DONE").write_text("ok\n", encoding="utf-8")
 
 
