@@ -120,6 +120,44 @@ def install_stack(progress: object | None = None) -> None:
     )
 
 
+def start_server(progress, *, port: int = 8001, timeout_s: int = 900):  # noqa: ANN001, ANN201 — Progress, (Popen, str)
+    """``vllm serve --omni`` as a child, polled until its API answers.
+
+    The only path that has ever produced a clip here: in-process ``Omni()``
+    hung forever after stage-0 warmup on two runs, silently. The server owns
+    its stage orchestration; callers only speak HTTP.
+    """
+    import subprocess
+    import time
+
+    import httpx
+
+    out_dir = Path(os.environ.get("LFM2_OUT", "/workspace/out"))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    server_log = (out_dir / "vllm_serve.log").open("w")
+    server = subprocess.Popen(
+        ["vllm", "serve", MODEL, "--omni", "--port", str(port)],
+        stdout=server_log,
+        stderr=subprocess.STDOUT,
+        env={**os.environ, "LD_LIBRARY_PATH": os.environ.get("LD_LIBRARY_PATH", "")},
+    )
+    base_url = f"http://127.0.0.1:{port}/v1"
+    started = time.monotonic()
+    for tick in range(timeout_s // 10):
+        if server.poll() is not None:
+            raise RuntimeError(f"vllm serve mort (code {server.returncode}) — voir vllm_serve.log")
+        try:
+            if httpx.get(f"{base_url}/models", timeout=2.0).status_code == 200:
+                progress.note(f"serveur prêt en {time.monotonic() - started:.0f}s")
+                return server, base_url
+        except httpx.HTTPError:
+            pass
+        if tick % 6 == 5:
+            progress.note(f"serveur pas encore prêt ({(tick + 1) * 10}s)")
+        time.sleep(10)
+    raise RuntimeError(f"vllm serve jamais prêt en {timeout_s}s — voir vllm_serve.log")
+
+
 def preload_cuda13() -> None:
     """Load the cu13 shared objects before importing vllm_omni.
 

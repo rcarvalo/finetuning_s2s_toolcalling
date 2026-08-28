@@ -37,7 +37,7 @@ DIALOGUES = ROOT / "corpus/C_dialogues/dialogues.jsonl"
 QWEN_BASE = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 SAMPLE_RATE = 24_000
 LIMIT = int(os.environ.get("BRICK_A_LIMIT", "0")) or None
-BATCH = int(os.environ.get("BRICK_A_BATCH", "16"))
+BATCH = int(os.environ.get("BRICK_A_BATCH", "32"))
 
 VOICE_SOURCE = os.environ.get("BRICK_A_VOICE", "dialogue")
 """``dialogue`` won the reference bake-off by ear: SIWIS is read speech and its
@@ -98,45 +98,59 @@ def qwen_synthesiser(reference) -> Synthesiser:  # noqa: ANN001 — VoiceReferen
 
 
 def voxtral_synthesiser(reference) -> Synthesiser:  # noqa: ANN001 — VoiceReference
-    """Voxtral-4B-TTS on the same reference, through vLLM-Omni.
+    """Voxtral-4B-TTS in server mode, requests fired concurrently.
 
-    Reuses the bake-off job rather than re-deriving its install: that recipe
-    took several attempts to get right (paired vllm/vllm-omni pins, cu13
-    preloading, and resolving the reference before the install breaks
-    torchaudio), and a second copy would drift from it.
+    Server, never in-process: ``Omni()`` hung forever after stage-0 warmup on
+    two runs. And concurrency is not an optimisation, it is the price of the
+    corpus: sequential posting measured RTF 4.26 while the model card reaches
+    0.302 at concurrency 32 — an order of magnitude on the GPU bill.
+
+    The voice: ``fr_female``/``fr_male`` ride the native preset embeddings;
+    anything else clones ``reference`` through a ref_audio data URL.
     """
+    import base64
+    from concurrent.futures import ThreadPoolExecutor
+
+    import httpx
+
     sys.path.insert(0, str(ROOT / "infra" / "jobs"))
     import voxtral_tts_synth as vox
 
     from lfm2_audio.core.progress import Progress
 
-    # Every stage announced on a clock: the previous run died after 45 minutes
-    # of silence and nothing said which stage it was in.
     progress = Progress("voxtral")
     vox.install_stack(progress)
     progress.step("préchargement des bibliothèques CUDA 13")
     vox.preload_cuda13()
+    progress.step("démarrage du serveur vllm serve --omni (poids ~8 Go)")
+    _server, base_url = vox.start_server(progress)  # gardé : le processus vit tant que le job vit
+    progress.step("serveur prêt — synthèse")
 
-    progress.step("import de vllm_omni")
-    from mistral_common.protocol.speech.request import SpeechRequest
-    from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
-    from vllm import SamplingParams
-    from vllm_omni.entrypoints.omni import Omni
+    if VOICE_SOURCE in ("fr_female", "fr_male"):
+        voice_args = {"voice": VOICE_SOURCE}
+    else:
+        mime = "audio/wav" if reference.wav_path.suffix == ".wav" else "audio/mpeg"
+        voice_args = {"ref_audio": f"data:{mime};base64,{base64.b64encode(reference.audio_bytes).decode()}"}
 
-    progress.step(f"tokenizer {vox.MODEL}")
-    tokenizer = MistralTokenizer.from_hf_hub(vox.MODEL).instruct_tokenizer
-    progress.step("démarrage du moteur Omni (téléchargement des poids ~8 Go)")
-    engine = Omni(model=vox.MODEL)
-    progress.step("moteur prêt — synthèse")
-    audio_bytes = reference.audio_bytes
+    concurrency = int(os.environ.get("BRICK_A_CONCURRENCY", "16"))
+    client = httpx.Client(timeout=300.0)
+
+    def one(text: str):  # noqa: ANN202 — (ndarray, int)
+        import io
+
+        import soundfile as sf
+
+        payload = {"input": text, "model": vox.MODEL, "response_format": "wav", **voice_args}
+        response = client.post(f"{base_url}/audio/speech", json=payload)
+        if response.status_code != 200:
+            raise RuntimeError(f"{response.status_code}: {response.text[:160]}")
+        return sf.read(io.BytesIO(response.content), dtype="float32")
 
     def speak(texts: list[str], langs: list[str]):  # noqa: ANN202 — langue portée par le texte
-        inputs = [
-            {"prompt_token_ids": tokenizer.encode_speech_request(SpeechRequest(input=t, ref_audio=audio_bytes)).tokens}
-            for t in texts
-        ]
-        outputs = engine.generate(inputs, [SamplingParams(max_tokens=4096)] * len(inputs))
-        return [o.multimodal_output["audio"].tolist() for o in outputs], vox.SAMPLE_RATE
+        with ThreadPoolExecutor(max_workers=concurrency) as pool:
+            results = list(pool.map(one, texts))
+        rate = int(results[0][1]) if results else vox.SAMPLE_RATE
+        return [wave for wave, _ in results], rate
 
     return speak
 
