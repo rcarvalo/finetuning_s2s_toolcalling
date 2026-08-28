@@ -61,7 +61,7 @@ run: |
   for ADAPTER in v4 v5; do
     for COND in 2 2plus1 2plus4 unseen_only; do
       echo "=== $ADAPTER / $COND ==="
-      uv run lfm2-eval-suite \
+      uv run lfm2-evaluate \
           --checkpoint LiquidAI/LFM2.5-Audio-1.5B \
           --adapter "Rcarvalo/lfm25-tc-en-${ADAPTER}-adapter" \
           --backend liquid \
