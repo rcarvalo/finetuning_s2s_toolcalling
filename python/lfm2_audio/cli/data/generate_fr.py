@@ -20,10 +20,14 @@ import sys
 from pathlib import Path
 
 from lfm2_audio.data_prep.fr_dialogues import (
+    TOPICS_EN,
     TOPICS_FR,
     FrDialogue,
     build_code_switch_prompt,
+    build_deep_prompt,
+    build_en_prompt,
     build_fr_prompt,
+    build_social_prompt,
     code_switch_rate,
     parse_dialogues,
 )
@@ -61,6 +65,9 @@ def main() -> None:
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--n-fr", type=int, default=500)
     parser.add_argument("--n-switch", type=int, default=200)
+    parser.add_argument("--n-deep", type=int, default=0, help="dialogues longs à reprises anaphoriques (historique)")
+    parser.add_argument("--n-social", type=int, default=0, help="micro-échanges sociaux (lacune du verdict v3)")
+    parser.add_argument("--n-en", type=int, default=0, help="conversationnel anglais (part de préservation)")
     parser.add_argument("--per-call", type=int, default=10)
     parser.add_argument("--model", default=None)
     parser.add_argument("--benchmarks", nargs="*", type=Path, default=[Path(p) for p in DEFAULT_BENCHMARKS])
@@ -101,11 +108,35 @@ def main() -> None:
     if switches and rate < 0.5:
         print("⚠️  moins d'un dialogue sur deux change réellement de langue — le lot n'entraînera pas le miroir")
 
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    with args.out.open("w", encoding="utf-8") as handle:
-        for dialogue in dialogues + switches:
-            handle.write(json.dumps(dialogue.as_case(), ensure_ascii=False) + "\n")
+    # The three families the coverage audit found missing: depth (627/695
+    # dialogues had no history to learn), short social turns (v3's verdict),
+    # and conversational English (the preservation share).
+    extra: list[FrDialogue] = []
+    families = [
+        (args.n_deep, build_deep_prompt, TOPICS_FR, "c_deep", "fr_deep"),
+        (args.n_social, build_social_prompt, TOPICS_FR, "c_soc", "fr_social"),
+        (args.n_en, build_en_prompt, TOPICS_EN, "c_en", "en"),
+    ]
+    for target, builder, topics, prefix, kind in families:
+        produced: list[FrDialogue] = []
+        for index in range(0, target, args.per_call):
+            topic = topics[(index // args.per_call) % len(topics)]
+            batch = generate(judge, builder(args.per_call, topic), prefix=prefix, kind=kind, start=len(produced))
+            produced += [d for d in batch if not filter_.is_contaminated(d.turns[0].text)]
+            print(f"  {kind} {len(produced)}/{target} — {topic}", flush=True)
+        extra += produced
+        # Flushed after every family: a killed generation keeps what it made.
+        _write(args.out, dialogues + switches + extra)
+
+    _write(args.out, dialogues + switches + extra)
     print(f"→ {args.out}")
+
+
+def _write(out: Path, dialogues: list[FrDialogue]) -> None:
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", encoding="utf-8") as handle:
+        for dialogue in dialogues:
+            handle.write(json.dumps(dialogue.as_case(), ensure_ascii=False) + "\n")
 
 
 if __name__ == "__main__":

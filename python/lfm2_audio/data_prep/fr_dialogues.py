@@ -117,6 +117,56 @@ Contraintes impératives :
 Réponds UNIQUEMENT par un tableau JSON, chaque élément ayant la forme :
 {{"topic": "...", "turns": [{{"role": "user", "text": "..."}}, {{"role": "assistant", "text": "..."}}]}}"""
 
+DEEP_PROMPT = """Génère {count} conversations LONGUES en FRANÇAIS entre un visiteur
+et l'assistant vocal d'accueil d'une entreprise.
+
+Le but de ces conversations est d'apprendre à l'assistant à SUIVRE UN CONTEXTE :
+chaque conversation doit contenir au moins un tour qui ne se comprend qu'en se
+souvenant d'un tour précédent.
+
+Contraintes impératives :
+- 4 à 8 tours UTILISATEUR (donc 8 à 16 tours au total), commençant par le visiteur.
+- Au moins UNE reprise anaphorique : « et pour elle ? », « le même », « celui d'avant »,
+  « non finalement l'autre » — un pronom ou une ellipse qui renvoie à un tour antérieur.
+- Au moins UN changement d'avis ou une correction du visiteur en cours de route.
+- Registre ORAL, phrases courtes, contractions naturelles. Aucun markdown.
+- Chaque tour fait moins de 250 caractères.
+- Thème de départ : {topic} — la conversation peut dériver naturellement.
+
+Réponds UNIQUEMENT par un tableau JSON, chaque élément ayant la forme :
+{{"topic": "...", "turns": [{{"role": "user", "text": "..."}}, {{"role": "assistant", "text": "..."}}]}}"""
+
+SOCIAL_PROMPT = """Génère {count} MICRO-échanges sociaux en FRANÇAIS avec un
+assistant vocal : salutations, remerciements, au revoir, politesses, petites
+réactions (« super, merci ! », « pas de souci », « bonne journée à vous aussi »).
+
+C'est le registre où l'assistant est le plus faible : des tours TRÈS courts,
+naturels, chaleureux sans être obséquieux.
+
+Contraintes impératives :
+- 2 à 4 tours au total, commençant par l'utilisateur.
+- Tours de MOINS de 80 caractères — une phrase, parfois deux mots.
+- Registre ORAL familier-poli. Aucun markdown.
+- Contexte : {topic}
+- Varie énormément les formulations — jamais deux fois la même salutation.
+
+Réponds UNIQUEMENT par un tableau JSON, chaque élément ayant la forme :
+{{"topic": "...", "turns": [{{"role": "user", "text": "..."}}, {{"role": "assistant", "text": "..."}}]}}"""
+
+EN_PROMPT = """Generate {count} short ENGLISH conversations between a visitor and
+a company's voice reception assistant.
+
+Hard constraints:
+- SPOKEN register. This will be read aloud: short sentences, natural contractions, no written style.
+- 2 to 4 turns total, starting with the visitor.
+- No bullet points, no markdown, no numbered lists.
+- Each turn under 300 characters.
+- Theme: {topic}
+- Vary situations, politeness levels and registers; never open two conversations the same way.
+
+Answer ONLY with a JSON array, each element shaped like:
+{{"topic": "...", "turns": [{{"role": "user", "text": "..."}}, {{"role": "assistant", "text": "..."}}]}}"""
+
 CODE_SWITCH_PROMPT = """Génère {count} conversations où l'utilisateur CHANGE DE
 LANGUE en cours d'échange, avec l'assistant vocal d'accueil d'une entreprise.
 
@@ -153,8 +203,42 @@ TOPICS_FR = (
 )
 
 
+TOPICS_EN = (
+    "welcoming a visitor with an appointment",
+    "walk-in visitor looking for someone",
+    "guest wifi code request",
+    "finding the way inside the building",
+    "package or delivery drop-off",
+    "opening hours and access question",
+    "small talk while waiting",
+    "practical problem: parking, badge, elevator",
+    "help with something unexpected",
+    "goodbye and thanks",
+)
+
+
 def build_fr_prompt(count: int, topic: str) -> str:
     return FR_PROMPT.format(count=count, topic=topic)
+
+
+def build_deep_prompt(count: int, topic: str) -> str:
+    """Long dialogues whose later turns only make sense in context.
+
+    What the corpus measured 627/695 dialogues as lacking: anaphora, repairs,
+    a thread to follow — the material multi-turn history is learned from.
+    """
+    return DEEP_PROMPT.format(count=count, topic=topic)
+
+
+def build_social_prompt(count: int, topic: str) -> str:
+    """Micro social turns — v3's verdict named this register as the weakest."""
+    return SOCIAL_PROMPT.format(count=count, topic=topic)
+
+
+def build_en_prompt(count: int, topic: str) -> str:
+    """Conversational English, same domain: the preservation share needs more
+    than tool-calling English to keep both registers anchored."""
+    return EN_PROMPT.format(count=count, topic=topic)
 
 
 def build_code_switch_prompt(count: int, topic: str, *, first: str = "français", second: str = "anglais") -> str:

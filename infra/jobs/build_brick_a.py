@@ -32,8 +32,14 @@ OUT = Path(os.environ.get("LFM2_OUT", "/workspace/out")) / "A_assistant_speech"
 sys.path.insert(0, str(ROOT / "python"))
 
 # Versioned under corpus/, not data/: data/ is gitignored and the pod, which
-# clones the repo, found nothing there.
-DIALOGUES = ROOT / "corpus/C_dialogues/dialogues.jsonl"
+# clones the repo, found nothing there. Every source is spoken by the SAME
+# voice — one assistant identity across conversation and tool calling.
+SOURCES = [
+    ROOT / p
+    for p in os.environ.get("BRICK_A_SOURCES", "corpus/C_dialogues/dialogues.jsonl,corpus/TC_fr/tc_fr_v1.jsonl").split(
+        ","
+    )
+]
 QWEN_BASE = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 SAMPLE_RATE = 24_000
 LIMIT = int(os.environ.get("BRICK_A_LIMIT", "0")) or None
@@ -60,17 +66,40 @@ catching a clip that drifted.
 """
 
 
+def _resolve_source(source: Path) -> Path | None:
+    """A source lives in git if small, on the corpus HF repo otherwise.
+
+    The 2.7 MB TC corpus tripped the repo's large-file hook — data does not
+    belong in git. The pod pulls it from the Hub by the same relative path.
+    """
+    if source.exists():
+        return source
+    try:
+        from huggingface_hub import hf_hub_download
+
+        relative = source.relative_to(ROOT / "corpus")
+        return Path(hf_hub_download("Rcarvalo/lfm25-fr-corpus-v1", str(relative), repo_type="dataset"))
+    except Exception as error:
+        print(f"source absente (git ET hub), ignorée : {source} ({error})", flush=True)
+        return None
+
+
 def turns_to_speak(limit: int | None) -> list[tuple[str, str, str]]:
     """``(clip_id, text, lang)`` for every assistant turn to synthesise."""
     items: list[tuple[str, str, str]] = []
-    for line in DIALOGUES.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
+    for declared in SOURCES:
+        source = _resolve_source(declared)
+        if source is None:
             continue
-        case = json.loads(line)
-        for index, turn in enumerate(case.get("turns", [])):
-            if turn.get("role") != "assistant" or not turn.get("text", "").strip():
+        for line in source.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
                 continue
-            items.append((f"{case['id']}_t{index}", turn["text"].strip(), turn.get("lang", "fr")))
+            case = json.loads(line)
+            lang = str(case.get("meta", {}).get("lang", "fr"))
+            for index, turn in enumerate(case.get("turns", [])):
+                if turn.get("role") != "assistant" or not turn.get("text", "").strip():
+                    continue
+                items.append((f"{case['id']}_t{index}", turn["text"].strip(), turn.get("lang", lang)))
     return items[:limit] if limit else items
 
 
@@ -156,6 +185,12 @@ def voxtral_synthesiser(reference) -> Synthesiser:  # noqa: ANN001 — VoiceRefe
 
 
 def main() -> None:
+    import logging
+
+    # The pusher's messages ARE the job's safety record: they must reach the
+    # pod log, which is all that survives a deleted pod.
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+
     audio_dir = OUT / "audio"
     audio_dir.mkdir(parents=True, exist_ok=True)
 
@@ -167,14 +202,31 @@ def main() -> None:
     from lfm2_audio.scorer.audio.faster_whisper_transcriber import FasterWhisperTranscriber
     from lfm2_audio.scorer.audio.wer import word_error_rate
 
-    # Resolved before any engine install: the vLLM stack replaces torch and
-    # breaks the torchaudio this needs.
-    reference = resolve_voice_reference(VOICE_SOURCE)
-    print(f"voix : {VOICE_SOURCE}/{reference.stem} [{ENGINE}] — « {reference.text[:60]} »", flush=True)
+    # A preset voice needs no reference at all — cloning is impossible on the
+    # open Voxtral checkpoint anyway (no encoder weights). A clone source is
+    # resolved before any engine install: the vLLM stack replaces torch and
+    # breaks the torchaudio the resolution needs.
+    if VOICE_SOURCE in ("fr_female", "fr_male"):
+        reference = None
+        print(f"voix : preset natif {VOICE_SOURCE} [{ENGINE}]", flush=True)
+    else:
+        reference = resolve_voice_reference(VOICE_SOURCE)
+        print(f"voix : {VOICE_SOURCE}/{reference.stem} [{ENGINE}] — « {reference.text[:60]} »", flush=True)
 
     items = turns_to_speak(LIMIT)
     todo = [(cid, text, lang) for cid, text, lang in items if not (audio_dir / f"{cid}.wav").exists()]
     print(f"{len(items)} tours assistant, {len(items) - len(todo)} déjà faits, {len(todo)} à produire", flush=True)
+
+    # The Hub is the primary store, verified BEFORE any GPU spending: a RunPod
+    # balance reaching zero deletes the pod and its disk, and this run is meant
+    # to be left alive until exactly that happens.
+    from lfm2_audio.data_prep.streaming_push import StreamingPusher
+
+    pusher = StreamingPusher(
+        OUT, os.environ.get("BRICK_A_HF_REPO", "Rcarvalo/lfm25-fr-corpus-v1"), "A_assistant_speech"
+    )
+    pusher.verify()
+    push_every = int(os.environ.get("BRICK_A_PUSH_EVERY", "5"))
 
     transcriber = FasterWhisperTranscriber(model_size="small", device="cuda", compute_type="float16")
     speak = voxtral_synthesiser(reference) if ENGINE == "voxtral" else qwen_synthesiser(reference)
@@ -201,7 +253,7 @@ def main() -> None:
                     lang=lang,
                     duration_s=round(len(wave) / sample_rate, 3),
                     role="assistant",
-                    speaker=f"{VOICE_SOURCE}_{reference.stem}",
+                    speaker=VOICE_SOURCE if reference is None else f"{VOICE_SOURCE}_{reference.stem}",
                     source=f"{ENGINE}-tts-clone",
                     voxtral_wer=round(rate, 4),
                 )
@@ -211,6 +263,8 @@ def main() -> None:
             flush=True,
         )
         write_manifest(kept, OUT / "manifest.jsonl")
+        if (start // BATCH) % push_every == push_every - 1:
+            pusher.push(message=f"brick A [{VOICE_SOURCE}]: {len(kept)} clips")
 
     summary = {
         "engine": ENGINE,
@@ -218,9 +272,10 @@ def main() -> None:
         "dropped": dropped,
         "hours": round(sum(e.duration_s for e in kept) / 3600, 3),
         "median_verify_wer": round(statistics.median(rates), 4) if rates else None,
-        "voice": reference.stem,
+        "voice": VOICE_SOURCE if reference is None else reference.stem,
     }
     (OUT / "summary.json").write_text(json.dumps(summary, indent=1, ensure_ascii=False), encoding="utf-8")
+    pusher.push(message=f"brick A [{VOICE_SOURCE}]: final — {len(kept)} clips, {summary['hours']} h")
     print("===RESULT brick_a===", flush=True)
     print(json.dumps(summary, ensure_ascii=False), flush=True)
     print("===END===", flush=True)
