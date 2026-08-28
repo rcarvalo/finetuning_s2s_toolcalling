@@ -119,7 +119,11 @@ def main() -> None:
 
         progress.step("synthèse des 12 phrases (clone par ref_audio, repli preset)")
         texts = [*FR_SENTENCES, *EN_SENTENCES]
-        reference_b64 = base64.b64encode(audio_bytes).decode()
+        # The server is explicit about the shape it accepts: "ref_audio must be
+        # a URL (http/https), base64 data URL (data:...), or file URI" — raw
+        # base64 came back 400. Hence the data URL, mime taken from the file.
+        mime = "audio/wav" if reference.wav_path.suffix == ".wav" else "audio/mpeg"
+        reference_b64 = f"data:{mime};base64,{base64.b64encode(audio_bytes).decode()}"
         voice_mode: str | None = None
         waves = []
         synth_t0 = time.monotonic()
