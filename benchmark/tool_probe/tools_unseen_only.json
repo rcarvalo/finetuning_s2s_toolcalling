@@ -1,0 +1,100 @@
+[
+  {
+    "name": "set_timer",
+    "description": "Start a countdown timer for a given number of minutes.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "duration_minutes": {
+          "type": "integer",
+          "description": "How long the timer runs, in minutes."
+        },
+        "label": {
+          "type": "string",
+          "description": "Optional name for the timer."
+        }
+      },
+      "required": [
+        "duration_minutes"
+      ]
+    }
+  },
+  {
+    "name": "send_message",
+    "description": "Send a short text message to one of the user's contacts.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "recipient": {
+          "type": "string",
+          "description": "Name of the contact to write to."
+        },
+        "body": {
+          "type": "string",
+          "description": "Text of the message."
+        }
+      },
+      "required": [
+        "recipient",
+        "body"
+      ]
+    }
+  },
+  {
+    "name": "control_lights",
+    "description": "Turn the lights of a room on or off.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "room": {
+          "type": "string",
+          "description": "Room whose lights to change."
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off"
+          ],
+          "description": "Desired state."
+        }
+      },
+      "required": [
+        "room",
+        "state"
+      ]
+    }
+  },
+  {
+    "name": "calendar_lookup",
+    "description": "Read the user's own calendar for a given day.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "day": {
+          "type": "string",
+          "description": "Day to read, e.g. 'today' or 'friday'."
+        }
+      },
+      "required": [
+        "day"
+      ]
+    }
+  },
+  {
+    "name": "delegate",
+    "description": "Hand a complex, multi-step task to a stronger assistant that can plan, use many tools and come back with a summary. Use it when the request needs several steps or research beyond a single lookup.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "task": {
+          "type": "string",
+          "description": "The task to hand over, in one sentence."
+        }
+      },
+      "required": [
+        "task"
+      ]
+    }
+  }
+]

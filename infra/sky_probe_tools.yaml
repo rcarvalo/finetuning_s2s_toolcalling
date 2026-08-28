@@ -1,0 +1,89 @@
+# Tool-generalization probe — does the fine-tune call tools it never saw?
+#
+#   set -a; source .env; set +a
+#   sky launch -c liquid-probe infra/sky_probe_tools.yaml --down --env HF_TOKEN
+#
+# v4 and v5 were trained on exactly two tools, and the trained system prompt
+# names them with per-name routing rules. Everything agentic — MCP, LangGraph,
+# ADK, a delegate tool — assumes the model READS the declared tool list instead
+# of reciting two memorised names. This measures that before anything is built
+# on it.
+#
+# Four declaration sets over the same utterances, so the only variable is which
+# tools are declared. `tools_2` is the control: it must reproduce roughly the
+# usual score, and if it does not, the probe is broken rather than the model.
+#
+# Reports go to the Hub as each one lands: a lost pod must never take the only
+# copy of a result with it.
+
+name: liquid-probe
+
+resources:
+  cloud: runpod
+  # Blackwell only, and that is a driver constraint: the pinned torch is a
+  # CUDA 13 build and a host still on 12.8 refuses it outright.
+  accelerators: {RTXPRO4500:1, PRO-6000-MIG-24GB:1}
+  disk_size: 80
+
+workdir: .
+
+envs:
+  HF_TOKEN: ""
+
+setup: |
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="$HOME/.local/bin:$PATH"
+  uv sync --frozen --extra train --extra eval
+
+run: |
+  set -e
+  export PATH="$HOME/.local/bin:$PATH"
+
+  # Cases and audio come from the Hub, never from the synced workdir: a stale
+  # local artefact silently deciding what the pod runs cost a full cycle
+  # yesterday.
+  uv run python - <<'PY'
+  import pathlib, tarfile
+  from huggingface_hub import hf_hub_download
+  out = pathlib.Path("benchmark/tool_probe"); (out / "audio").mkdir(parents=True, exist_ok=True)
+  for name in ("2", "2plus1", "2plus4", "unseen_only"):
+      for kind in ("tools_%s.json", "cases_%s.jsonl"):
+          f = kind % name
+          src = hf_hub_download("Rcarvalo/tc-en-voice-agent-v1", f"tool_probe/cases/{f}", repo_type="dataset")
+          (out / f).write_bytes(pathlib.Path(src).read_bytes())
+  tarball = hf_hub_download("Rcarvalo/tc-en-voice-agent-v1", "tool_probe/audio.tar.gz", repo_type="dataset")
+  with tarfile.open(tarball) as archive:
+      archive.extractall(out / "audio", filter="data")
+  print(f"probe: {len(list((out / 'audio').glob('*.wav')))} clips", flush=True)
+  PY
+
+  mkdir -p reports/tool_probe
+  for ADAPTER in v4 v5; do
+    for COND in 2 2plus1 2plus4 unseen_only; do
+      echo "=== $ADAPTER / $COND ==="
+      uv run lfm2-eval-suite \
+          --checkpoint LiquidAI/LFM2.5-Audio-1.5B \
+          --adapter "Rcarvalo/lfm25-tc-en-${ADAPTER}-adapter" \
+          --backend liquid \
+          --questions "benchmark/tool_probe/cases_${COND}.jsonl" \
+          --audio-root benchmark/tool_probe/audio \
+          --tool-definitions "benchmark/tool_probe/tools_${COND}.json" \
+          --scorers tool_call \
+          --archive "reports/tool_probe/${ADAPTER}_${COND}_samples.jsonl" \
+          --out "reports/tool_probe/${ADAPTER}_${COND}.json"
+
+      uv run python - "$ADAPTER" "$COND" <<'PY'
+  import pathlib, sys
+  from huggingface_hub import HfApi
+  adapter, cond = sys.argv[1], sys.argv[2]
+  api = HfApi()
+  for suffix in (".json", "_samples.jsonl"):
+      p = pathlib.Path(f"reports/tool_probe/{adapter}_{cond}{suffix}")
+      if p.exists():
+          api.upload_file(path_or_fileobj=str(p), path_in_repo=f"tool_probe/reports/{p.name}",
+                          repo_id="Rcarvalo/tc-en-voice-agent-v1", repo_type="dataset")
+  print(f"pushed {adapter}/{cond}", flush=True)
+  PY
+    done
+  done
+  echo PROBE_DONE
