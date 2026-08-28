@@ -79,31 +79,86 @@ def main() -> None:
         progress.step("préchargement des bibliothèques CUDA 13")
         vox.preload_cuda13()
 
-        progress.step("import de vllm_omni")
-        from mistral_common.protocol.speech.request import SpeechRequest
-        from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
-        from vllm import SamplingParams
-        from vllm_omni.entrypoints.omni import Omni
+        # SERVER mode, not in-process Omni(): the in-process path hung forever
+        # after stage-0 warmup — stage-1 (the audio decoder) never started, no
+        # error, no log. `vllm serve --omni` is the recipe the user PROVED on
+        # Colab (single L4, same 0.26 pair); the server owns its stage
+        # orchestration, we only speak HTTP to it.
+        progress.step("démarrage du serveur vllm serve --omni (poids ~8 Go)")
+        import base64
+        import subprocess
 
-        progress.step(f"tokenizer {vox.MODEL}")
-        tokenizer = MistralTokenizer.from_hf_hub(vox.MODEL).instruct_tokenizer
+        import httpx
 
-        progress.step("démarrage du moteur Omni (poids ~8 Go)")
         engine_t0 = time.monotonic()
-        engine = Omni(model=vox.MODEL)
+        server_log = (OUT / "vllm_serve.log").open("w")
+        server = subprocess.Popen(
+            ["vllm", "serve", vox.MODEL, "--omni", "--port", "8001"],
+            stdout=server_log,
+            stderr=subprocess.STDOUT,
+            env={**os.environ, "LD_LIBRARY_PATH": os.environ.get("LD_LIBRARY_PATH", "")},
+        )
+        base_url = "http://127.0.0.1:8001/v1"
+        ready = False
+        for tick in range(90):  # 15 min max
+            if server.poll() is not None:
+                raise RuntimeError(f"vllm serve mort (code {server.returncode}) — voir vllm_serve.log")
+            try:
+                if httpx.get(f"{base_url}/models", timeout=2.0).status_code == 200:
+                    ready = True
+                    break
+            except httpx.HTTPError:
+                pass
+            if tick % 6 == 5:
+                progress.note(f"serveur pas encore prêt ({(tick + 1) * 10}s)")
+            time.sleep(10)
+        if not ready:
+            raise RuntimeError("vllm serve jamais prêt en 15 min — voir vllm_serve.log")
         engine_seconds = time.monotonic() - engine_t0
-        progress.note(f"moteur prêt en {engine_seconds:.0f}s")
+        progress.note(f"serveur prêt en {engine_seconds:.0f}s")
 
-        progress.step("synthèse des 12 phrases")
+        progress.step("synthèse des 12 phrases (clone par ref_audio, repli preset)")
         texts = [*FR_SENTENCES, *EN_SENTENCES]
+        reference_b64 = base64.b64encode(audio_bytes).decode()
+        voice_mode: str | None = None
+        waves = []
         synth_t0 = time.monotonic()
-        inputs = [
-            {"prompt_token_ids": tokenizer.encode_speech_request(SpeechRequest(input=t, ref_audio=audio_bytes)).tokens}
-            for t in texts
-        ]
-        outputs = engine.generate(inputs, [SamplingParams(max_tokens=4096)] * len(inputs))
-        waves = [o.multimodal_output["audio"].tolist() for o in outputs]
+
+        import io
+
+        import soundfile as sf
+
+        with httpx.Client(timeout=180.0) as client:
+            for text in texts:
+                # ref_audio first — the whole point is cloning the approved
+                # voice. If this server build rejects it, fall back to a preset
+                # so the run still measures throughput and intelligibility, and
+                # SAYS which mode produced the clips.
+                payloads = [
+                    (
+                        {"input": text, "model": vox.MODEL, "response_format": "wav", "ref_audio": reference_b64},
+                        "ref_audio",
+                    ),
+                    ({"input": text, "model": vox.MODEL, "response_format": "wav", "voice": "casual_female"}, "preset"),
+                ]
+                if voice_mode is not None:  # stick to the mode that worked
+                    payloads = [p for p in payloads if p[1] == voice_mode]
+                wave = None
+                for payload, mode in payloads:
+                    response = client.post(f"{base_url}/audio/speech", json=payload)
+                    if response.status_code == 200:
+                        data, rate = sf.read(io.BytesIO(response.content), dtype="float32")
+                        wave = (data, rate)
+                        if voice_mode is None:
+                            voice_mode = mode
+                            progress.note(f"mode voix retenu : {mode}")
+                        break
+                    progress.note(f"{mode} refusé ({response.status_code}) : {response.text[:120]}")
+                if wave is None:
+                    raise RuntimeError("les deux modes de voix ont été refusés — voir les notes ci-dessus")
+                waves.append(wave)
         synth_seconds = time.monotonic() - synth_t0
+        server.terminate()
 
         progress.step("écriture + contre-transcription")
         import soundfile as sf
@@ -114,12 +169,12 @@ def main() -> None:
 
         transcriber = FasterWhisperTranscriber(model_size="small", device="cuda", compute_type="float16")
         clips, audio_seconds = [], 0.0
-        for index, (text, wave) in enumerate(zip(texts, waves, strict=True)):
+        for index, (text, (wave, rate)) in enumerate(zip(texts, waves, strict=True)):
             lang = "fr" if index < len(FR_SENTENCES) else "en"
             path = OUT / f"s{index:02d}_{lang}.wav"
-            sf.write(str(path), wave, vox.SAMPLE_RATE, subtype="PCM_16")
+            sf.write(str(path), wave, int(rate), subtype="PCM_16")
             (OUT / f"s{index:02d}_{lang}.txt").write_text(text, encoding="utf-8")
-            duration = len(wave) / vox.SAMPLE_RATE
+            duration = len(wave) / rate
             audio_seconds += duration
             heard = transcriber.transcribe(Waveform.from_file(str(path)), language=lang)
             wer = word_error_rate(text, heard)
@@ -132,6 +187,7 @@ def main() -> None:
         projected_gpu_h = (REMAINING_CORPUS_H * 3600 / rtf) / 3600 if rtf else None
         fr_wers = [c["wer"] for c in clips if c["lang"] == "fr"]
         summary = {
+            "voice_mode": voice_mode,
             "engine_start_s": round(engine_seconds, 1),
             "synthesis_s": round(synth_seconds, 1),
             "audio_s": round(audio_seconds, 1),
