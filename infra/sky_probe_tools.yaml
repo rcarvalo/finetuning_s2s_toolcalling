@@ -12,9 +12,12 @@
 # Four declaration sets over the same utterances, so the only variable is which
 # tools are declared. `tools_2` is the control: it must reproduce roughly the
 # usual score, and if it does not, the probe is broken rather than the model.
+# (Measured 28/08 on v4: 0.833 — the probe is sound.)
 #
 # Reports go to the Hub as each one lands: a lost pod must never take the only
-# copy of a result with it.
+# copy of a result with it. The per-sample archive goes with them — it holds
+# the predicted text, which is what tells WHICH tool was called when the score
+# is wrong, and so whether the model hallucinated a name it was not offered.
 
 name: liquid-probe
 
@@ -61,6 +64,7 @@ run: |
   for ADAPTER in v4 v5; do
     for COND in 2 2plus1 2plus4 unseen_only; do
       echo "=== $ADAPTER / $COND ==="
+      # --archive names a DIRECTORY (one JSON per sample), not a file.
       uv run lfm2-evaluate \
           --checkpoint LiquidAI/LFM2.5-Audio-1.5B \
           --adapter "Rcarvalo/lfm25-tc-en-${ADAPTER}-adapter" \
@@ -69,19 +73,28 @@ run: |
           --audio-root benchmark/tool_probe/audio \
           --tool-definitions "benchmark/tool_probe/tools_${COND}.json" \
           --scorers tool_call \
-          --archive "reports/tool_probe/${ADAPTER}_${COND}_samples.jsonl" \
+          --archive "reports/tool_probe/${ADAPTER}_${COND}_samples" \
           --out "reports/tool_probe/${ADAPTER}_${COND}.json"
 
       uv run python - "$ADAPTER" "$COND" <<'PY'
-  import pathlib, sys
+  import pathlib, sys, tarfile
   from huggingface_hub import HfApi
   adapter, cond = sys.argv[1], sys.argv[2]
-  api = HfApi()
-  for suffix in (".json", "_samples.jsonl"):
-      p = pathlib.Path(f"reports/tool_probe/{adapter}_{cond}{suffix}")
-      if p.exists():
-          api.upload_file(path_or_fileobj=str(p), path_in_repo=f"tool_probe/reports/{p.name}",
-                          repo_id="Rcarvalo/tc-en-voice-agent-v1", repo_type="dataset")
+  api, base = HfApi(), pathlib.Path("reports/tool_probe")
+
+  report = base / f"{adapter}_{cond}.json"
+  if report.is_file():
+      api.upload_file(path_or_fileobj=str(report), path_in_repo=f"tool_probe/reports/{report.name}",
+                      repo_id="Rcarvalo/tc-en-voice-agent-v1", repo_type="dataset")
+
+  samples = base / f"{adapter}_{cond}_samples"
+  if samples.is_dir():
+      archive = base / f"{adapter}_{cond}_samples.tar.gz"
+      with tarfile.open(archive, "w:gz") as tar:
+          for item in sorted(samples.glob("*")):
+              tar.add(item, arcname=item.name)
+      api.upload_file(path_or_fileobj=str(archive), path_in_repo=f"tool_probe/reports/{archive.name}",
+                      repo_id="Rcarvalo/tc-en-voice-agent-v1", repo_type="dataset")
   print(f"pushed {adapter}/{cond}", flush=True)
   PY
     done
