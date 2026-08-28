@@ -90,6 +90,35 @@ def install_stack(progress: object | None = None) -> None:
     reporter.step("pip install mistral-common")
     stream_command([sys.executable, "-m", "pip", "install", "-U", "mistral-common"], reporter)
 
+    # Realign torchaudio on the torch vllm just installed — the user's proven
+    # Colab cell does exactly this, and it is not optional: the image's
+    # torchaudio was built against the torch that pip just replaced, and the
+    # audio-decoder stage that imports it then dies WITHOUT A TRACE. Both the
+    # in-process and the server run stalled forever at exactly that point:
+    # stage-0 warm, stage-1 never born, no error anywhere.
+    reporter.step("réalignement de torchaudio sur le torch de vllm")
+    probe = subprocess.run(
+        [sys.executable, "-c", "import torch; print(torch.__version__.split('+')[0])"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    torch_version = probe.stdout.strip()
+    reporter.note(f"torch {torch_version}")
+    stream_command([sys.executable, "-m", "pip", "uninstall", "-y", "torchaudio"], reporter)
+    stream_command(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            f"torchaudio=={torch_version}",
+            "--index-url",
+            "https://pypi.org/simple",
+        ],
+        reporter,
+    )
+
 
 def preload_cuda13() -> None:
     """Load the cu13 shared objects before importing vllm_omni.
