@@ -111,6 +111,12 @@ def main() -> None:
     )
     ap.add_argument("--provider", choices=["gemini", "anthropic"], default="gemini")
     ap.add_argument("--model", default=None, help="défaut : selon --provider")
+    ap.add_argument(
+        "--lang",
+        choices=["en", "fr"],
+        default="en",
+        help="langue des énoncés parlés ; les outils et leurs arguments ne changent pas",
+    )
     ap.add_argument("--held-out", type=Path, default=None, help="benchmark JSONL à éviter (contamination)")
     ap.add_argument("--contamination-threshold", type=float, default=0.5)
     ap.add_argument("--seed", type=int, default=0)
@@ -163,6 +169,7 @@ def main() -> None:
             tool_definitions=TOOLCALLING_EN_TOOL_DEFINITIONS,
             blocklist=rng.sample(contamination.held_out, min(8, len(contamination.held_out))),
             mode=args.mode,
+            language={"en": "English", "fr": "French"}[args.lang],
         )
         return target, style, depth, form, prompt
 
@@ -202,7 +209,14 @@ def main() -> None:
                         contaminated += 1
                         continue
                     seen_norm.add(key)
-                    dialogue = sd.case_to_dialogue(case, written, tools=TOOLCALLING_EN_TOOL_NAMES, mode=args.mode)
+                    dialogue = sd.case_to_dialogue(
+                        case,
+                        written,
+                        tools=TOOLCALLING_EN_TOOL_NAMES,
+                        mode=args.mode,
+                        lang=args.lang,
+                        prefix=f"tc{args.lang}" if args.lang != "en" else "tc",
+                    )
                     out.write(json.dumps(dialogue, ensure_ascii=False) + "\n")
                     written += 1
                     pos += case.target != "none"

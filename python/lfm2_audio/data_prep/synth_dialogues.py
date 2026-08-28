@@ -92,6 +92,7 @@ def build_generation_prompt(
     blocklist: Iterable[str] = (),
     mode: str = "single",
     form: str = "",
+    language: str = "English",
 ) -> str:
     """Prompt demandant ``n`` cas pour une cellule de taxonomie (sortie JSON strict).
 
@@ -138,8 +139,17 @@ def build_generation_prompt(
             if form
             else ""
         )
-        + f"Produce exactly {n} DIVERSE, realistic English user utterances as spoken to a "
+        + f"Produce exactly {n} DIVERSE, realistic {language} user utterances as spoken to a "
         "voice assistant (no markup, no tool tokens).\n"
+        # Tool names and argument VALUES stay as the schemas define them — the
+        # call is structural, not linguistic. Only what is SPOKEN changes
+        # language; a French user still triggers db_query("engine_temp").
+        + (
+            f"Every utterance and every spoken answer must be in {language}; "
+            "tool names and argument values keep the exact form the schemas define.\n"
+            if language != "English"
+            else ""
+        )
         + (f"Avoid anything close to these held-out utterances:\n{block}\n" if block else "")
         + "Respond with ONLY a JSON array, each element shaped like:\n"
         f"{shape}\n"
@@ -314,7 +324,15 @@ class ContaminationFilter:
 # --------------------------------------------------------------------------- #
 
 
-def case_to_dialogue(case: SynthCase, idx: int, *, tools: list[str], mode: str = "single") -> dict[str, Any]:
+def case_to_dialogue(
+    case: SynthCase,
+    idx: int,
+    *,
+    tools: list[str],
+    mode: str = "single",
+    lang: str = "en",
+    prefix: str = "tc",
+) -> dict[str, Any]:
     """Cas → dialogue ``dialogue_schema`` (audio ajouté ensuite par le TTS).
 
     - **single** : user → assistant (tool call OU réponse texte).
@@ -337,12 +355,15 @@ def case_to_dialogue(case: SynthCase, idx: int, *, tools: list[str], mode: str =
             {"role": "assistant", "tool_calls": [{"name": case.target, "arguments": case.arguments}]},
         ]
     return {
-        "id": f"tc_{idx:06d}_{case.target}",
+        "id": f"{prefix}_{idx:06d}_{case.target}",
         # system EN explicite dans les données → train == inférence (corrige le
         # défaut FR « accueil » que l'adapter mettait sinon → routage brouillé).
+        # Il reste EN même pour les cas FR : le modèle bilingue sert avec UN
+        # prompt système, c'est l'utilisateur qui change de langue.
         "system": TOOLCALLING_EN_SYSTEM_INSTRUCTIONS,
         "tools": tools,
-        "meta": {"style": case.style, "depth": case.depth, "target": case.target, "form": case.form},
+        # lang est lu par tout le plombage aval (packing, WER par langue, juge).
+        "meta": {"style": case.style, "depth": case.depth, "target": case.target, "form": case.form, "lang": lang},
         "turns": turns,
     }
 
