@@ -108,16 +108,26 @@ def voxtral_synthesiser(reference) -> Synthesiser:  # noqa: ANN001 — VoiceRefe
     sys.path.insert(0, str(ROOT / "infra" / "jobs"))
     import voxtral_tts_synth as vox
 
-    vox.install_stack()
+    from lfm2_audio.core.progress import Progress
+
+    # Every stage announced on a clock: the previous run died after 45 minutes
+    # of silence and nothing said which stage it was in.
+    progress = Progress("voxtral")
+    vox.install_stack(progress)
+    progress.step("préchargement des bibliothèques CUDA 13")
     vox.preload_cuda13()
 
+    progress.step("import de vllm_omni")
     from mistral_common.protocol.speech.request import SpeechRequest
     from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
     from vllm import SamplingParams
     from vllm_omni.entrypoints.omni import Omni
 
+    progress.step(f"tokenizer {vox.MODEL}")
     tokenizer = MistralTokenizer.from_hf_hub(vox.MODEL).instruct_tokenizer
+    progress.step("démarrage du moteur Omni (téléchargement des poids ~8 Go)")
     engine = Omni(model=vox.MODEL)
+    progress.step("moteur prêt — synthèse")
     audio_bytes = reference.audio_bytes
 
     def speak(texts: list[str], langs: list[str]):  # noqa: ANN202 — langue portée par le texte

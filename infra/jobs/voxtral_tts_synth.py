@@ -75,9 +75,20 @@ VLLM_PIN = "vllm==0.26.0"
 VLLM_OMNI_PIN = "vllm-omni==0.26.0"
 
 
-def install_stack() -> None:
-    pip("install", "-q", VLLM_PIN, VLLM_OMNI_PIN)
-    pip("install", "-q", "-U", "mistral-common")
+def install_stack(progress: object | None = None) -> None:
+    """Install the stack out loud.
+
+    The quiet version cost a 45-minute run that could not be told apart from a
+    hang: pip printed nothing, and RunPod's CPU/GPU metrics read near zero for a
+    healthy pod as well. Multi-gigabyte steps now stream a line periodically.
+    """
+    from lfm2_audio.core.progress import Progress, stream_command
+
+    reporter = progress if isinstance(progress, Progress) else Progress("voxtral-stack")
+    reporter.step(f"pip install {VLLM_PIN} + {VLLM_OMNI_PIN} (plusieurs Go)")
+    stream_command([sys.executable, "-m", "pip", "install", VLLM_PIN, VLLM_OMNI_PIN], reporter)
+    reporter.step("pip install mistral-common")
+    stream_command([sys.executable, "-m", "pip", "install", "-U", "mistral-common"], reporter)
 
 
 def preload_cuda13() -> None:

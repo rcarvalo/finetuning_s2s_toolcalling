@@ -1,0 +1,100 @@
+# Composition of the 150 h synthetic corpus. Each `hours` is justified by the
+# measurement in its `rationale` — see data_prep/corpus_plan.py for the four
+# anchors (WER curve, Moshi recipe, Wolof filtering, our own EN calibration).
+#
+# `already_have_h` is stock measured on 2026-08-27, not an estimate:
+#   french-dialogue-tts-1000h = 26.4 h, ONE voice (fr_female), conversational
+#   C_dialogues               = 695 dialogues, 1228 assistant turns ≈ 1.5 h
+#   tc-en-voice-agent-v1      = 2729 EN tool-calling dialogues
+# Three repos that promise more than they hold, and must not be counted on:
+#   omnivoice-fr-100h = 16.9 h of read Wikipedia · voxtral-french-1000h = EMPTY
+#   tc-en-s2s-audio = EMPTY
+
+name: fr_150h
+total_hours: 150.0
+target_fr_ratio: 0.8
+
+slices:
+  # ---------------------------------------------------------------- French 120 h
+  - name: fr_conversation
+    brick: A_assistant_speech
+    lang: fr
+    hours: 78.0
+    register: dialogue
+    dialogues: 9000
+    already_have_h: 26.4
+    rationale: >-
+      The core of R2. The WER-vs-hours curve flattens around 100 h of target
+      speech; below ~50 h the model stays at the 2.9-3.0 UTMOS / high-WER end.
+      Combined with fr_social and fr_codeswitch this slice puts French
+      conversational speech at 94 h, the plateau, in the single retained voice.
+
+  - name: fr_social
+    brick: A_assistant_speech
+    lang: fr
+    hours: 8.0
+    register: dialogue_court
+    dialogues: 3000
+    rationale: >-
+      The gap v3's verdict named: short social turns (greetings, thanks,
+      acknowledgements) were the model's weakest register. They are cheap in
+      hours because each turn is 2-3 s, and numerous because the defect is one
+      of coverage, not of volume.
+
+  - name: fr_codeswitch
+    brick: C_dialogues
+    lang: fr
+    hours: 8.0
+    register: dialogue
+    dialogues: 1000
+    rationale: >-
+      Mirroring is a behaviour, not a volume: the system prompt alone moved it
+      from 55 % to 82 %. The remaining points need explicit examples of the user
+      switching language mid-conversation, which no other slice contains.
+
+  - name: fr_toolcalling
+    brick: C_dialogues
+    lang: fr
+    hours: 21.0
+    register: dialogue
+    dialogues: 2500
+    rationale: >-
+      Sized by count, not by hours: our English run reached 0.830 on fresh-300
+      with 2729 dialogues, so the French side is built to match that number.
+      Today this slice holds ZERO — fr_dialogues.py writes `tools: []` — which
+      makes it the single largest hole in the corpus.
+
+  - name: fr_asr_user
+    brick: B_user_speech
+    lang: fr
+    hours: 5.0
+    register: lu
+    rationale: >-
+      Synthetic user speech in varied voices, on top of the real Common Voice
+      clips of brick B (real speech, outside this 150 h). Kept small: R1 consumes
+      8000 examples, and real speech is the better teacher for what the model
+      must HEAR.
+
+  # ---------------------------------------------------------------- English 30 h
+  - name: en_toolcalling
+    brick: D_english
+    lang: en
+    hours: 20.0
+    register: dialogue
+    dialogues: 2729
+    already_have_h: 20.0
+    rationale: >-
+      The frozen anchor, already in stock as tc-en-voice-agent-v1. Not training
+      new behaviour — insurance that fresh-300 does not regress below 0.78 while
+      French is grafted on.
+
+  - name: en_conversation
+    brick: D_english
+    lang: en
+    hours: 10.0
+    register: dialogue
+    dialogues: 1200
+    rationale: >-
+      Holds the 80/20 ratio validated on the 125 h pilot (val_loss 2.02, English
+      preserved). Without conversational English beside the tool-calling English,
+      the preservation share teaches only one register.

@@ -96,18 +96,23 @@ def brick_a(check) -> dict[str, object]:  # noqa: ANN001 — transcripteur
     hours = sum(entry.duration_s for entry in kept) / 3600
     dropped, rates = 0, []
 
-    # One bulk snapshot, not 15 164 file requests: the per-file round-trip
-    # dominates at this count, and the HF cache makes a restart free.
-    print("[A] téléchargement du corpus dialogue…", flush=True)
-    local = Path(snapshot_download(DIALOGUE_REPO, repo_type="dataset"))
+    # Only the clips metadata.jsonl actually names. A bare snapshot fetches the
+    # whole repo — 55 742 files against 15 164 useful ones — which measured 3 h
+    # of paid download for 46 min of work. Pull the manifest first, then restrict.
+    manifest_only = Path(snapshot_download(DIALOGUE_REPO, repo_type="dataset", allow_patterns=["metadata.jsonl"]))
+    rows = [
+        json.loads(line)
+        for line in (manifest_only / "metadata.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    wanted = [row["file_name"] for row in rows]
+    print(f"[A] {len(rows)} clips annoncés — téléchargement restreint", flush=True)
+    local = Path(snapshot_download(DIALOGUE_REPO, repo_type="dataset", allow_patterns=["metadata.jsonl", *wanted]))
     print(f"[A] corpus local : {local}", flush=True)
 
-    for line in (local / "metadata.jsonl").read_text(encoding="utf-8").splitlines():
+    for row in rows:
         if hours >= TARGET_HOURS_A:
             break
-        if not line.strip():
-            continue
-        row = json.loads(line)
         clip_id = f"a_{Path(row['file_name']).stem}"
         text = " ".join(str(row.get("text", "")).split())
         source_wav = local / row["file_name"]
