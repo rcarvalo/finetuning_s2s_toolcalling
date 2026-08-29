@@ -124,9 +124,12 @@ def main() -> None:
             batch = generate(judge, builder(args.per_call, topic), prefix=prefix, kind=kind, start=len(produced))
             produced += [d for d in batch if not filter_.is_contaminated(d.turns[0].text)]
             print(f"  {kind} {len(produced)}/{target} — {topic}", flush=True)
+            # Flushed EVERY batch. The per-family version lost an entire day:
+            # a 429 mid-family discarded ~2000 in-memory dialogues whose API
+            # calls had already been paid for — twice, since the first run
+            # hung and its regeneration hit the spend cap.
+            _write(args.out, dialogues + switches + extra + produced)
         extra += produced
-        # Flushed after every family: a killed generation keeps what it made.
-        _write(args.out, dialogues + switches + extra)
 
     _write(args.out, dialogues + switches + extra)
     print(f"→ {args.out}")
