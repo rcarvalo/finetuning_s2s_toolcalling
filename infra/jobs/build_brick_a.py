@@ -27,7 +27,10 @@ Synthesiser = Callable[[list[str], list[str]], tuple[list, int]]
 """Speak a batch of texts; returns waveforms and their sample rate."""
 
 ROOT = Path(os.environ.get("LFM2_ROOT", "/workspace/repo"))
-OUT = Path(os.environ.get("LFM2_OUT", "/workspace/out")) / "A_assistant_speech"
+# One folder and one Hub path per brick: the EN wave pushing into
+# A_assistant_speech overwrote the French manifest with its own (29/08).
+BRICK_PATH = os.environ.get("BRICK_A_HF_PATH", "A_assistant_speech")
+OUT = Path(os.environ.get("LFM2_OUT", "/workspace/out")) / BRICK_PATH
 
 sys.path.insert(0, str(ROOT / "python"))
 
@@ -222,9 +225,7 @@ def main() -> None:
     # to be left alive until exactly that happens.
     from lfm2_audio.data_prep.streaming_push import StreamingPusher
 
-    pusher = StreamingPusher(
-        OUT, os.environ.get("BRICK_A_HF_REPO", "Rcarvalo/lfm25-fr-corpus-v1"), "A_assistant_speech"
-    )
+    pusher = StreamingPusher(OUT, os.environ.get("BRICK_A_HF_REPO", "Rcarvalo/lfm25-fr-corpus-v1"), BRICK_PATH)
     pusher.verify()
     push_every = int(os.environ.get("BRICK_A_PUSH_EVERY", "5"))
 
