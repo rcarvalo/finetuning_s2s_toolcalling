@@ -90,34 +90,36 @@ def install_stack(progress: object | None = None) -> None:
     reporter.step("pip install mistral-common")
     stream_command([sys.executable, "-m", "pip", "install", "-U", "mistral-common"], reporter)
 
-    # Realign torchaudio on the torch vllm just installed — the user's proven
-    # Colab cell does exactly this, and it is not optional: the image's
-    # torchaudio was built against the torch that pip just replaced, and the
-    # audio-decoder stage that imports it then dies WITHOUT A TRACE. Both the
-    # in-process and the server run stalled forever at exactly that point:
-    # stage-0 warm, stage-1 never born, no error anywhere.
-    reporter.step("réalignement de torchaudio sur le torch de vllm")
+    # Realign torchaudio ONLY if its import actually fails. The unconditional
+    # version — copied from a Colab cell that was healing a broken torchaudio —
+    # BROKE a healthy one: PyPI's default wheel is cu13, and on a cu128 torch
+    # the reinstall traded a working pair for a CUDA mismatch that killed
+    # `vllm serve` at import. A repair applied to a healthy patient is an
+    # injury; probe first, and pull the wheel from the matching CUDA channel.
+    reporter.step("torchaudio : contrôle d'import")
+    check = subprocess.run([sys.executable, "-c", "import torchaudio"], capture_output=True, text=True, check=False)
+    if check.returncode == 0:
+        reporter.note("torchaudio sain — pas de réalignement")
+        return
+
     probe = subprocess.run(
-        [sys.executable, "-c", "import torch; print(torch.__version__.split('+')[0])"],
+        [sys.executable, "-c", "import torch; print(torch.__version__.split('+')[0], torch.version.cuda)"],
         capture_output=True,
         text=True,
         check=False,
     )
-    torch_version = probe.stdout.strip()
-    reporter.note(f"torch {torch_version}")
+    torch_version, cuda = [*probe.stdout.split(), "", ""][:2]
+    channel = f"https://download.pytorch.org/whl/cu{cuda.replace('.', '')}" if cuda else "https://pypi.org/simple"
+    reporter.note(f"torchaudio cassé — réalignement sur torch {torch_version} (canal {channel})")
     stream_command([sys.executable, "-m", "pip", "uninstall", "-y", "torchaudio"], reporter)
     stream_command(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            f"torchaudio=={torch_version}",
-            "--index-url",
-            "https://pypi.org/simple",
-        ],
+        [sys.executable, "-m", "pip", "install", f"torchaudio=={torch_version}", "--index-url", channel],
         reporter,
     )
+    recheck = subprocess.run([sys.executable, "-c", "import torchaudio"], capture_output=True, text=True, check=False)
+    if recheck.returncode != 0:
+        # Last resort: PyPI default wheel (matches a cu13 torch).
+        stream_command([sys.executable, "-m", "pip", "install", f"torchaudio=={torch_version}"], reporter)
 
 
 def start_server(progress, *, port: int = 8001, timeout_s: int = 900):  # noqa: ANN001, ANN201 — Progress, (Popen, str)
