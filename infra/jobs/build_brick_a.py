@@ -87,8 +87,18 @@ def _resolve_source(source: Path) -> Path | None:
         return None
 
 
+ROLE = os.environ.get("BRICK_A_ROLE", "assistant")
+"""Which side of the dialogue to voice. ``user`` feeds the fr_asr_user slice:
+what the model must HEAR, in voices other than the assistant's."""
+
+SHARD = os.environ.get("BRICK_A_SHARD", "")
+"""``k/n`` takes every n-th turn starting at k. Lets the user-speech corpus be
+spoken by several preset voices without per-clip plumbing: one run per voice,
+each on its own shard, each manifest recording its voice."""
+
+
 def turns_to_speak(limit: int | None) -> list[tuple[str, str, str]]:
-    """``(clip_id, text, lang)`` for every assistant turn to synthesise."""
+    """``(clip_id, text, lang)`` for every turn of ``ROLE`` to synthesise."""
     items: list[tuple[str, str, str]] = []
     for declared in SOURCES:
         source = _resolve_source(declared)
@@ -100,9 +110,12 @@ def turns_to_speak(limit: int | None) -> list[tuple[str, str, str]]:
             case = json.loads(line)
             lang = str(case.get("meta", {}).get("lang", "fr"))
             for index, turn in enumerate(case.get("turns", [])):
-                if turn.get("role") != "assistant" or not turn.get("text", "").strip():
+                if turn.get("role") != ROLE or not turn.get("text", "").strip():
                     continue
                 items.append((f"{case['id']}_t{index}", turn["text"].strip(), turn.get("lang", lang)))
+    if SHARD:
+        offset, stride = (int(p) for p in SHARD.split("/"))
+        items = items[offset::stride]
     return items[:limit] if limit else items
 
 
@@ -158,7 +171,7 @@ def voxtral_synthesiser(reference) -> Synthesiser:  # noqa: ANN001 — VoiceRefe
     _server, base_url = vox.start_server(progress)  # gardé : le processus vit tant que le job vit
     progress.step("serveur prêt — synthèse")
 
-    if VOICE_SOURCE in ("fr_female", "fr_male"):
+    if VOICE_SOURCE not in ("dialogue", "siwis"):  # tout preset embarqué du dépôt Voxtral
         voice_args = {"voice": VOICE_SOURCE}
     else:
         mime = "audio/wav" if reference.wav_path.suffix == ".wav" else "audio/mpeg"
@@ -209,9 +222,9 @@ def main() -> None:
     # open Voxtral checkpoint anyway (no encoder weights). A clone source is
     # resolved before any engine install: the vLLM stack replaces torch and
     # breaks the torchaudio the resolution needs.
-    if VOICE_SOURCE in ("fr_female", "fr_male"):
+    if VOICE_SOURCE not in ("dialogue", "siwis"):  # tout preset embarqué du dépôt Voxtral
         reference = None
-        print(f"voix : preset natif {VOICE_SOURCE} [{ENGINE}]", flush=True)
+        print(f"voix : preset natif {VOICE_SOURCE} [{ENGINE}], rôle {ROLE}", flush=True)
     else:
         reference = resolve_voice_reference(VOICE_SOURCE)
         print(f"voix : {VOICE_SOURCE}/{reference.stem} [{ENGINE}] — « {reference.text[:60]} »", flush=True)
