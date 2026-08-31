@@ -63,6 +63,29 @@ class StreamingPusher:
             self._api = None
             return False
 
+    def preload_existing(self) -> set[str]:
+        """Mark what the repo already holds, so a fresh VM never re-sends it.
+
+        Colab sessions die after an hour or two and their disks with them; the
+        Hub is the only memory a relaunch can trust. Returns the basenames
+        already present under this brick, for the caller to skip producing.
+        """
+        if self._api is None:
+            return set()
+        try:
+            prefix = f"{self.path_in_repo}/"
+            existing = [
+                f[len(prefix) :]
+                for f in self._api.list_repo_files(self.repo_id, repo_type="dataset")
+                if f.startswith(prefix) and not f.endswith("manifest.jsonl")
+            ]
+            self._pushed.update(existing)
+            logger.info("reprise Hub : %d fichiers déjà présents sous %s", len(existing), self.path_in_repo)
+            return {Path(f).name for f in existing}
+        except Exception as error:
+            logger.warning("préchargement de l'existant échoué : %s", error)
+            return set()
+
     def push(self, *, message: str) -> int:
         """One commit with every file not pushed yet. Returns how many went up."""
         if self._api is None:

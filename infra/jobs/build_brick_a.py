@@ -229,18 +229,23 @@ def main() -> None:
         reference = resolve_voice_reference(VOICE_SOURCE)
         print(f"voix : {VOICE_SOURCE}/{reference.stem} [{ENGINE}] — « {reference.text[:60]} »", flush=True)
 
-    items = turns_to_speak(LIMIT)
-    todo = [(cid, text, lang) for cid, text, lang in items if not (audio_dir / f"{cid}.wav").exists()]
-    print(f"{len(items)} tours assistant, {len(items) - len(todo)} déjà faits, {len(todo)} à produire", flush=True)
-
-    # The Hub is the primary store, verified BEFORE any GPU spending: a RunPod
-    # balance reaching zero deletes the pod and its disk, and this run is meant
-    # to be left alive until exactly that happens.
+    # The Hub is the primary store, verified BEFORE any GPU spending — and the
+    # ONLY resume point: Colab sessions die within hours and their disks with
+    # them, so "already done" is defined by the repo, not the local folder.
     from lfm2_audio.data_prep.streaming_push import StreamingPusher
 
     pusher = StreamingPusher(OUT, os.environ.get("BRICK_A_HF_REPO", "Rcarvalo/lfm25-fr-corpus-v1"), BRICK_PATH)
     pusher.verify()
+    on_hub = pusher.preload_existing()
     push_every = int(os.environ.get("BRICK_A_PUSH_EVERY", "5"))
+
+    items = turns_to_speak(LIMIT)
+    todo = [
+        (cid, text, lang)
+        for cid, text, lang in items
+        if not (audio_dir / f"{cid}.wav").exists() and f"{cid}.wav" not in on_hub
+    ]
+    print(f"{len(items)} tours {ROLE}, {len(items) - len(todo)} déjà faits, {len(todo)} à produire", flush=True)
 
     transcriber = FasterWhisperTranscriber(model_size="small", device="cuda", compute_type="float16")
     speak = voxtral_synthesiser(reference) if ENGINE == "voxtral" else qwen_synthesiser(reference)
