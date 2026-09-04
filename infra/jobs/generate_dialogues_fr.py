@@ -28,6 +28,7 @@ import json
 import os
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -131,6 +132,23 @@ def generate_shard(family: str, shard: int, size: int, per_call: int) -> Path:
     return local
 
 
+def run_family(family: str, target: int, shard_size: int, per_call: int) -> list[dict[str, Any]]:
+    """Every shard of one family, in order, re-stamped; the Hub decides what is left to do."""
+    rows: list[dict[str, Any]] = []
+    for shard in range((target + shard_size - 1) // shard_size):
+        size = min(shard_size, target - shard * shard_size)
+        relative = PARTS_DIR / f"{family}_{shard:02d}.jsonl"
+        if str(relative) in hub_files():
+            local = fetch(relative)
+            print(f"shard {relative}: already on the Hub, reused", flush=True)
+        else:
+            local = generate_shard(family, shard, size, per_call)
+        produced = read_rows(local)
+        rows += reid(produced, family, shard)
+        print(f"===RESULT=== shard family={family} n={shard} rows={len(produced)}", flush=True)
+    return rows
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--deep", type=int, default=3000, help="long dialogues with anaphoric callbacks")
@@ -139,6 +157,7 @@ def main() -> None:
     parser.add_argument("--switch", type=int, default=800, help="code-switch dialogues on top of the 196 that exist")
     parser.add_argument("--shard-size", type=int, default=300)
     parser.add_argument("--per-call", type=int, default=10)
+    parser.add_argument("--parallel", type=int, default=4, help="families generated side by side (1 = sequential)")
     args = parser.parse_args()
 
     sys.path.insert(0, str(ROOT / "infra" / "jobs"))
@@ -147,19 +166,16 @@ def main() -> None:
     preflight()
 
     targets = {"deep": args.deep, "social": args.social, "en": args.en, "switch": args.switch}
-    existing = hub_files()
-    merged: list[dict[str, Any]] = []
-    for family, target in targets.items():
-        for shard in range((target + args.shard_size - 1) // args.shard_size):
-            size = min(args.shard_size, target - shard * args.shard_size)
-            relative = PARTS_DIR / f"{family}_{shard:02d}.jsonl"
-            if str(relative) in existing:
-                local = fetch(relative)
-                print(f"shard {relative}: already on the Hub, reused", flush=True)
-            else:
-                local = generate_shard(family, shard, size, args.per_call)
-            merged += reid(read_rows(local), family, shard)
-            print(f"===RESULT=== shard family={family} n={shard} rows={len(read_rows(local))}", flush=True)
+    # One thread per family: the generator is sequential and a deep dialogue is
+    # a long completion, so four families in a row measured 7-12 h; side by
+    # side they share the wall clock. Shards stay independent files, so the
+    # Hub is asked before EACH shard — a shard pushed by another run, or by an
+    # earlier attempt, is reused rather than regenerated.
+    with ThreadPoolExecutor(max_workers=max(1, args.parallel)) as pool:
+        per_family = list(
+            pool.map(lambda item: run_family(item[0], item[1], args.shard_size, args.per_call), targets.items())
+        )
+    merged: list[dict[str, Any]] = [row for rows in per_family for row in rows]
 
     write_rows(ROOT / "corpus" / MERGED, merged)
     push(MERGED)
