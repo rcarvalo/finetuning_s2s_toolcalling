@@ -9,7 +9,8 @@ here are the ones that need a GPU or liquid-audio.
 
     LFM2_JOB=tc_en_v51 LFM2_ARGS="--stage voice"   # Qwen3-TTS, Aiden, 225 clips
     LFM2_JOB=tc_en_v51 LFM2_ARGS="--stage pack"    # rebuild + pack from the Hub
-    LFM2_JOB=tc_en_v51 LFM2_ARGS="--stage train"   # LoRA, adapter pushed every 200 steps
+    LFM2_JOB=tc_en_v51 LFM2_ARGS="--stage push"    # packed tensors -> Rcarvalo/tc-en-v5_1-packed
+    LFM2_JOB=tc_en_v51 LFM2_ARGS="--stage train"   # optional: LoRA, adapter pushed every 200 steps
 
 Every stage is resumable from what the Hub already holds, because a Colab VM
 does not survive: the voice stage restores its partial tarball, the pack stage
@@ -64,6 +65,23 @@ def stage_pack() -> None:
     print(f"===RESULT=== stage=pack tag={TAG} status=done", flush=True)
 
 
+PACKED_REPO = os.environ.get("TC_EN_PACKED_REPO", f"Rcarvalo/tc-en-{TAG}-packed")
+"""Where the packed, training-ready tensors go. A dataset on the Hub is the
+deliverable; training is what one does with it later, on any machine."""
+
+
+def stage_push() -> None:
+    from datasets import load_from_disk
+
+    for split in ("train", "val"):
+        dataset = ROOT / f"datasets/tc_en_{TAG}_{split}"
+        if not dataset.exists():
+            raise SystemExit(f"nothing to push: {dataset} missing — run --stage pack first")
+        load_from_disk(str(dataset)).push_to_hub(PACKED_REPO, split=split, private=True)
+        print(f"pushed {dataset} -> {PACKED_REPO}:{split}", flush=True)
+    print(f"===RESULT=== stage=push tag={TAG} repo={PACKED_REPO} status=done", flush=True)
+
+
 def derive_resume_config(base: dict, steps_done: int) -> dict:
     """The v4 resume recipe: warm start from the pushed adapter, finish the remaining steps.
 
@@ -93,7 +111,7 @@ def stage_train(resume_after: int | None) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--stage", choices=["voice", "pack", "train", "all"], required=True)
+    parser.add_argument("--stage", choices=["voice", "pack", "push", "train", "all"], required=True)
     parser.add_argument("--resume-after", type=int, default=None, help="steps already trained (Hub adapter)")
     args = parser.parse_args()
 
@@ -101,7 +119,11 @@ def main() -> None:
         stage_voice()
     if args.stage in ("pack", "all"):
         stage_pack()
-    if args.stage in ("train", "all"):
+    if args.stage in ("push", "all"):
+        stage_push()
+    # Training is NOT part of `all`: the dataset on the Hub is the deliverable,
+    # and a training run is a separate, deliberate decision.
+    if args.stage == "train":
         stage_train(args.resume_after)
 
 

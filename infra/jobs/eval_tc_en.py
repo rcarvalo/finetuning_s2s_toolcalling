@@ -8,9 +8,8 @@ numbers land in the same table as docs/v4_report.md and docs/v5_report.md.
 
     LFM2_JOB=eval_tc_en LFM2_ARGS="--adapter Rcarvalo/lfm25-tc-en-v5_1-adapter --tag v5_1"
 
-Needs GEMINI_API_KEY for the judge and the `tooldata` extra for the live tools
-(`LFM2_EXTRAS=serving-liquid,eval,inspect,tooldata`). Every report is pushed to
-the Hub as soon as it exists.
+Needs GEMINI_API_KEY for the judge; the search backend (ddgs) is installed by
+the job itself. Every report is pushed to the Hub as soon as it exists.
 """
 
 from __future__ import annotations
@@ -31,6 +30,16 @@ GATES = {"relevance": 4.5, "honesty": 4.0, "coherence": 4.5}
 def run(cmd: list[str]) -> None:
     print("===", " ".join(cmd), flush=True)
     subprocess.run(cmd, cwd=ROOT, check=True)
+
+
+def ensure_live_tools() -> None:
+    """ddgs alone, not the `tooldata` extra.
+
+    That extra also pulls kokoro>=0.9, which refuses Python 3.13 — Colab's
+    Python — and took the whole install down with it (measured by the operator
+    on 28/08). The scenarios only need the search backend.
+    """
+    run([sys.executable, "-m", "pip", "install", "-q", "ddgs>=6.0"])
 
 
 def fetch_scenario_audio() -> None:
@@ -96,6 +105,7 @@ def main() -> None:
     if not os.environ.get("GEMINI_API_KEY"):
         raise SystemExit("GEMINI_API_KEY manquant : le juge ne peut pas noter les scénarios")
 
+    ensure_live_tools()
     fetch_scenario_audio()
     scen = ROOT / f"reports/scenarios_{args.tag}"
     run(
