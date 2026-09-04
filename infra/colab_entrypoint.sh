@@ -67,5 +67,10 @@ JOB_PATH="infra/jobs/${JOB}.py"
 [ -f "$JOB_PATH" ] || { echo "=== ÉCHEC: $JOB_PATH introuvable"; exit 1; }
 
 echo "=== démarrage du job $JOB"
-python -u "$JOB_PATH" ${LFM2_ARGS:-} 2>&1
-echo "=== job terminé, code $?"
+# tee: the same lines reach the cell (live) and $LFM2_OUT/job.log (for a probe
+# later). The exit status is the JOB's, not the echo's: a cell that reads 0
+# while the job died was the first thing the operator hit.
+python -u "$JOB_PATH" ${LFM2_ARGS:-} 2>&1 | tee -a "$LFM2_OUT/job.log"
+STATUS=${PIPESTATUS[0]}
+echo "=== job terminé, code $STATUS" | tee -a "$LFM2_OUT/job.log"
+exit "$STATUS"
