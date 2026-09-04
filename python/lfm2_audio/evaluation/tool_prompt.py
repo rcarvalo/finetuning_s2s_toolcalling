@@ -31,9 +31,20 @@ def resolve_tool_definitions(spec: str | None) -> list[dict[str, Any]] | None:
     return definitions
 
 
-def resolve_system(tool_definitions: str | None) -> str:
-    """The campaign's system prompt: tool-aware when tools are declared."""
+def resolve_system(tool_definitions: str | None, instructions: str | None = None) -> str:
+    """The campaign's system prompt: tool-aware when tools are declared.
+
+    ``instructions`` is a path to a text file replacing the default instruction
+    sentence, the tool list staying exactly as at training. It exists for one
+    measurement: the trained prompt names its two tools and orders "call at
+    most one", and the 28/08 probe showed that rule alone keeps the model from
+    ever picking a third tool. Whether a wording change frees it is a
+    prompt-only question, cheaper than any retrain — so it must be askable.
+    """
     definitions = resolve_tool_definitions(tool_definitions)
     if definitions is None:
         return DEFAULT_SYSTEM
-    return build_system_prompt(tool_definitions=definitions)
+    if instructions is None:
+        return build_system_prompt(tool_definitions=definitions)
+    text = Path(instructions).read_text(encoding="utf-8").strip()
+    return build_system_prompt(instructions=text, tool_definitions=definitions)

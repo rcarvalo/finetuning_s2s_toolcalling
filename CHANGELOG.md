@@ -5,6 +5,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 
 ## [Unreleased]
 
+### Added
+- Colab notebooks that the operator runs, one job per cell, everything
+  resumable from the Hub: `colab_tc_en_v51` (voice → pack → train the v5.1
+  EN tool-calling adapter), `colab_eval_tc_en` (fresh set + scenarios +
+  judge, the same table as v4/v5), `colab_tool_probe_prompts` (does a wording
+  change free the model to pick an unseen tool). Jobs under `infra/jobs/`.
+- `lfm2-evaluate --system-instructions FILE`: swap the instruction sentence of
+  the system prompt while keeping the trained tool list — a prompt-only
+  measurement, cheaper than any retrain.
+- `LFM2_EXTRAS` on the Colab entrypoint, so a training job can ask for `train`
+  and `tooldata` without a second entrypoint.
+- `TC_EN_TAG` on `prepare_v5.py` / `pod_synth_misses_v5.py`: every Hub path and
+  local dir derives from it, so v5_1 does not overwrite v5.
+- Tool-generalization probe (`benchmark/tool_probe/`, `sky_probe_tools.yaml`)
+  and its verdict, `docs/tool_generalization_probe.md`.
+
+### Fixed
+- v5.1: `ContextualMiss` names a "found" topic only if it shares NO content
+  word with the ask. v5 let any overlap short of containment through; 210 of
+  its 213 two-sided refusals named near-identical topics and the model learned
+  to contradict itself (docs/v5_report.md). On the rebuilt corpus: 27 two-sided
+  refusals out of 225, 4 with any shared token, down from 210 of 213.
+
 ### Fixed
 - `VersaRunner` now judges scorer.py on the scores it wrote rather than on its
   exit code. On macOS the scorer regularly crashes during teardown

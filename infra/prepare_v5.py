@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import tarfile
@@ -36,7 +37,9 @@ from pathlib import Path
 from typing import Any
 
 REPO = "Rcarvalo/tc-en-voice-agent-v1"
-OUT = Path("data/tc_en_v5")
+TAG = os.environ.get("TC_EN_TAG", "v5")
+"""Which corpus this builds: v5, v5_1… Every Hub path and local dir derives from it."""
+OUT = Path(f"data/tc_en_{TAG}")
 AUDIO = OUT / "audio"
 VAL_SIZE = 150
 ASSISTANT_VOICE = "neutral_female"
@@ -127,7 +130,7 @@ def transform(dialogues: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], li
             continue
         for turn in dialogue["turns"]:
             if turn.get("role") == "assistant" and turn.get("text") and not turn.get("tool_calls"):
-                name = f"pb_miss_v5_{dialogue['id']}.wav"
+                name = f"pb_miss_{TAG}_{dialogue['id']}.wav"
                 turn["audio"] = name
                 manifest.append({"id": dialogue["id"], "text": turn["text"], "audio": name})
     print(f"payloads rewritten: {len(rewritten)} dialogues, {misses} refusals to voice", flush=True)
@@ -138,14 +141,32 @@ def stage_transform() -> None:
     AUDIO.mkdir(parents=True, exist_ok=True)
     phase_b, manifest = transform(fetch_phase_b_original())
 
-    (OUT / "phase_b_v5.jsonl").write_text(
+    (OUT / f"phase_b_{TAG}.jsonl").write_text(
         "".join(json.dumps(d, ensure_ascii=False) + "\n" for d in phase_b), encoding="utf-8"
     )
     (OUT / "miss_to_tts.jsonl").write_text(
         "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in manifest), encoding="utf-8"
     )
-    print(f"\nwrote {OUT}/phase_b_v5.jsonl and {OUT}/miss_to_tts.jsonl", flush=True)
+    print(f"\nwrote {OUT}/phase_b_{TAG}.jsonl and {OUT}/miss_to_tts.jsonl", flush=True)
     print(f"next: voice {len(manifest)} refusals as '{ASSISTANT_VOICE}', into {AUDIO}", flush=True)
+    # Shipped to the Hub right here: the pack stage runs on another machine
+    # (it needs liquid-audio) and must find these without any synced workdir.
+    from huggingface_hub import HfApi
+
+    api = HfApi()
+    api.upload_file(
+        path_or_fileobj=str(OUT / f"phase_b_{TAG}.jsonl"),
+        path_in_repo=f"phase_b/train_{TAG}.jsonl",
+        repo_id=REPO,
+        repo_type="dataset",
+    )
+    api.upload_file(
+        path_or_fileobj=str(OUT / "miss_to_tts.jsonl"),
+        path_in_repo=f"phase_b/miss_to_tts_{TAG}.jsonl",
+        repo_id=REPO,
+        repo_type="dataset",
+    )
+    print(f"pushed phase_b/train_{TAG}.jsonl and phase_b/miss_to_tts_{TAG}.jsonl", flush=True)
     print("TRANSFORM_DONE", flush=True)
 
 
@@ -158,14 +179,14 @@ def fetch_v5_artifacts() -> None:
     """
     from huggingface_hub import hf_hub_download
 
-    target = OUT / "phase_b_v5.jsonl"
+    target = OUT / f"phase_b_{TAG}.jsonl"
     if not target.exists():
-        source = hf_hub_download(REPO, "phase_b/train_v5.jsonl", repo_type="dataset")
+        source = hf_hub_download(REPO, f"phase_b/train_{TAG}.jsonl", repo_type="dataset")
         target.write_bytes(Path(source).read_bytes())
-        print(f"fetched phase_b/train_v5.jsonl -> {target}", flush=True)
+        print(f"fetched phase_b/train_{TAG}.jsonl -> {target}", flush=True)
 
-    if not any(AUDIO.glob("pb_miss_v5_*.wav")):
-        tarball = hf_hub_download(REPO, "phase_b/miss_audio_v5.tar.gz", repo_type="dataset")
+    if not any(AUDIO.glob(f"pb_miss_{TAG}_*.wav")):
+        tarball = hf_hub_download(REPO, f"phase_b/miss_audio_{TAG}.tar.gz", repo_type="dataset")
         with tarfile.open(tarball) as archive:
             for member in archive.getmembers():
                 if not member.isfile():
@@ -173,7 +194,7 @@ def fetch_v5_artifacts() -> None:
                 extracted = archive.extractfile(member)
                 assert extracted is not None
                 (AUDIO / Path(member.name).name).write_bytes(extracted.read())
-        print(f"fetched {len(list(AUDIO.glob('pb_miss_v5_*.wav')))} refusal clips", flush=True)
+        print(f"fetched {len(list(AUDIO.glob(f'pb_miss_{TAG}_*.wav')))} refusal clips", flush=True)
 
     # The Phase B audio that already existed: user turns and unchanged answers.
     #
@@ -201,7 +222,7 @@ def stage_pack() -> None:
     AUDIO.mkdir(parents=True, exist_ok=True)
     fetch_v5_artifacts()
 
-    phase_b_path = OUT / "phase_b_v5.jsonl"
+    phase_b_path = OUT / f"phase_b_{TAG}.jsonl"
     with phase_b_path.open(encoding="utf-8") as handle:
         phase_b = [json.loads(line) for line in handle]
 
@@ -254,7 +275,7 @@ def stage_pack() -> None:
 
     Path("tools_en.json").write_text(json.dumps(schemas.TOOLCALLING_EN_TOOL_DEFINITIONS), encoding="utf-8")
 
-    for split, dataset_dir in (("train", "datasets/tc_en_v5_train"), ("val", "datasets/tc_en_v5_val")):
+    for split, dataset_dir in (("train", f"datasets/tc_en_{TAG}_train"), ("val", f"datasets/tc_en_{TAG}_val")):
         if Path(dataset_dir).exists():
             print(f"{dataset_dir}: already packed", flush=True)
             continue

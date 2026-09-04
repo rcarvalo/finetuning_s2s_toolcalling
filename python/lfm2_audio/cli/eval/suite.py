@@ -70,6 +70,14 @@ def build_parser() -> argparse.ArgumentParser:
             "campagne SANS GPU quand une métrique change (`lfm2-eval-rescore`)."
         ),
     )
+    parser.add_argument(
+        "--system-instructions",
+        default=None,
+        help=(
+            "fichier texte remplaçant la phrase d'instruction du system prompt ; la liste "
+            "d'outils reste celle de l'entraînement. Sert à mesurer l'effet du prompt seul."
+        ),
+    )
     parser.add_argument("--list-scorers", action="store_true", help="lister les métriques et sortir")
     return parser
 
@@ -119,7 +127,7 @@ def build_generation(config: ScoringConfig) -> GenerationConfig:
 
 def build_system(args: argparse.Namespace) -> str:
     """System prompt of the campaign — same resolver as the training callback."""
-    return resolve_system(args.tool_definitions)
+    return resolve_system(args.tool_definitions, getattr(args, "system_instructions", None))
 
 
 def main() -> int:

@@ -35,3 +35,17 @@ def test_should_load_definitions_from_a_json_file(tmp_path) -> None:
 
 def test_should_return_none_definitions_for_none() -> None:
     assert resolve_tool_definitions(None) is None
+
+
+def test_should_swap_the_instruction_sentence_and_keep_the_tool_list(tmp_path) -> None:
+    # Mesure « prompt seul » : la liste d'outils reste celle de l'entraînement,
+    # seule la phrase d'instruction change.
+    from lfm2_audio.evaluation.tool_prompt import resolve_system
+
+    custom = tmp_path / "instr.txt"
+    custom.write_text("Pick the tool whose description fits; call none if none fits.\n", encoding="utf-8")
+
+    prompt = resolve_system("en", str(custom))
+
+    assert prompt.startswith("Pick the tool whose description fits")
+    assert "web_search" in prompt and "db_query" in prompt

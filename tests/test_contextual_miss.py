@@ -69,3 +69,36 @@ class TestContextualMiss:
         seen = {ContextualMiss().text("cryptocurrency definition", ["invoice due dates"], rng) for _ in range(40)}
 
         assert len(seen) > 1
+
+
+class TestStrictGuard:
+    """v5.1 : aucun mot plein en commun entre « trouvé » et « demandé ».
+
+    v5 laissait passer tout recouvrement sauf l'inclusion ; 210 refus sur 213
+    nommaient des sujets quasi identiques et le modèle a appris à se contredire
+    (docs/v5_report.md). La rareté de la forme riche est le comportement voulu.
+    """
+
+    def test_should_refuse_a_neighbour_sharing_any_content_word(self) -> None:
+        text = ContextualMiss().text(
+            "current delivery status of order number 78901",
+            ["current status of order number o-45678"],
+            random.Random(0),
+        )
+
+        assert "o-45678" not in text
+        assert "current delivery status of order number 78901" in text
+
+    def test_should_still_name_a_genuinely_different_neighbour(self) -> None:
+        text = ContextualMiss().text("current price of silver per ounce", ["planets in solar system"], random.Random(0))
+
+        assert "planets in solar system" in text
+
+    def test_should_never_produce_a_self_contradiction(self) -> None:
+        rng = random.Random(3)
+        asks = ["current price of gold", "latest news about humanoid robots", "phone number for customer innovate"]
+        neighbours = ["current gold price today", "humanoid robots latest news", "phone number for john smith"]
+        for ask, near in zip(asks, neighbours, strict=True):
+            for _ in range(20):
+                text = ContextualMiss().text(ask, [near], rng)
+                assert text.count(ask) <= 2 and near not in text

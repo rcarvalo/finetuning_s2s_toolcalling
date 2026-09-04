@@ -51,7 +51,10 @@ echo "=== commit: $(git log --oneline -1)"
 
 # pytest is a dev dependency, absent from the runtime extras, and the assertion
 # below is not optional.
-python -m pip install -q -e ".[serving-liquid,eval,inspect]" pytest 2>&1 | tail -3
+EXTRAS="${LFM2_EXTRAS:-serving-liquid,eval,inspect}"
+# LFM2_EXTRAS lets a job ask for more (train, tooldata…) without a second
+# entrypoint; the default stays what the evaluation jobs need.
+python -m pip install -q -e ".[${EXTRAS}]" pytest 2>&1 | tail -3
 
 # Behavioural assertion, not a version check: a campaign once replayed stale
 # code and published wrong numbers.

@@ -63,15 +63,20 @@ class ContextualMiss:
 
     @staticmethod
     def _found_topic(neighbour_questions: list[str], asked: str) -> str | None:
-        """A phrase describing the neighbours, never the one that was asked.
+        """A phrase describing the neighbours, sharing NO content word with the ask.
 
-        Sharing a word is expected and welcome: the distractors are drawn on
-        topic, so "results about the World Cup venue, but nothing on the World
-        Cup winner" is both realistic and the most useful thing to say. Only a
-        topic that says nothing *new* is refused — one whose content words are
-        contained in the ask, or contain it — since "about X, but nothing on X"
-        contradicts itself and would teach the model to echo the question back
-        instead of reading the payload.
+        Strict on purpose, and this is the v5.1 correction. The distractors are
+        drawn on topic, so their subjects overlap the ask by construction; v5
+        let any overlap short of containment through, and 210 of its 213
+        two-sided refusals named near-identical topics ("current status of
+        order o-45678" against "current delivery status of order 78901"). The
+        model collapsed the two slots and learned to contradict itself:
+        "I found current price of gold, but nothing that mentions current
+        price of gold" (docs/v5_report.md).
+
+        With near distractors there is usually no genuinely different subject
+        to name, so this returns None most of the time and the refusal names
+        only the ask. That rarity is the correct behaviour, not a defect.
         """
         asked_words = set(salient_terms(asked))
         for question in neighbour_questions:
@@ -79,6 +84,6 @@ class ContextualMiss:
             if not topic:
                 continue
             words = set(salient_terms(topic))
-            if words and not (words <= asked_words or asked_words <= words):
+            if words and not (words & asked_words):
                 return topic
         return None

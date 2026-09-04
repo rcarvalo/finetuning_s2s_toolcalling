@@ -32,11 +32,12 @@ import soundfile as sf
 import torch
 
 REPO = "Rcarvalo/tc-en-voice-agent-v1"
-MANIFEST_IN_REPO = "phase_b/miss_to_tts_v5.jsonl"
-ARCHIVE_IN_REPO = "phase_b/miss_audio_v5.tar.gz"
+TAG = os.environ.get("TC_EN_TAG", "v5")
+MANIFEST_IN_REPO = f"phase_b/miss_to_tts_{TAG}.jsonl"
+ARCHIVE_IN_REPO = f"phase_b/miss_audio_{TAG}.tar.gz"
 MODEL_ID = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
 INSTRUCT = "Speak as a friendly, clear voice assistant: warm, natural pace, no whispering."
-AUDIO = Path("data/audio_miss_v5")
+AUDIO = Path(f"data/audio_miss_{TAG}")
 
 
 def fetch_manifest() -> list[dict[str, str]]:
@@ -65,7 +66,7 @@ def restore_checkpoint() -> None:
 
 
 def push_tarball() -> None:
-    archive = Path("miss_audio_v5.tar.gz")
+    archive = Path(f"miss_audio_{TAG}.tar.gz")
     with tarfile.open(archive, "w:gz") as tar:
         for wav in sorted(AUDIO.glob("*.wav")):
             tar.add(wav, arcname=wav.name)

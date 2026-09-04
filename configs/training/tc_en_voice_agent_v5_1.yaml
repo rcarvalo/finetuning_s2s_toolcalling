@@ -1,0 +1,55 @@
+# v5.1 — recette v5 à l'identique. UNE variable change : la GARDE des refus.
+#
+# v5 a échoué sa gate (docs/v5_report.md) sur des refus AUTO-CONTRADICTOIRES :
+# « I found current price of gold in there, but nothing that mentions current
+# price of gold ». Cause mesurée : 210 des 213 refus d'entraînement nommant
+# deux sujets nommaient des sujets qui se recouvrent — les distracteurs sont
+# proches PAR CONSTRUCTION, et la garde relâchée laissait passer tout
+# recouvrement sauf l'inclusion. Le modèle a fusionné les deux emplacements.
+#
+# v5.1 rétablit la garde stricte (aucun mot plein en commun, sinon le refus ne
+# nomme que la demande — `data_prep/contextual_miss.py`). Tout le reste est
+# identique à v5 : payloads en prose, distracteurs proches, miss_ratio 0,12,
+# même LoRA, même durée. L'écart mesuré sera imputable à la garde seule.
+#
+# Ce que v5 avait de BON et qu'on garde : là où elle répond, elle répond mieux
+# que v4 (Rome, Ballon d'Or, suite météo — trois cas où v4 refusait).
+model_id: LiquidAI/LFM2.5-Audio-1.5B
+train_dataset: datasets/tc_en_v5_1_train
+val_dataset: datasets/tc_en_v5_1_val
+context_length: 2048
+
+lora:
+  enabled: true
+  r: 32
+  alpha: 64
+  dropout: 0.05
+
+freeze:
+  freeze_encoder: true
+  freeze_audio_heads: true
+
+lr: 1.0e-4
+num_epochs: 1.5
+batch_size: 4
+warmup_steps: 150
+dataloader_num_workers: 4
+grad_clip: 1.0
+
+logging_interval: 10
+save_interval: 200
+val_interval: 100
+output_dir: outputs/tc_en_voice_agent_v5_1
+
+hub_repo: Rcarvalo/lfm25-tc-en-v5_1-adapter
+push_interval: 200            # perdre le pod ne doit rien coûter d'autre que le temps
+
+wandb_project: lfm25-toolcalling-en
+wandb_run_name: tc_en_v5_1_strict_refusal_guard
+
+evaluation:
+  enabled: true
+  question_set: data/tc_en_v5_1/val.jsonl
+  audio_root: data/tc_en_v5_1/audio_val
+  interval: 100
+  at_start: true
