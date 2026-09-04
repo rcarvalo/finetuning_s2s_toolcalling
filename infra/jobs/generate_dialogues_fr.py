@@ -141,8 +141,10 @@ def main() -> None:
     parser.add_argument("--per-call", type=int, default=10)
     args = parser.parse_args()
 
-    if not os.environ.get("GEMINI_API_KEY"):
-        raise SystemExit("GEMINI_API_KEY manquant")
+    sys.path.insert(0, str(ROOT / "infra" / "jobs"))
+    from _gemini_preflight import preflight
+
+    preflight()
 
     targets = {"deep": args.deep, "social": args.social, "en": args.en, "switch": args.switch}
     existing = hub_files()

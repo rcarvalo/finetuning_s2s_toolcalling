@@ -102,8 +102,10 @@ def main() -> None:
 
     if args.skip_scenarios:
         return
-    if not os.environ.get("GEMINI_API_KEY"):
-        raise SystemExit("GEMINI_API_KEY manquant : le juge ne peut pas noter les scénarios")
+    sys.path.insert(0, str(ROOT / "infra" / "jobs"))
+    from _gemini_preflight import preflight
+
+    preflight()
 
     ensure_live_tools()
     fetch_scenario_audio()
