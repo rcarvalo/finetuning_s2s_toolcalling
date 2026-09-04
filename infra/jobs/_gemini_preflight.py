@@ -20,8 +20,12 @@ def preflight(model: str = "gemini-2.5-flash") -> None:
         sys.exit("GEMINI_API_KEY manquant ou vide — Colab : icône clé, secret GEMINI_API_KEY, accès notebook activé")
     from google import genai
 
+    # The client must be held in a name: as a temporary it is closed before the
+    # request leaves ("Cannot send a request, as the client has been closed"),
+    # and the preflight then rejects a perfectly valid key — measured locally.
+    client = genai.Client(api_key=key)
     try:
-        genai.Client(api_key=key).models.generate_content(model=model, contents="Reply with: ok")
+        client.models.generate_content(model=model, contents="Reply with: ok")
     except Exception as error:  # the SDK raises several classes; any of them means "not usable"
         sys.exit(
             f"GEMINI_API_KEY refusée par Gemini ({type(error).__name__}: {str(error)[:140]}). "
