@@ -57,10 +57,34 @@ fi
 JOB_PATH="infra/jobs/${JOB}.py"
 [ -f "$JOB_PATH" ] || { echo "=== ÉCHEC: $JOB_PATH introuvable"; sleep infinity; }
 
-echo "=== démarrage du job $JOB"
-python -u "$JOB_PATH" ${LFM2_ARGS:-} 2>&1 | tee "$OUT/${JOB}.log"
+# Two guards for a pod nobody is watching, both opt-in through the env:
+#   LFM2_MAX_HOURS   hard wall-clock cap on the job (a resumable job loses
+#                    nothing; a hung one stops costing money)
+#   LFM2_AUTO_DELETE "1" deletes THIS pod once the job is over, through the
+#                    REST API — needs RUNPOD_API_KEY in the pod env. Pods left
+#                    running overnight cost ~5 $ for nothing on 28/08.
+echo "=== démarrage du job $JOB (plafond ${LFM2_MAX_HOURS:-aucun} h, auto-suppression ${LFM2_AUTO_DELETE:-0})"
+if [ -n "${LFM2_MAX_HOURS:-}" ]; then
+  timeout --signal=TERM --kill-after=120 "${LFM2_MAX_HOURS}h" python -u "$JOB_PATH" ${LFM2_ARGS:-} 2>&1 | tee "$OUT/${JOB}.log"
+else
+  python -u "$JOB_PATH" ${LFM2_ARGS:-} 2>&1 | tee "$OUT/${JOB}.log"
+fi
 STATUS=${PIPESTATUS[0]}
 echo "=== job terminé, code $STATUS"
+
+delete_this_pod() {
+  curl -sS -X DELETE "https://api.runpod.io/v2/pods/${RUNPOD_POD_ID}" \
+       -H "Authorization: Bearer ${RUNPOD_API_KEY}" && echo "=== pod supprimé"
+}
+if [ "${LFM2_AUTO_DELETE:-0}" = "1" ] && [ -n "${RUNPOD_API_KEY:-}" ] && [ -n "${RUNPOD_POD_ID:-}" ]; then
+  if [ "$STATUS" -ne 0 ]; then
+    echo "=== échec : artefacts servis 30 min sur le port 8000, puis suppression"
+    sleep 1800
+  fi
+  echo "=== auto-suppression du pod ${RUNPOD_POD_ID}"
+  delete_this_pod
+  sleep 300
+fi
 
 # Stay up so the artifacts remain fetchable; the operator deletes the pod,
 # which is also what stops the billing.

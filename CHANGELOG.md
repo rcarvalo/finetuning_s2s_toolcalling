@@ -27,6 +27,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 - The `inspect` extra is gone: `inspect-ai` arrives with the toolkit.
 
 ### Added
+- Brick A voicing that survives its own failure paths (`_voxtral_client.py`,
+  `assistant_waves.py`): a speech request is retried then the clip skipped and
+  counted, never fatal; a dead `vllm serve` child is restarted (bounded); the
+  Hub manifest is merged at start so a relaunch cannot shrink the brick; a
+  CUDA probe fails in seconds on a GPU-less pod. Two waves on one pod, one
+  voice: French families to `A_assistant_speech`, the English share to
+  `D_english` (`BRICK_A_KINDS` / `BRICK_A_SKIP_KINDS`).
+- Pod entrypoint guards for an unattended pod: `LFM2_MAX_HOURS` (wall-clock
+  cap on the job) and `LFM2_AUTO_DELETE=1` (deletes the pod through the REST
+  API when the job is over; a failed job stays reachable 30 min first).
 - Anthropic as a dialogue-generation provider: `lfm2-generate-fr --provider
   anthropic` (`AnthropicJudge`, streaming) and `--batch` (`AnthropicBatchJudge`,
   Message Batches API at half price — a corpus has no latency constraint).

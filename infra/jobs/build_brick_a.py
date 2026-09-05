@@ -97,6 +97,20 @@ spoken by several preset voices without per-clip plumbing: one run per voice,
 each on its own shard, each manifest recording its voice."""
 
 
+KINDS = {k for k in os.environ.get("BRICK_A_KINDS", "").split(",") if k}
+SKIP_KINDS = {k for k in os.environ.get("BRICK_A_SKIP_KINDS", "").split(",") if k}
+"""Dialogue families (``meta.kind``) to keep / to leave out. The merged v2 file
+mixes French families with the English preservation share, and those go to
+different bricks: one run per brick, each told which families are its own."""
+
+
+def wanted(case: dict) -> bool:  # a JSONL row
+    kind = str(case.get("meta", {}).get("kind", ""))
+    if KINDS and kind not in KINDS:
+        return False
+    return kind not in SKIP_KINDS
+
+
 def turns_to_speak(limit: int | None) -> list[tuple[str, str, str]]:
     """``(clip_id, text, lang)`` for every turn of ``ROLE`` to synthesise."""
     items: list[tuple[str, str, str]] = []
@@ -108,6 +122,8 @@ def turns_to_speak(limit: int | None) -> list[tuple[str, str, str]]:
             if not line.strip():
                 continue
             case = json.loads(line)
+            if not wanted(case):
+                continue
             lang = str(case.get("meta", {}).get("lang", "fr"))
             for index, turn in enumerate(case.get("turns", [])):
                 if turn.get("role") != ROLE or not turn.get("text", "").strip():
@@ -152,14 +168,17 @@ def voxtral_synthesiser(reference) -> Synthesiser:  # noqa: ANN001 — VoiceRefe
 
     The voice: ``fr_female``/``fr_male`` ride the native preset embeddings;
     anything else clones ``reference`` through a ref_audio data URL.
+
+    Failure paths are exercised, not hoped away (tests/test_voxtral_client.py):
+    a request is retried then skipped, a dead server is restarted.
     """
     import base64
-    from concurrent.futures import ThreadPoolExecutor
 
     import httpx
 
     sys.path.insert(0, str(ROOT / "infra" / "jobs"))
     import voxtral_tts_synth as vox
+    from _voxtral_client import ServerGuard, VoxtralClient
 
     from lfm2_audio.core.progress import Progress
 
@@ -168,7 +187,8 @@ def voxtral_synthesiser(reference) -> Synthesiser:  # noqa: ANN001 — VoiceRefe
     progress.step("préchargement des bibliothèques CUDA 13")
     vox.preload_cuda13()
     progress.step("démarrage du serveur vllm serve --omni (poids ~8 Go)")
-    _server, base_url = vox.start_server(progress)  # gardé : le processus vit tant que le job vit
+    guard = ServerGuard(start=lambda: vox.start_server(progress), note=progress.note)
+    guard.ensure_alive()
     progress.step("serveur prêt — synthèse")
 
     if VOICE_SOURCE not in ("dialogue", "siwis"):  # tout preset embarqué du dépôt Voxtral
@@ -177,27 +197,44 @@ def voxtral_synthesiser(reference) -> Synthesiser:  # noqa: ANN001 — VoiceRefe
         mime = "audio/wav" if reference.wav_path.suffix == ".wav" else "audio/mpeg"
         voice_args = {"ref_audio": f"data:{mime};base64,{base64.b64encode(reference.audio_bytes).decode()}"}
 
-    concurrency = int(os.environ.get("BRICK_A_CONCURRENCY", "16"))
-    client = httpx.Client(timeout=300.0)
-
-    def one(text: str):  # noqa: ANN202 — (ndarray, int)
-        import io
-
-        import soundfile as sf
-
-        payload = {"input": text, "model": vox.MODEL, "response_format": "wav", **voice_args}
-        response = client.post(f"{base_url}/audio/speech", json=payload)
-        if response.status_code != 200:
-            raise RuntimeError(f"{response.status_code}: {response.text[:160]}")
-        return sf.read(io.BytesIO(response.content), dtype="float32")
+    client = VoxtralClient(
+        http=httpx.Client(timeout=300.0),
+        model=vox.MODEL,
+        voice_args=voice_args,
+        concurrency=int(os.environ.get("BRICK_A_CONCURRENCY", "16")),
+    )
 
     def speak(texts: list[str], langs: list[str]):  # noqa: ANN202 — langue portée par le texte
-        with ThreadPoolExecutor(max_workers=concurrency) as pool:
-            results = list(pool.map(one, texts))
-        rate = int(results[0][1]) if results else vox.SAMPLE_RATE
-        return [wave for wave, _ in results], rate
+        client.base_url = guard.ensure_alive()
+        waves, rate = client.speak(texts)
+        return waves, rate or vox.SAMPLE_RATE
 
     return speak
+
+
+def merge_existing(manifest: Path | None):  # noqa: ANN201 — list[CorpusEntry]
+    """The brick's entries already on the Hub, to be kept in the manifest we push.
+
+    Every push re-sends the whole manifest, and the local one only knew this
+    run's clips: a relaunch would have shrunk the brick to its newest wave and
+    orphaned thousands of clips. Start from what is there.
+    """
+    from lfm2_audio.data_prep.corpus_layout import read_manifest
+
+    if manifest is None or not manifest.exists():
+        return []
+    return list(read_manifest(manifest))
+
+
+def hub_manifest() -> Path | None:
+    try:
+        from huggingface_hub import hf_hub_download
+
+        repo = os.environ.get("BRICK_A_HF_REPO", "Rcarvalo/lfm25-fr-corpus-v1")
+        return Path(hf_hub_download(repo, f"{BRICK_PATH}/manifest.jsonl", repo_type="dataset"))
+    except Exception as error:  # absent brick, or Hub down: start from nothing, say so
+        print(f"manifeste Hub absent ou illisible ({type(error).__name__}) — la brique repart de zéro", flush=True)
+        return None
 
 
 def main() -> None:
@@ -209,6 +246,13 @@ def main() -> None:
 
     audio_dir = OUT / "audio"
     audio_dir.mkdir(parents=True, exist_ok=True)
+
+    # Fail in two seconds, not after eight gigabytes: a community pod sometimes
+    # boots without a working GPU (measured 27/08).
+    sys.path.insert(0, str(ROOT / "infra" / "jobs"))
+    from voxtral_tts_synth import claim_cuda
+
+    claim_cuda()
 
     import soundfile as sf
 
@@ -239,22 +283,29 @@ def main() -> None:
     on_hub = pusher.preload_existing()
     push_every = int(os.environ.get("BRICK_A_PUSH_EVERY", "5"))
 
+    kept = merge_existing(hub_manifest())
+    known = {entry.id for entry in kept}
+    print(f"manifeste Hub : {len(kept)} entrées conservées", flush=True)
+
     items = turns_to_speak(LIMIT)
     todo = [
         (cid, text, lang)
         for cid, text, lang in items
-        if not (audio_dir / f"{cid}.wav").exists() and f"{cid}.wav" not in on_hub
+        if cid not in known and not (audio_dir / f"{cid}.wav").exists() and f"{cid}.wav" not in on_hub
     ]
     print(f"{len(items)} tours {ROLE}, {len(items) - len(todo)} déjà faits, {len(todo)} à produire", flush=True)
 
     transcriber = FasterWhisperTranscriber(model_size="small", device="cuda", compute_type="float16")
     speak = voxtral_synthesiser(reference) if ENGINE == "voxtral" else qwen_synthesiser(reference)
 
-    kept, dropped, rates = [], 0, []
+    new_clips, dropped, missing, rates = 0, 0, 0, []
     for start in range(0, len(todo), BATCH):
         chunk = todo[start : start + BATCH]
         waves, sample_rate = speak([text for _, text, _ in chunk], [lang for _, _, lang in chunk])
         for (clip_id, text, lang), wave in zip(chunk, waves, strict=False):
+            if wave is None:
+                missing += 1  # counted, logged by the client, never fatal
+                continue
             path = audio_dir / f"{clip_id}.wav"
             sf.write(str(path), wave, sample_rate, subtype="PCM_16")
             heard = transcriber.transcribe(Waveform.from_file(str(path)), language=lang)
@@ -264,6 +315,7 @@ def main() -> None:
                 path.unlink()
                 dropped += 1
                 continue
+            new_clips += 1
             kept.append(
                 CorpusEntry(
                     id=clip_id,
@@ -278,7 +330,7 @@ def main() -> None:
                 )
             )
         print(
-            f"  {start + len(chunk)}/{len(todo)} — gardés {len(kept)}, écartés {dropped}",
+            f"  {start + len(chunk)}/{len(todo)} — gardés {new_clips}, écartés {dropped}, sans réponse {missing}",
             flush=True,
         )
         write_manifest(kept, OUT / "manifest.jsonl")
@@ -288,7 +340,9 @@ def main() -> None:
     summary = {
         "engine": ENGINE,
         "clips": len(kept),
+        "new_clips": new_clips,
         "dropped": dropped,
+        "missing": missing,
         "hours": round(sum(e.duration_s for e in kept) / 3600, 3),
         "median_verify_wer": round(statistics.median(rates), 4) if rates else None,
         "voice": VOICE_SOURCE if reference is None else reference.stem,
