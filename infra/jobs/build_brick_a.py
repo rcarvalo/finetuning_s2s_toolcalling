@@ -226,6 +226,21 @@ def voxtral_synthesiser(reference) -> Synthesiser:  # noqa: ANN001 — VoiceRefe
     return speak
 
 
+def probe_gpu(run=subprocess.run) -> None:  # noqa: ANN001 — subprocess.run, injectable
+    """Fail in two seconds, not after eight gigabytes — in a SUBPROCESS.
+
+    A community pod sometimes boots without a working GPU (27/08). But the
+    probe must not import torch here: the Voxtral install replaces torch on
+    disk, and a torch already loaded in this process then fights the new
+    torchaudio (`undefined symbol: torch_library_impl`, 05/09 — one L4 run).
+    """
+    code = "import torch; raise SystemExit(0 if torch.cuda.is_available() else 1)"
+    result = run([sys.executable, "-c", code], check=False)
+    if result.returncode != 0:
+        raise SystemExit("aucun GPU visible — pod sans GPU fonctionnel, rien n'est installé")
+    print("GPU : sonde OK (sous-processus)", flush=True)
+
+
 def merge_existing(manifest: Path | None):  # noqa: ANN201 — list[CorpusEntry]
     """The brick's entries already on the Hub, to be kept in the manifest we push.
 
@@ -261,12 +276,7 @@ def main() -> None:
     audio_dir = OUT / "audio"
     audio_dir.mkdir(parents=True, exist_ok=True)
 
-    # Fail in two seconds, not after eight gigabytes: a community pod sometimes
-    # boots without a working GPU (measured 27/08).
-    sys.path.insert(0, str(ROOT / "infra" / "jobs"))
-    from voxtral_tts_synth import claim_cuda
-
-    claim_cuda()
+    probe_gpu()
 
     import soundfile as sf
 

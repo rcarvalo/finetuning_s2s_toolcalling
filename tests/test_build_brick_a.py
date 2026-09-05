@@ -128,3 +128,26 @@ class TestResolveSource:
 
         assert job._resolve_source(tmp_path / "corpus" / "C_dialogues" / "absent.jsonl", sleep=naps.append) is None
         assert naps == []
+
+
+class TestProbeGpu:
+    def test_should_pass_when_the_subprocess_sees_a_gpu(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        job = _load(monkeypatch, tmp_path, BRICK_A_SOURCES=_source(tmp_path))
+        calls: list[list[str]] = []
+
+        def run(cmd: list[str], check: bool) -> Any:
+            calls.append(cmd)
+            return type("R", (), {"returncode": 0})()
+
+        job.probe_gpu(run=run)
+
+        # torch is imported in the child only: the parent keeps its import table clean
+        assert calls and "import torch" in calls[0][-1]
+
+    def test_should_stop_before_installing_anything_without_a_gpu(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        job = _load(monkeypatch, tmp_path, BRICK_A_SOURCES=_source(tmp_path))
+
+        with pytest.raises(SystemExit, match="aucun GPU"):
+            job.probe_gpu(run=lambda cmd, check: type("R", (), {"returncode": 1})())
