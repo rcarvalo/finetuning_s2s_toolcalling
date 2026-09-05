@@ -64,3 +64,10 @@ def test_should_refuse_verification_without_token(corpus: Path, monkeypatch: pyt
     monkeypatch.delenv("HF_TOKEN", raising=False)
     pusher = StreamingPusher(corpus, "user/repo", "A")
     assert pusher.verify() is False
+
+
+def test_should_resend_the_rejection_log_every_push(pusher: StreamingPusher, corpus: Path) -> None:
+    (corpus / "dropped.jsonl").write_text("{}\n")
+    pusher.push(message="lot 1")
+
+    assert pusher.push(message="lot 2") == 2  # manifeste + journal des rejets, rien d'autre

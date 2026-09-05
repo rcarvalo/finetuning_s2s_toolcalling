@@ -71,10 +71,11 @@ echo "=== commit: $(git log --oneline -1)"
 # the laptop, not a PyPI package: `pip install -e .` cannot resolve it and
 # installs NOTHING, which stalled a paid A100 pod at the very first step
 # (05/09). Its wheel lives on the corpus Hub repo; install it first, unless
-# the environment already has it.
+# the environment already has it. The newest wheel wins (lexicographic sort:
+# keep the version segments single-digit).
 if ! python -c "import avet" 2>/dev/null; then
-  WHEEL=$(python -c "from huggingface_hub import hf_hub_download; print(hf_hub_download('Rcarvalo/lfm25-fr-corpus-v1', 'tools/audio_voice_eval_toolkit-0.1.0-py3-none-any.whl', repo_type='dataset'))" 2>/dev/null) \
-    || { pip install -q huggingface_hub && WHEEL=$(python -c "from huggingface_hub import hf_hub_download; print(hf_hub_download('Rcarvalo/lfm25-fr-corpus-v1', 'tools/audio_voice_eval_toolkit-0.1.0-py3-none-any.whl', repo_type='dataset'))"); }
+  WHEEL=$(python -c "from huggingface_hub import HfApi, hf_hub_download; wheels = sorted(f for f in HfApi().list_repo_files('Rcarvalo/lfm25-fr-corpus-v1', repo_type='dataset') if f.startswith('tools/audio_voice_eval_toolkit-') and f.endswith('.whl')); print(hf_hub_download('Rcarvalo/lfm25-fr-corpus-v1', wheels[-1], repo_type='dataset'))" 2>/dev/null) \
+    || { pip install -q huggingface_hub && WHEEL=$(python -c "from huggingface_hub import HfApi, hf_hub_download; wheels = sorted(f for f in HfApi().list_repo_files('Rcarvalo/lfm25-fr-corpus-v1', repo_type='dataset') if f.startswith('tools/audio_voice_eval_toolkit-') and f.endswith('.whl')); print(hf_hub_download('Rcarvalo/lfm25-fr-corpus-v1', wheels[-1], repo_type='dataset'))"); }
   pip install -q "$WHEEL" 2>&1 | tail -2
 fi
 pip install -q -e ".[serving-liquid,eval,inspect]" pytest 2>&1 | tail -5

@@ -151,3 +151,32 @@ class TestProbeGpu:
 
         with pytest.raises(SystemExit, match="aucun GPU"):
             job.probe_gpu(run=lambda cmd, check: type("R", (), {"returncode": 1})())
+
+
+class TestAcceptance:
+    def test_should_keep_a_clip_under_the_word_threshold(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        job = _load(monkeypatch, tmp_path, BRICK_A_SOURCES=_source(tmp_path))
+
+        assert job.accepted(0.15, 0.5)
+
+    def test_should_rescue_a_misheard_name_by_the_character_rate(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        job = _load(monkeypatch, tmp_path, BRICK_A_SOURCES=_source(tmp_path))
+
+        assert job.accepted(0.22, 0.03)
+
+    def test_should_refuse_a_clip_failing_both_rates(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        job = _load(monkeypatch, tmp_path, BRICK_A_SOURCES=_source(tmp_path))
+
+        assert not job.accepted(0.4, 0.3)
+
+    def test_should_read_both_thresholds_from_the_environment(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        job = _load(
+            monkeypatch, tmp_path, BRICK_A_SOURCES=_source(tmp_path), BRICK_A_MAX_WER="0.0", BRICK_A_MAX_CER="0.0"
+        )
+
+        assert not job.accepted(0.01, 0.01)
+        assert job.MAX_ATTEMPTS == 2

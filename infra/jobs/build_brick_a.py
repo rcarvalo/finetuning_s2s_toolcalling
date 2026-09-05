@@ -63,12 +63,30 @@ reference) leaves the corpus unencumbered.
 """
 
 MAX_VERIFY_WER = float(os.environ.get("BRICK_A_MAX_WER", "0.15"))
-"""Above this, the clip does not say its text and is dropped.
+"""Above this word error rate the clip is suspect.
 
 Not zero: the check transcribes with an independent ASR, whose own errors
 would otherwise reject good clips. 0.15 leaves room for that while still
 catching a clip that drifted.
 """
+
+MAX_VERIFY_CER = float(os.environ.get("BRICK_A_MAX_CER", "0.10"))
+"""A suspect clip is still kept when its character error rate is at most this.
+
+On a 9-word sentence one misheard proper noun already fails the word rate,
+and the deep dialogues are mostly such short turns: 57 % of a French wave
+was refused on 05/09 while the kept clips scored exactly as before. The
+character rate weighs a miss by how much differs, so a truncated or invented
+clip still fails both.
+"""
+
+MAX_ATTEMPTS = int(os.environ.get("BRICK_A_MAX_ATTEMPTS", "2"))
+"""A clip refused this many times is not synthesised again."""
+
+
+def accepted(wer: float, cer: float) -> bool:
+    """The clip says its text: fine at the word level, or close enough at the character level."""
+    return wer <= MAX_VERIFY_WER or cer <= MAX_VERIFY_CER
 
 
 WAIT_SOURCES_MIN = int(os.environ.get("BRICK_A_WAIT_SOURCES_MIN", "0"))
@@ -257,15 +275,20 @@ def merge_existing(manifest: Path | None):  # noqa: ANN201 — list[CorpusEntry]
     return list(read_manifest(manifest))
 
 
-def hub_manifest() -> Path | None:
+def hub_file(name: str) -> Path | None:
+    """A file of this brick as the Hub holds it, or None when absent or unreachable."""
     try:
         from huggingface_hub import hf_hub_download
 
         repo = os.environ.get("BRICK_A_HF_REPO", "Rcarvalo/lfm25-fr-corpus-v1")
-        return Path(hf_hub_download(repo, f"{BRICK_PATH}/manifest.jsonl", repo_type="dataset"))
+        return Path(hf_hub_download(repo, f"{BRICK_PATH}/{name}", repo_type="dataset"))
     except Exception as error:  # absent brick, or Hub down: start from nothing, say so
-        print(f"manifeste Hub absent ou illisible ({type(error).__name__}) — la brique repart de zéro", flush=True)
+        print(f"{name} absent du Hub ou illisible ({type(error).__name__}) — on repart de zéro", flush=True)
         return None
+
+
+def hub_manifest() -> Path | None:
+    return hub_file("manifest.jsonl")
 
 
 def main() -> None:
@@ -286,7 +309,10 @@ def main() -> None:
     from lfm2_audio.data_prep.voice_reference import resolve_voice_reference
     from lfm2_audio.ds.audio import Waveform
     from lfm2_audio.scorer.audio.faster_whisper_transcriber import FasterWhisperTranscriber
-    from lfm2_audio.scorer.audio.wer import word_error_rate
+    from lfm2_audio.scorer.audio.wer import character_error_rate, word_error_rate
+
+    sys.path.insert(0, str(ROOT / "infra" / "jobs"))
+    from _rejection_log import RejectionLog
 
     # A preset voice needs no reference at all — cloning is impossible on the
     # open Voxtral checkpoint anyway (no encoder weights). A clone source is
@@ -312,12 +338,21 @@ def main() -> None:
     kept = merge_existing(hub_manifest())
     known = {entry.id for entry in kept}
     print(f"manifeste Hub : {len(kept)} entrées conservées", flush=True)
+    rejections = RejectionLog(OUT / "dropped.jsonl").load(hub_file("dropped.jsonl"))
+    print(
+        f"journal des rejets : {len(rejections)} refus connus, "
+        f"{rejections.exhausted(MAX_ATTEMPTS)} clips abandonnés après {MAX_ATTEMPTS} essais",
+        flush=True,
+    )
 
     items = turns_to_speak(LIMIT)
     todo = [
         (cid, text, lang)
         for cid, text, lang in items
-        if cid not in known and not (audio_dir / f"{cid}.wav").exists() and f"{cid}.wav" not in on_hub
+        if cid not in known
+        and rejections.attempts(cid) < MAX_ATTEMPTS
+        and not (audio_dir / f"{cid}.wav").exists()
+        and f"{cid}.wav" not in on_hub
     ]
     print(f"{len(items)} tours {ROLE}, {len(items) - len(todo)} déjà faits, {len(todo)} à produire", flush=True)
 
@@ -336,10 +371,12 @@ def main() -> None:
             sf.write(str(path), wave, sample_rate, subtype="PCM_16")
             heard = transcriber.transcribe(Waveform.from_file(str(path)), language=lang)
             rate = word_error_rate(text, heard)
+            cer = character_error_rate(text, heard)
             rates.append(rate)
-            if rate > MAX_VERIFY_WER:
+            if not accepted(rate, cer):
                 path.unlink()
                 dropped += 1
+                rejections.record(clip_id, text=text, heard=heard, wer=rate, cer=cer)
                 continue
             new_clips += 1
             kept.append(
@@ -353,6 +390,7 @@ def main() -> None:
                     speaker=VOICE_SOURCE if reference is None else f"{VOICE_SOURCE}_{reference.stem}",
                     source=f"{ENGINE}-tts-clone",
                     voxtral_wer=round(rate, 4),
+                    voxtral_cer=round(cer, 4),
                 )
             )
         print(
@@ -369,6 +407,7 @@ def main() -> None:
         "new_clips": new_clips,
         "dropped": dropped,
         "missing": missing,
+        "rejections_total": len(rejections),
         "hours": round(sum(e.duration_s for e in kept) / 3600, 3),
         "median_verify_wer": round(statistics.median(rates), 4) if rates else None,
         "voice": VOICE_SOURCE if reference is None else reference.stem,

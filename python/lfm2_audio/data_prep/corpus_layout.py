@@ -92,6 +92,7 @@ class CorpusEntry:
     speaker: str = ""
     source: str = ""
     voxtral_wer: float | None = None
+    voxtral_cer: float | None = None
     utmos: float | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -148,5 +149,6 @@ def brick_readme(brick: Brick, entries: int, hours: float) -> str:
         "Champs : `id`, `audio`, `text`, `lang`, `duration_s`, `role`, `speaker`,\n"
         "`source`, `voxtral_wer`, `utmos`.\n\n"
         "`voxtral_wer` est l'écart entre `text` et une ré-écoute Voxtral indépendante :\n"
-        "c'est le filtre qui décide si un clip entre dans le corpus.\n"
+        "c'est le filtre qui décide si un clip entre dans le corpus ; `voxtral_cer` est\n"
+        "le même écart au caractère, qui rattrape un nom propre mal entendu.\n"
     )

@@ -21,6 +21,10 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+RESENT = ("manifest.jsonl", "dropped.jsonl")
+"""Files rewritten every batch: never marked as pushed, always re-sent."""
+
+
 class StreamingPusher:
     """Pushes a growing corpus folder to a HF dataset repo, new files only.
 
@@ -77,7 +81,7 @@ class StreamingPusher:
             existing = [
                 f[len(prefix) :]
                 for f in self._api.list_repo_files(self.repo_id, repo_type="dataset")
-                if f.startswith(prefix) and not f.endswith("manifest.jsonl")
+                if f.startswith(prefix) and not f.endswith(RESENT)
             ]
             self._pushed.update(existing)
             logger.info("reprise Hub : %d fichiers déjà présents sous %s", len(existing), self.path_in_repo)
@@ -98,7 +102,7 @@ class StreamingPusher:
                 for path in sorted(self.folder.rglob("*"))
                 if path.is_file() and str(path.relative_to(self.folder)) not in self._pushed
             ]
-            # The manifest changes every batch: always re-send it.
+            # The manifest and the rejection log change every batch: always re-send them.
             operations = [
                 CommitOperationAdd(
                     path_in_repo=f"{self.path_in_repo}/{path.relative_to(self.folder)}",
@@ -116,7 +120,7 @@ class StreamingPusher:
             )
             for path in fresh:
                 relative = str(path.relative_to(self.folder))
-                if not relative.endswith("manifest.jsonl"):
+                if not relative.endswith(RESENT):
                     self._pushed.add(relative)
             logger.info("push HF : %d fichiers (%s)", len(operations), message)
             return len(operations)
