@@ -44,6 +44,7 @@ class IngestConfig:
     max_cer: float = 0.15
     limit: int | None = None
     checkpoint_every: int = 50
+    retry_rejected: bool = False
 
 
 @dataclass(frozen=True)
@@ -100,11 +101,7 @@ class VoxtralFolderIngester:
         kept = list(read_manifest(manifest)) if manifest.exists() else []
         known = {entry.id for entry in kept}
         rejections = RejectionLog(out / "dropped.jsonl").load(out / "dropped.jsonl")
-        todo = [
-            s
-            for s in self.samples()
-            if f"{prefix}_{s.clip_id}" not in known and rejections.attempts(f"{prefix}_{s.clip_id}") == 0
-        ]
+        todo = [s for s in self.samples() if self._due(f"{prefix}_{s.clip_id}", known, rejections)]
         self._log(f"{len(kept)} clips déjà vérifiés, {len(rejections)} refus connus, {len(todo)} à vérifier")
 
         new_clips = dropped = 0
@@ -130,6 +127,13 @@ class VoxtralFolderIngester:
 
         hours = round(sum(entry.duration_s for entry in kept) / 3600, 3)
         return IngestSummary(clips=len(kept), new_clips=new_clips, dropped=dropped, hours=hours)
+
+    def _due(self, clip_id: str, known: set[str], rejections: RejectionLog) -> bool:
+        """Never listened to — or, when retrying, refused before by a weaker ear."""
+        if clip_id in known:
+            return False
+        heard_before = rejections.attempts(clip_id) > 0
+        return heard_before if self._config.retry_rejected else not heard_before
 
     def _entry(self, clip_id: str, text: str, duration: float, wer: float, cer: float) -> CorpusEntry:
         return CorpusEntry(
@@ -159,6 +163,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
     parser.add_argument("--model-size", default="small")
+    parser.add_argument(
+        "--retry-rejected",
+        action="store_true",
+        help="ne repasser que les clips refusés (avec un modèle plus fort, ex. --model-size large-v3-turbo)",
+    )
     return parser
 
 
@@ -181,6 +190,7 @@ def main() -> None:
         max_wer=args.max_wer,
         max_cer=args.max_cer,
         limit=args.limit,
+        retry_rejected=args.retry_rejected,
     )
     summary = VoxtralFolderIngester(config, transcriber).run()
     print("===RESULT ingest_voxtral===", flush=True)

@@ -83,3 +83,19 @@ def test_parser_should_default_to_the_long_form_brick_rule() -> None:
     args = build_parser().parse_args(["--source", "a", "--out", "b"])
 
     assert (args.max_wer, args.max_cer, args.device, args.id_prefix) == (0.15, 0.15, "cpu", "wiki_fr")
+
+
+def test_retry_should_listen_again_only_to_the_rejected(source: Path, tmp_path: Path) -> None:
+    texts = {"sample_00000001": "Bonjour à tous.", "sample_00000002": "Il est dix-neuf heures."}
+    out = tmp_path / "out"
+    VoxtralFolderIngester(
+        IngestConfig(source=source, out=out), EchoTranscriber(texts, {"sample_00000001"}), log=lambda _: None
+    ).run()
+    stronger = EchoTranscriber({"sample_00000001": "Bonjour à tous."}, set())
+
+    summary = VoxtralFolderIngester(
+        IngestConfig(source=source, out=out, retry_rejected=True), stronger, log=lambda _: None
+    ).run()
+
+    assert stronger.calls == 1
+    assert (summary.clips, summary.new_clips, summary.dropped) == (2, 1, 0)

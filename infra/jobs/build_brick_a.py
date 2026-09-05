@@ -83,6 +83,10 @@ clip still fails both.
 MAX_ATTEMPTS = int(os.environ.get("BRICK_A_MAX_ATTEMPTS", "2"))
 """A clip refused this many times is not synthesised again."""
 
+ASR_MODEL = os.environ.get("BRICK_A_ASR_MODEL", "small")
+"""The Whisper that re-listens. ``small`` mishears proper nouns; ``large-v3-turbo``
+costs ~1.6 GB of VRAM beside the server and refuses far fewer good clips."""
+
 
 def accepted(wer: float, cer: float) -> bool:
     """The clip says its text: fine at the word level, or close enough at the character level."""
@@ -309,6 +313,7 @@ def main() -> None:
 
     audio_dir = OUT / "audio"
     audio_dir.mkdir(parents=True, exist_ok=True)
+    rejected_dir = OUT / "rejected"
 
     probe_gpu()
 
@@ -362,7 +367,7 @@ def main() -> None:
     ]
     print(f"{len(items)} tours {ROLE}, {len(items) - len(todo)} déjà faits, {len(todo)} à produire", flush=True)
 
-    transcriber = FasterWhisperTranscriber(model_size="small", device="cuda", compute_type="float16")
+    transcriber = FasterWhisperTranscriber(model_size=ASR_MODEL, device="cuda", compute_type="float16")
     speak = voxtral_synthesiser(reference) if ENGINE == "voxtral" else qwen_synthesiser(reference)
 
     new_clips, dropped, missing, rates = 0, 0, 0, []
@@ -379,7 +384,10 @@ def main() -> None:
             rate, cer = verification_rates(text, heard, lang)
             rates.append(rate)
             if not accepted(rate, cer):
-                path.unlink()
+                # Kept, not deleted: a stronger ASR can rescue a clip whisper-small
+                # misheard without paying the synthesis again.
+                rejected_dir.mkdir(exist_ok=True)
+                path.rename(rejected_dir / path.name)
                 dropped += 1
                 rejections.record(clip_id, text=text, heard=heard, wer=rate, cer=cer)
                 continue

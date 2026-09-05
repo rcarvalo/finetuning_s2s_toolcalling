@@ -71,3 +71,14 @@ def test_should_resend_the_rejection_log_every_push(pusher: StreamingPusher, cor
     pusher.push(message="lot 1")
 
     assert pusher.push(message="lot 2") == 2  # manifeste + journal des rejets, rien d'autre
+
+
+def test_preload_should_count_only_accepted_clips_as_done(pusher: StreamingPusher) -> None:
+    pusher._api.list_repo_files.return_value = [
+        "A_assistant_speech/audio/a.wav",
+        "A_assistant_speech/rejected/b.wav",
+        "A_assistant_speech/dropped.jsonl",
+        "A_assistant_speech/manifest.jsonl",
+    ]
+
+    assert pusher.preload_existing() == {"a.wav"}

@@ -18,6 +18,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from lfm2_audio.data_prep.corpus_layout import AUDIO_DIR
+
 logger = logging.getLogger(__name__)
 
 
@@ -85,7 +87,9 @@ class StreamingPusher:
             ]
             self._pushed.update(existing)
             logger.info("reprise Hub : %d fichiers déjà présents sous %s", len(existing), self.path_in_repo)
-            return {Path(f).name for f in existing}
+            # Only the accepted clips count as produced: a wav parked under
+            # rejected/ must be synthesised again, not skipped.
+            return {Path(f).name for f in existing if f.startswith(f"{AUDIO_DIR}/")}
         except Exception as error:
             logger.warning("préchargement de l'existant échoué : %s", error)
             return set()
