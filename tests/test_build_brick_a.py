@@ -201,3 +201,17 @@ class TestVerificationRates:
 
         assert wer == pytest.approx(0.5)
         assert cer > 0.10
+
+
+class TestUniqueClipIds:
+    def test_should_suffix_a_repeated_id_and_keep_the_order(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        job = _load(monkeypatch, tmp_path, BRICK_A_SOURCES=_source(tmp_path))
+
+        unique = job.unique_clip_ids(
+            [("a_t1", "x", "fr"), ("a_t1", "y", "fr"), ("b_t1", "z", "fr"), ("a_t1", "w", "fr")]
+        )
+
+        assert [u[0] for u in unique] == ["a_t1", "a_t1~2", "b_t1", "a_t1~3"]
+        assert [u[1] for u in unique] == ["x", "y", "z", "w"]

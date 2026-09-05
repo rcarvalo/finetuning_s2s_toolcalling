@@ -157,6 +157,24 @@ def wanted(case: dict) -> bool:  # a JSONL row
     return kind not in SKIP_KINDS
 
 
+def unique_clip_ids(items: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
+    """A repeated clip id gets a suffix instead of overwriting its predecessor.
+
+    dialogues_v2 carried 120 duplicated dialogue ids (05/09): two texts were
+    synthesised to the same path, the second wav overwrote the first and both
+    entries went into the manifest — one of them lying about its audio.
+    """
+    seen: dict[str, int] = {}
+    unique = []
+    for clip_id, text, lang in items:
+        seen[clip_id] = seen.get(clip_id, 0) + 1
+        final_id = clip_id if seen[clip_id] == 1 else f"{clip_id}~{seen[clip_id]}"
+        unique.append((final_id, text, lang))
+    if len(seen) != len(items):
+        print(f"{len(items) - len(seen)} identifiants de clip en double, suffixés ~n", flush=True)
+    return unique
+
+
 def turns_to_speak(limit: int | None) -> list[tuple[str, str, str]]:
     """``(clip_id, text, lang)`` for every turn of ``ROLE`` to synthesise."""
     items: list[tuple[str, str, str]] = []
@@ -175,6 +193,7 @@ def turns_to_speak(limit: int | None) -> list[tuple[str, str, str]]:
                 if turn.get("role") != ROLE or not turn.get("text", "").strip():
                     continue
                 items.append((f"{case['id']}_t{index}", turn["text"].strip(), turn.get("lang", lang)))
+    items = unique_clip_ids(items)
     if SHARD:
         offset, stride = (int(p) for p in SHARD.split("/"))
         items = items[offset::stride]
