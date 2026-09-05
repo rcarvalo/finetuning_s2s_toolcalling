@@ -180,3 +180,24 @@ class TestAcceptance:
 
         assert not job.accepted(0.01, 0.01)
         assert job.MAX_ATTEMPTS == 2
+
+
+class TestVerificationRates:
+    def test_should_agree_when_only_the_number_spelling_differs(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        job = _load(monkeypatch, tmp_path, BRICK_A_SOURCES=_source(tmp_path))
+
+        wer, cer = job.verification_rates(
+            "L'accueil ferme à dix-neuf heures pile.", "L'accueil ferme à 19h pile.", "fr"
+        )
+
+        assert (wer, cer) == (0.0, 0.0)
+
+    def test_should_still_measure_a_real_miss(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        job = _load(monkeypatch, tmp_path, BRICK_A_SOURCES=_source(tmp_path))
+
+        wer, cer = job.verification_rates("Bon passage parmi nous !", "Bon passage.", "fr")
+
+        assert wer == pytest.approx(0.5)
+        assert cer > 0.10

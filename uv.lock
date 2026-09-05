@@ -447,11 +447,12 @@ wheels = [
 
 [[package]]
 name = "audio-voice-eval-toolkit"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "../audio-eval-toolkit" }
 dependencies = [
     { name = "anyio" },
     { name = "inspect-ai" },
+    { name = "num2words" },
     { name = "numpy" },
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -467,6 +468,7 @@ requires-dist = [
     { name = "google-genai", marker = "extra == 'judge'", specifier = ">=0.3" },
     { name = "inspect-ai", specifier = ">=0.3.205,<0.4" },
     { name = "kokoro", marker = "extra == 'tts-kokoro'", specifier = ">=0.9" },
+    { name = "num2words", specifier = ">=0.5.13" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "onnxruntime", marker = "extra == 'audio'", specifier = ">=1.18" },
     { name = "openai", marker = "extra == 'judge'", specifier = ">=1.40" },

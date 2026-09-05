@@ -89,6 +89,20 @@ def accepted(wer: float, cer: float) -> bool:
     return wer <= MAX_VERIFY_WER or cer <= MAX_VERIFY_CER
 
 
+def verification_rates(text: str, heard: str, lang: str) -> tuple[float, float]:
+    """``(wer, cer)`` between what the clip should say and what the re-listen heard.
+
+    Both sides are read in spoken form first: the sources spell their numbers
+    ("dix-neuf heures") and the ASR writes digits ("19h"), which made 6 of the
+    first 10 refusals of 05/09 false ones.
+    """
+    from avet.text.spoken_form import spoken_form
+    from avet.text.wer import character_error_rate, word_error_rate
+
+    reference, hypothesis = spoken_form(text, lang), spoken_form(heard, lang)
+    return word_error_rate(reference, hypothesis), character_error_rate(reference, hypothesis)
+
+
 WAIT_SOURCES_MIN = int(os.environ.get("BRICK_A_WAIT_SOURCES_MIN", "0"))
 """How long to wait for a source still being produced upstream (the merged
 dialogue file lands on the Hub when its text campaign ends). 0 = skip it with
@@ -309,7 +323,6 @@ def main() -> None:
     from lfm2_audio.data_prep.voice_reference import resolve_voice_reference
     from lfm2_audio.ds.audio import Waveform
     from lfm2_audio.scorer.audio.faster_whisper_transcriber import FasterWhisperTranscriber
-    from lfm2_audio.scorer.audio.wer import character_error_rate, word_error_rate
 
     sys.path.insert(0, str(ROOT / "infra" / "jobs"))
     from _rejection_log import RejectionLog
@@ -370,8 +383,7 @@ def main() -> None:
             path = audio_dir / f"{clip_id}.wav"
             sf.write(str(path), wave, sample_rate, subtype="PCM_16")
             heard = transcriber.transcribe(Waveform.from_file(str(path)), language=lang)
-            rate = word_error_rate(text, heard)
-            cer = character_error_rate(text, heard)
+            rate, cer = verification_rates(text, heard, lang)
             rates.append(rate)
             if not accepted(rate, cer):
                 path.unlink()
