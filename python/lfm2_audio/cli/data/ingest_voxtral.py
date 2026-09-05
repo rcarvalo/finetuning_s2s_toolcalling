@@ -13,6 +13,7 @@ Resumable: clips already in the manifest or the rejection log are skipped.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import shutil
 import sys
@@ -67,7 +68,13 @@ class IngestSummary:
 class VoxtralFolderIngester:
     """Verifies each clip of a Voxtral folder and builds the brick folder."""
 
-    def __init__(self, config: IngestConfig, transcriber: Transcriber, *, log: Callable[[str], None] = print) -> None:
+    def __init__(
+        self,
+        config: IngestConfig,
+        transcriber: Transcriber,
+        *,
+        log: Callable[[str], None] = functools.partial(print, flush=True),
+    ) -> None:
         self._config = config
         self._transcriber = transcriber
         self._log = log
