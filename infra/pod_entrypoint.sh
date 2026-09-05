@@ -45,6 +45,16 @@ echo "=== commit: $(git log --oneline -1)"
 
 # pytest is a dev dependency, absent from the runtime extras — and the
 # assertion below is not optional, so it is installed here rather than skipped.
+# The evaluation toolkit (`audio-voice-eval-toolkit`) is a sibling checkout on
+# the laptop, not a PyPI package: `pip install -e .` cannot resolve it and
+# installs NOTHING, which stalled a paid A100 pod at the very first step
+# (05/09). Its wheel lives on the corpus Hub repo; install it first, unless
+# the environment already has it.
+if ! python -c "import avet" 2>/dev/null; then
+  WHEEL=$(python -c "from huggingface_hub import hf_hub_download; print(hf_hub_download('Rcarvalo/lfm25-fr-corpus-v1', 'tools/audio_voice_eval_toolkit-0.1.0-py3-none-any.whl', repo_type='dataset'))" 2>/dev/null) \
+    || { pip install -q huggingface_hub && WHEEL=$(python -c "from huggingface_hub import hf_hub_download; print(hf_hub_download('Rcarvalo/lfm25-fr-corpus-v1', 'tools/audio_voice_eval_toolkit-0.1.0-py3-none-any.whl', repo_type='dataset'))"); }
+  pip install -q "$WHEEL" 2>&1 | tail -2
+fi
 pip install -q -e ".[serving-liquid,eval,inspect]" pytest 2>&1 | tail -5
 
 # Behavioural assertion, not a version check: a campaign once replayed stale

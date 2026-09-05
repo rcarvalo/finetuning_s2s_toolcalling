@@ -137,8 +137,12 @@ def start_server(progress, *, port: int = 8001, timeout_s: int = 900):  # noqa: 
     out_dir = Path(os.environ.get("LFM2_OUT", "/workspace/out"))
     out_dir.mkdir(parents=True, exist_ok=True)
     server_log = (out_dir / "vllm_serve.log").open("w")
+    # On a 24 GB card the default 0.9 leaves ~2 GB for the Whisper check that
+    # runs alongside; VOXTRAL_GPU_UTIL=0.8 keeps both on the same GPU.
+    util = os.environ.get("VOXTRAL_GPU_UTIL", "")
+    extra = ["--gpu-memory-utilization", util] if util else []
     server = subprocess.Popen(
-        ["vllm", "serve", MODEL, "--omni", "--port", str(port)],
+        ["vllm", "serve", MODEL, "--omni", "--port", str(port), *extra],
         stdout=server_log,
         stderr=subprocess.STDOUT,
         env={**os.environ, "LD_LIBRARY_PATH": os.environ.get("LD_LIBRARY_PATH", "")},
