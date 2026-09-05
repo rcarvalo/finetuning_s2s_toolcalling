@@ -6,6 +6,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 ## [Unreleased]
 
 ### Added
+- Anthropic as a dialogue-generation provider: `lfm2-generate-fr --provider
+  anthropic` (`AnthropicJudge`, streaming) and `--batch` (`AnthropicBatchJudge`,
+  Message Batches API at half price — a corpus has no latency constraint).
+  Same `Judge` contract as Gemini; the request shape is shared by both modes.
+- A spend meter with a hard cap: `--max-usd` on the generator stops the run
+  cleanly (exit 3, everything produced already on disk) and prints
+  `===SPEND===`; the sharded job adds the shards up (`Budget`), gives each one
+  its share of what is left, pushes a shard cut by its cap (it was paid for),
+  and prints `===PROJECTION===` — what finishing everything would cost at the
+  measured per-dialogue price. The project budget is 10 € across services.
+- `_anthropic_preflight.py`: one tiny call through the run's own request shape
+  (model, effort, streaming) before any shard starts; prints the key's shape,
+  never the key.
 - Colab notebooks that the operator runs, one job per cell, everything
   resumable from the Hub: `colab_tc_en_v51` (voice → pack → train the v5.1
   EN tool-calling adapter), `colab_eval_tc_en` (fresh set + scenarios +
