@@ -114,9 +114,21 @@ class TestVoxtralClient:
 @dataclass
 class _Proc:
     returncode: int | None = None
+    terminated: bool = False
+    killed: bool = False
 
     def poll(self) -> int | None:
         return self.returncode
+
+    def terminate(self) -> None:
+        self.terminated = True
+        self.returncode = -15
+
+    def wait(self, timeout: float | None = None) -> int:
+        return -15
+
+    def kill(self) -> None:
+        self.killed = True
 
 
 class TestServerGuard:
@@ -154,3 +166,23 @@ class TestServerGuard:
 
         with pytest.raises(vox.ServerRestartsExhaustedError, match="3 fois"):
             guard.ensure_alive()
+
+
+class TestServerGuardStop:
+    def test_should_terminate_a_live_server(self, vox: Any) -> None:
+        proc = _Proc()
+        guard = vox.ServerGuard(start=lambda: (proc, "http://s/v1"), note=lambda _: None)
+        guard.ensure_alive()
+
+        guard.stop()
+
+        assert proc.terminated and not proc.killed
+
+    def test_should_do_nothing_without_a_server_or_with_a_dead_one(self, vox: Any) -> None:
+        guard = vox.ServerGuard(start=lambda: (_Proc(returncode=1), "http://s/v1"), note=lambda _: None)
+
+        guard.stop()  # never started
+        guard.ensure_alive()
+        guard.stop()  # already dead
+
+        assert guard.process is not None and not guard.process.terminated

@@ -44,9 +44,15 @@ def wave_env(base: dict[str, str], wave: dict[str, str]) -> dict[str, str]:
     return {**DEFAULTS, **base, **imposed}
 
 
+def clear_servers(run=subprocess.run) -> None:  # noqa: ANN001 — subprocess.run, injectable
+    """No wave inherits the previous wave's `vllm serve` child (05/09)."""
+    run(["pkill", "-f", "vllm serve"], check=False)
+
+
 def main() -> None:
     statuses: dict[str, int] = {}
     for wave in WAVES:
+        clear_servers()
         print(f"=== vague {wave['name']} → {wave['BRICK_A_HF_PATH']}", flush=True)
         result = subprocess.run(
             [sys.executable, "-u", str(JOBS_DIR / "build_brick_a.py")],

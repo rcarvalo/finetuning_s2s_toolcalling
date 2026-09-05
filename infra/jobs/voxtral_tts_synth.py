@@ -136,6 +136,21 @@ def start_server(progress, *, port: int = 8001, timeout_s: int = 900):  # noqa: 
 
     out_dir = Path(os.environ.get("LFM2_OUT", "/workspace/out"))
     out_dir.mkdir(parents=True, exist_ok=True)
+    base_url = f"http://127.0.0.1:{port}/v1"
+    # An orphan from an earlier wave answers the health check for a server
+    # that then dies on the busy port. Clear the port first.
+    try:
+        if httpx.get(f"{base_url}/models", timeout=2.0).status_code == 200:
+            progress.note("un serveur orphelin répond déjà sur le port — arrêt")
+            subprocess.run(["pkill", "-f", "vllm serve"], check=False)
+            for _ in range(15):
+                time.sleep(2)
+                try:
+                    httpx.get(f"{base_url}/models", timeout=2.0)
+                except httpx.HTTPError:
+                    break
+    except httpx.HTTPError:
+        pass
     server_log = (out_dir / "vllm_serve.log").open("w")
     # On a 24 GB card the default 0.9 leaves ~2 GB for the Whisper check that
     # runs alongside; VOXTRAL_GPU_UTIL=0.8 keeps both on the same GPU.
@@ -147,7 +162,6 @@ def start_server(progress, *, port: int = 8001, timeout_s: int = 900):  # noqa: 
         stderr=subprocess.STDOUT,
         env={**os.environ, "LD_LIBRARY_PATH": os.environ.get("LD_LIBRARY_PATH", "")},
     )
-    base_url = f"http://127.0.0.1:{port}/v1"
     started = time.monotonic()
     for tick in range(timeout_s // 10):
         if server.poll() is not None:

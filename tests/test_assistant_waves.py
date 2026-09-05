@@ -41,3 +41,11 @@ def test_should_let_the_operator_override_defaults_but_never_the_wave(waves: Any
 
     assert env["BRICK_A_CONCURRENCY"] == "8"
     assert env["BRICK_A_HF_PATH"] == "A_assistant_speech"
+
+
+def test_should_clear_leftover_servers_before_each_wave(waves: Any) -> None:
+    calls: list[list[str]] = []
+
+    waves.clear_servers(run=lambda cmd, check: calls.append(cmd))
+
+    assert calls == [["pkill", "-f", "vllm serve"]]

@@ -15,6 +15,7 @@ Output is the corpus layout (`manifest.jsonl` + `audio/`), so
 
 from __future__ import annotations
 
+import atexit
 import json
 import os
 import statistics
@@ -202,6 +203,7 @@ def voxtral_synthesiser(reference) -> Synthesiser:  # noqa: ANN001 — VoiceRefe
     vox.preload_cuda13()
     progress.step("démarrage du serveur vllm serve --omni (poids ~8 Go)")
     guard = ServerGuard(start=lambda: vox.start_server(progress), note=progress.note)
+    atexit.register(guard.stop)  # whatever ends this process, its server goes with it
     guard.ensure_alive()
     progress.step("serveur prêt — synthèse")
 

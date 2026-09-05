@@ -41,6 +41,12 @@ class Process(Protocol):
 
     def poll(self) -> int | None: ...
 
+    def terminate(self) -> None: ...
+
+    def wait(self, timeout: float | None = None) -> int: ...
+
+    def kill(self) -> None: ...
+
 
 def decode_wav(content: bytes) -> Wave:
     import soundfile as sf
@@ -103,6 +109,22 @@ class ServerGuard:
     process: Process | None = field(default=None, init=False)
     base_url: str = field(default="", init=False)
     restarts: int = field(default=0, init=False)
+
+    def stop(self) -> None:
+        """Take the server down with the wave that started it.
+
+        Left alive, it answered the NEXT wave's health check ("ready in 0 s")
+        while that wave's own server died on the busy port — three restarts
+        later the guard gave up on a server that was never the problem (05/09).
+        """
+        if self.process is None or self.process.poll() is not None:
+            return
+        self.process.terminate()
+        try:
+            self.process.wait(timeout=15)
+        except Exception:  # still there after a polite ask
+            self.process.kill()
+        self.note("serveur vLLM arrêté")
 
     def ensure_alive(self) -> str:
         """The base URL of a live server, restarting it if it died."""
