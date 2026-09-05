@@ -319,7 +319,7 @@ def main() -> None:
 
     import soundfile as sf
 
-    from lfm2_audio.data_prep.corpus_layout import CorpusEntry, write_manifest
+    from lfm2_audio.data_prep.corpus_layout import CorpusEntry, audio_relpath, write_manifest
     from lfm2_audio.data_prep.rejection_log import RejectionLog
     from lfm2_audio.data_prep.voice_reference import resolve_voice_reference
     from lfm2_audio.ds.audio import Waveform
@@ -362,7 +362,7 @@ def main() -> None:
         for cid, text, lang in items
         if cid not in known
         and rejections.attempts(cid) < MAX_ATTEMPTS
-        and not (audio_dir / f"{cid}.wav").exists()
+        and not (OUT / audio_relpath(cid)).exists()
         and f"{cid}.wav" not in on_hub
     ]
     print(f"{len(items)} tours {ROLE}, {len(items) - len(todo)} déjà faits, {len(todo)} à produire", flush=True)
@@ -378,7 +378,8 @@ def main() -> None:
             if wave is None:
                 missing += 1  # counted, logged by the client, never fatal
                 continue
-            path = audio_dir / f"{clip_id}.wav"
+            path = OUT / audio_relpath(clip_id)
+            path.parent.mkdir(parents=True, exist_ok=True)
             sf.write(str(path), wave, sample_rate, subtype="PCM_16")
             heard = transcriber.transcribe(Waveform.from_file(str(path)), language=lang)
             rate, cer = verification_rates(text, heard, lang)
@@ -395,7 +396,7 @@ def main() -> None:
             kept.append(
                 CorpusEntry(
                     id=clip_id,
-                    audio=f"audio/{clip_id}.wav",
+                    audio=audio_relpath(clip_id),
                     text=text,
                     lang=lang,
                     duration_s=round(len(wave) / sample_rate, 3),

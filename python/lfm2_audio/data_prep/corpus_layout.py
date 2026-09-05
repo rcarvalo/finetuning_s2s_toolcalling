@@ -28,6 +28,20 @@ MANIFEST_NAME = "manifest.jsonl"
 AUDIO_DIR = "audio"
 
 
+def audio_relpath(clip_id: str) -> str:
+    """Where a clip lives inside its brick: ``audio/<xx>/<id>.wav``.
+
+    The Hub refuses more than 10 000 entries per directory; brick A hit that
+    wall at 9 951 clips on 05/09 and every push failed for two hours. 256
+    two-hex-digit shards keyed on the id keep each folder small and let a
+    relaunch find the same path without any state.
+    """
+    import hashlib
+
+    shard = hashlib.sha1(clip_id.encode("utf-8")).hexdigest()[:2]
+    return f"{AUDIO_DIR}/{shard}/{clip_id}.wav"
+
+
 @dataclass(frozen=True, slots=True)
 class Brick:
     """One folder of the corpus repository."""

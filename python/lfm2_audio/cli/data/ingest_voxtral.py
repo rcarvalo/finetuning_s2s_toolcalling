@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from lfm2_audio.data_prep.clip_verification import accepted, verification_rates
-from lfm2_audio.data_prep.corpus_layout import MANIFEST_NAME, CorpusEntry, read_manifest, write_manifest
+from lfm2_audio.data_prep.corpus_layout import MANIFEST_NAME, CorpusEntry, audio_relpath, read_manifest, write_manifest
 from lfm2_audio.data_prep.rejection_log import RejectionLog
 
 if TYPE_CHECKING:
@@ -95,8 +95,7 @@ class VoxtralFolderIngester:
         from lfm2_audio.ds.audio import Waveform
 
         out, prefix = self._config.out, self._config.id_prefix
-        audio_dir = out / "audio"
-        audio_dir.mkdir(parents=True, exist_ok=True)
+        out.mkdir(parents=True, exist_ok=True)
         manifest = out / MANIFEST_NAME
         kept = list(read_manifest(manifest)) if manifest.exists() else []
         known = {entry.id for entry in kept}
@@ -117,7 +116,9 @@ class VoxtralFolderIngester:
                 dropped += 1
                 rejections.record(clip_id, text=sample.text, heard=heard, wer=wer, cer=cer)
             else:
-                shutil.copyfile(sample.wav, audio_dir / f"{clip_id}.wav")
+                target = out / audio_relpath(clip_id)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(sample.wav, target)
                 kept.append(self._entry(clip_id, sample.text, duration, wer, cer))
                 new_clips += 1
             if index % self._config.checkpoint_every == 0 or index == len(todo):
@@ -138,7 +139,7 @@ class VoxtralFolderIngester:
     def _entry(self, clip_id: str, text: str, duration: float, wer: float, cer: float) -> CorpusEntry:
         return CorpusEntry(
             id=clip_id,
-            audio=f"audio/{clip_id}.wav",
+            audio=audio_relpath(clip_id),
             text=text,
             lang=self._config.lang,
             duration_s=duration,

@@ -62,7 +62,8 @@ def test_should_keep_what_says_its_text_and_log_the_rest(source: Path, tmp_path:
     assert manifest[0]["id"] == "wiki_fr_00000002"
     assert manifest[0]["voxtral_wer"] == 0.0  # « 19h » entendu pour « dix-neuf heures » : forme parlée
     assert manifest[0]["speaker"] == "fr_female"
-    assert (tmp_path / "out" / "audio" / "wiki_fr_00000002.wav").exists()
+    assert (tmp_path / "out" / manifest[0]["audio"]).exists()
+    assert manifest[0]["audio"].startswith("audio/") and manifest[0]["audio"].count("/") == 2
     dropped = json.loads((tmp_path / "out" / "dropped.jsonl").read_text().splitlines()[0])
     assert dropped["id"] == "wiki_fr_00000001"
 

@@ -11,6 +11,7 @@ from lfm2_audio.data_prep.corpus_layout import (
     BRICKS_BY_KEY,
     CorpusEntry,
     CorpusError,
+    audio_relpath,
     brick_readme,
     read_manifest,
     write_manifest,
@@ -96,3 +97,17 @@ def test_readme_should_state_the_brick_contract() -> None:
     assert "diversité maximale" in readme
     assert "1200 clips" in readme
     assert "voxtral_wer" in readme
+
+
+def test_audio_relpath_should_shard_by_id_and_stay_stable() -> None:
+    first = audio_relpath("c_deep_s00_0001_t1")
+
+    assert first == audio_relpath("c_deep_s00_0001_t1")
+    assert first.startswith("audio/") and first.endswith("/c_deep_s00_0001_t1.wav")
+    assert len(first.split("/")) == 3 and len(first.split("/")[1]) == 2
+
+
+def test_audio_relpath_should_spread_ids_over_many_shards() -> None:
+    shards = {audio_relpath(f"clip_{i}").split("/")[1] for i in range(2000)}
+
+    assert len(shards) > 200
