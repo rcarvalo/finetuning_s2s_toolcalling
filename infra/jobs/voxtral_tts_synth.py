@@ -178,41 +178,69 @@ def start_server(progress, *, port: int = 8001, timeout_s: int = 900):  # noqa: 
     raise RuntimeError(f"vllm serve jamais prêt en {timeout_s}s — voir vllm_serve.log")
 
 
-def preload_cuda13() -> None:
-    """Load the cu13 shared objects before importing vllm_omni.
-
-    The wheel is built against CUDA 13 while the image ships cu12x, so
-    ``import vllm_omni`` fails on a missing ``libcudart.so.13``. Preloading the
-    ``nvidia/cu13`` libraries with RTLD_GLOBAL satisfies it for this process,
-    and exporting LD_LIBRARY_PATH satisfies the stage subprocesses the engine
-    spawns. Must run **before** any vllm_omni import — the notebook that first
-    got this working states exactly that.
-    """
-    import contextlib
-    import ctypes
+def cuda_library_dir() -> str | None:
+    """Where pip put the CUDA 13 shared objects, or None."""
     import glob
+    import site
 
     # site-packages rather than a hardcoded path: the notebook's
     # /usr/local/lib/python*/dist-packages is Colab's layout and does not exist
     # on the pod image, where the guard then reported "not found" for a package
     # that was installed all along.
-    import site
-
     roots = [*site.getsitepackages(), site.getusersitepackages()]
     found = [
         directory
         for root in roots
         for directory in glob.glob(f"{root}/nvidia/cu13/lib") + glob.glob(f"{root}/nvidia/*/lib")
     ]
-    if not found:
-        print(f"libs cu13 introuvables sous {roots} — import vllm_omni probablement voué à l'échec", flush=True)
+    return found[0] if found else None
+
+
+def loadable_cuda_libraries(directory: str) -> list[str]:
+    """The shared objects safe to load into THIS process.
+
+    ``libnvblas`` is excluded on purpose: it interposes the CPU BLAS symbols
+    (sgemm, dgemm...) for any library loaded after it, and without an
+    nvblas.conf naming a CPU fallback it segfaults on the first intercepted
+    call. That was the -11 that ended two waves on 05/09, both times right
+    after "[NVBLAS] CPU Blas library need to be provided" — a Whisper GEMM
+    landing in a library that was never meant to run.
+    """
+    import glob
+    import os
+
+    return [
+        path
+        for path in sorted(glob.glob(directory + "/lib*.so*"))
+        if not os.path.basename(path).startswith("libnvblas")
+    ]
+
+
+def preload_cuda13(*, in_process: bool = False) -> None:
+    """Make the cu13 libraries reachable: always for child processes, and
+    inside this process only when asked.
+
+    The wheel is built against CUDA 13 while the image ships cu12x. Exporting
+    LD_LIBRARY_PATH is what the ``vllm serve`` child needs, and it is all the
+    server route needs. Loading the libraries into the caller (RTLD_GLOBAL)
+    is for the in-process ``Omni()`` route only: it changes symbol resolution
+    for everything imported afterwards, which is exactly how NVBLAS got in.
+    """
+    import contextlib
+    import ctypes
+
+    directory = cuda_library_dir()
+    if directory is None:
+        print("libs cu13 introuvables — import vllm_omni probablement voué à l'échec", flush=True)
         return
-    directory = found[0]
     os.environ["LD_LIBRARY_PATH"] = directory + ":" + os.environ.get("LD_LIBRARY_PATH", "")
-    for shared_object in sorted(glob.glob(directory + "/lib*.so*")):
+    if not in_process:
+        print(f"LD_LIBRARY_PATH ← {directory} (serveur enfant ; rien chargé ici)", flush=True)
+        return
+    for shared_object in loadable_cuda_libraries(directory):
         with contextlib.suppress(OSError):
             ctypes.CDLL(shared_object, mode=ctypes.RTLD_GLOBAL)
-    print(f"libs cu13 préchargées depuis {directory}", flush=True)
+    print(f"libs cu13 préchargées depuis {directory} (sans nvblas)", flush=True)
 
 
 def siwis_reference() -> bytes | None:
@@ -271,7 +299,7 @@ def main() -> None:
         if reference is None:
             raise RuntimeError("pas de référence SIWIS")
         install_stack()
-        preload_cuda13()
+        preload_cuda13(in_process=True)
 
         import soundfile as sf
         from vllm import SamplingParams
