@@ -23,6 +23,8 @@ sys.path.insert(0, str(ROOT / "python"))
 
 from lfm2_audio.data_prep.corpus_layout import CorpusEntry, read_manifest  # noqa: E402
 
+USER_AGENT = "lfm2-audio-infra/1.0"
+
 
 def missing_downloads(entries: list[CorpusEntry], on_hub: set[str], out: Path, brick: str) -> list[CorpusEntry]:
     """Entries whose audio is neither on the Hub (any path) nor already local."""
@@ -34,7 +36,9 @@ def fetch(url: str, target: Path, retries: int = 3) -> bool:
     target.parent.mkdir(parents=True, exist_ok=True)
     for _ in range(retries):
         try:
-            with urllib.request.urlopen(url, timeout=60) as response:
+            # The proxy sits behind Cloudflare, which rejects urllib's default agent (403, code 1010).
+            request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            with urllib.request.urlopen(request, timeout=60) as response:
                 target.write_bytes(response.read())
             return True
         except OSError:
