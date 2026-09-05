@@ -2,25 +2,18 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-MODULE = Path(__file__).resolve().parents[1] / "infra" / "jobs" / "_rejection_log.py"
+from lfm2_audio.data_prep.rejection_log import RejectionLog
 
 
 @pytest.fixture
 def rejection_log_cls() -> Any:
-    spec = importlib.util.spec_from_file_location("_rejection_log", MODULE)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module.RejectionLog
+    return RejectionLog
 
 
 def test_should_start_empty_and_write_an_empty_file(rejection_log_cls: Any, tmp_path: Path) -> None:

@@ -29,8 +29,8 @@ def _entry(**overrides: object) -> CorpusEntry:
 
 
 def test_the_four_bricks_are_declared_with_distinct_folders() -> None:
-    assert [b.key for b in BRICKS] == ["A", "B", "C", "D"]
-    assert len({b.folder for b in BRICKS}) == 4
+    assert [b.key for b in BRICKS] == ["A", "B", "C", "D", "E"]
+    assert len({b.folder for b in BRICKS}) == 5
     assert BRICKS_BY_KEY["A"].folder == "A_assistant_speech"
 
 

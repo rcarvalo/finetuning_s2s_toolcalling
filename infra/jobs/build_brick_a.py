@@ -86,21 +86,16 @@ MAX_ATTEMPTS = int(os.environ.get("BRICK_A_MAX_ATTEMPTS", "2"))
 
 def accepted(wer: float, cer: float) -> bool:
     """The clip says its text: fine at the word level, or close enough at the character level."""
-    return wer <= MAX_VERIFY_WER or cer <= MAX_VERIFY_CER
+    from lfm2_audio.data_prep.clip_verification import accepted as rule
+
+    return rule(wer, cer, max_wer=MAX_VERIFY_WER, max_cer=MAX_VERIFY_CER)
 
 
 def verification_rates(text: str, heard: str, lang: str) -> tuple[float, float]:
-    """``(wer, cer)`` between what the clip should say and what the re-listen heard.
+    """``(wer, cer)`` between what the clip should say and what the re-listen heard."""
+    from lfm2_audio.data_prep.clip_verification import verification_rates as rates
 
-    Both sides are read in spoken form first: the sources spell their numbers
-    ("dix-neuf heures") and the ASR writes digits ("19h"), which made 6 of the
-    first 10 refusals of 05/09 false ones.
-    """
-    from avet.text.spoken_form import spoken_form
-    from avet.text.wer import character_error_rate, word_error_rate
-
-    reference, hypothesis = spoken_form(text, lang), spoken_form(heard, lang)
-    return word_error_rate(reference, hypothesis), character_error_rate(reference, hypothesis)
+    return rates(text, heard, lang)
 
 
 WAIT_SOURCES_MIN = int(os.environ.get("BRICK_A_WAIT_SOURCES_MIN", "0"))
@@ -320,12 +315,10 @@ def main() -> None:
     import soundfile as sf
 
     from lfm2_audio.data_prep.corpus_layout import CorpusEntry, write_manifest
+    from lfm2_audio.data_prep.rejection_log import RejectionLog
     from lfm2_audio.data_prep.voice_reference import resolve_voice_reference
     from lfm2_audio.ds.audio import Waveform
     from lfm2_audio.scorer.audio.faster_whisper_transcriber import FasterWhisperTranscriber
-
-    sys.path.insert(0, str(ROOT / "infra" / "jobs"))
-    from _rejection_log import RejectionLog
 
     # A preset voice needs no reference at all — cloning is impossible on the
     # open Voxtral checkpoint anyway (no encoder weights). A clone source is

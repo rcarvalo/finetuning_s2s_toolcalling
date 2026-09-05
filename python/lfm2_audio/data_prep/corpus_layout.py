@@ -63,6 +63,12 @@ BRICKS: tuple[Brick, ...] = (
         purpose="part anglaise qui protège les ancres gelées",
         requirement="même schéma, lang=en, issue des corpus EN validés",
     ),
+    Brick(
+        key="E",
+        folder="E_long_form",
+        purpose="parole longue que le modèle doit tenir sans dériver (6 à 20 s)",
+        requirement="même voix que A, phrases longues lues, texte vérifié par ré-écoute",
+    ),
 )
 
 BRICKS_BY_KEY = {brick.key: brick for brick in BRICKS}
