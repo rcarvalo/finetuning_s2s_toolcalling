@@ -89,3 +89,42 @@ class TestMergeExisting:
 
         assert job.merge_existing(None) == []
         assert job.merge_existing(tmp_path / "absent.jsonl") == []
+
+
+class TestResolveSource:
+    def test_should_wait_for_a_source_still_being_produced(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        job = _load(monkeypatch, tmp_path, BRICK_A_SOURCES=_source(tmp_path), BRICK_A_WAIT_SOURCES_MIN="2")
+        import huggingface_hub
+
+        landed = tmp_path / "landed.jsonl"
+        attempts: list[int] = []
+
+        def download(repo: str, path: str, repo_type: str) -> str:
+            attempts.append(1)
+            if len(attempts) < 3:
+                raise FileNotFoundError(path)
+            return str(landed)
+
+        monkeypatch.setattr(huggingface_hub, "hf_hub_download", download)
+        naps: list[float] = []
+
+        resolved = job._resolve_source(tmp_path / "corpus" / "C_dialogues" / "later.jsonl", sleep=naps.append)
+
+        assert resolved == landed
+        assert naps == [60, 60]
+
+    def test_should_skip_a_missing_source_when_told_not_to_wait(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        job = _load(monkeypatch, tmp_path, BRICK_A_SOURCES=_source(tmp_path))
+        import huggingface_hub
+
+        monkeypatch.setattr(
+            huggingface_hub, "hf_hub_download", lambda *a, **k: (_ for _ in ()).throw(FileNotFoundError("x"))
+        )
+        naps: list[float] = []
+
+        assert job._resolve_source(tmp_path / "corpus" / "C_dialogues" / "absent.jsonl", sleep=naps.append) is None
+        assert naps == []

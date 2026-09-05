@@ -20,6 +20,7 @@ import os
 import statistics
 import subprocess
 import sys
+import time
 from collections.abc import Callable
 from pathlib import Path
 
@@ -69,7 +70,14 @@ catching a clip that drifted.
 """
 
 
-def _resolve_source(source: Path) -> Path | None:
+WAIT_SOURCES_MIN = int(os.environ.get("BRICK_A_WAIT_SOURCES_MIN", "0"))
+"""How long to wait for a source still being produced upstream (the merged
+dialogue file lands on the Hub when its text campaign ends). 0 = skip it with
+a warning, as before; a silently skipped source once ended a run at a tenth
+of its work while the pod's bootstrap had already been paid."""
+
+
+def _resolve_source(source: Path, *, sleep=time.sleep) -> Path | None:  # noqa: ANN001 — Callable[[float], None]
     """A source lives in git if small, on the corpus HF repo otherwise.
 
     The 2.7 MB TC corpus tripped the repo's large-file hook — data does not
@@ -77,14 +85,20 @@ def _resolve_source(source: Path) -> Path | None:
     """
     if source.exists():
         return source
-    try:
-        from huggingface_hub import hf_hub_download
+    from huggingface_hub import hf_hub_download
 
-        relative = source.relative_to(ROOT / "corpus")
-        return Path(hf_hub_download("Rcarvalo/lfm25-fr-corpus-v1", str(relative), repo_type="dataset"))
-    except Exception as error:
-        print(f"source absente (git ET hub), ignorée : {source} ({error})", flush=True)
-        return None
+    relative = source.relative_to(ROOT / "corpus")
+    deadline = WAIT_SOURCES_MIN
+    while True:
+        try:
+            return Path(hf_hub_download("Rcarvalo/lfm25-fr-corpus-v1", str(relative), repo_type="dataset"))
+        except Exception as error:  # absent, or the Hub is down: both mean "not now"
+            if deadline <= 0:
+                print(f"source absente (git ET hub), ignorée : {source} ({type(error).__name__})", flush=True)
+                return None
+            print(f"source {relative} pas encore sur le Hub — attente ({deadline} min restantes)", flush=True)
+            sleep(60)
+            deadline -= 1
 
 
 ROLE = os.environ.get("BRICK_A_ROLE", "assistant")
