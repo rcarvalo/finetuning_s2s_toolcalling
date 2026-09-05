@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import sys
 from collections.abc import Callable, Sequence
@@ -159,8 +160,17 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _configure_logging() -> None:
+    """The batch judge reports submissions and polls through ``logging``; without
+    this, a shard prints nothing for up to an hour and looks hung. httpx's
+    per-request lines would drown it, so they stay off."""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
+
 def main() -> None:
     args = build_parser().parse_args()
+    _configure_logging()
     try:
         judge = make_judge(
             args.provider, args.model, max_usd=args.max_usd, batch=args.batch, effort=parse_effort(args.effort)
