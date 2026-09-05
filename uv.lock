@@ -447,7 +447,7 @@ wheels = [
 
 [[package]]
 name = "audio-voice-eval-toolkit"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "../audio-eval-toolkit" }
 dependencies = [
     { name = "anyio" },
