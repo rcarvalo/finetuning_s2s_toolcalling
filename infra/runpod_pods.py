@@ -52,18 +52,30 @@ def assemble_env(pairs: list[str], passthrough: list[str]) -> dict[str, str]:
     return env
 
 
+USER_AGENT = "lfm2-audio-infra/1.0"
+"""Cloudflare in front of api.runpod.io rejects urllib's default agent with a
+403 (error code 1010) — the same call from curl passes. Any honest agent does."""
+
+
+def build_request(method: str, path: str, body: dict[str, Any] | None, key: str) -> urllib.request.Request:
+    data = json.dumps(body).encode() if body is not None else None
+    return urllib.request.Request(
+        f"{API}{path}",
+        data=data,
+        method=method,
+        headers={
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
+        },
+    )
+
+
 def request(method: str, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
     key = os.environ.get("RUNPOD_API_KEY", "")
     if not key:
         raise SystemExit("RUNPOD_API_KEY absent")
-    data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(
-        f"{API}{path}",
-        data=data,
-        method=method,
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(req, timeout=60) as response:
+    with urllib.request.urlopen(build_request(method, path, body, key), timeout=60) as response:
         return dict(json.load(response))
 
 

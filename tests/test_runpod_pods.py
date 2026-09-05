@@ -50,3 +50,12 @@ def test_should_refuse_to_create_without_a_required_secret(pods: Any, monkeypatc
 
     with pytest.raises(SystemExit, match="RUNPOD_API_KEY absent"):
         pods.assemble_env([], ["RUNPOD_API_KEY"])
+
+
+def test_should_identify_itself_to_the_api_gateway(pods: Any) -> None:
+    # urllib's default agent is refused by the gateway (403, code 1010).
+    req = pods.build_request("POST", "/pods", {"name": "p"}, "rpa_x")
+
+    assert req.get_header("User-agent") == pods.USER_AGENT
+    assert req.get_header("Authorization") == "Bearer rpa_x"
+    assert req.get_method() == "POST" and req.full_url.endswith("/v2/pods")
