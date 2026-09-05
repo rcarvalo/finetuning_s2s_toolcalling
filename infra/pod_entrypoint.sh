@@ -24,6 +24,28 @@ OUT=/workspace/out
 mkdir -p "$OUT"
 echo "=== bootstrap: branche $BRANCH, job $JOB"
 
+delete_this_pod() {
+  curl -sS -X DELETE "https://api.runpod.io/v2/pods/${RUNPOD_POD_ID}" \
+       -H "Authorization: Bearer ${RUNPOD_API_KEY}" -H "User-Agent: lfm2-audio-infra/1.0" && echo "=== pod supprimé"
+}
+
+# A bootstrap that fails used to `sleep infinity` so its logs stayed readable —
+# on a pod billed by the hour, with nobody reading (05/09: 1.39 $/h for an
+# install that had printed its error in the first ten seconds). With
+# LFM2_AUTO_DELETE=1 the pod now deletes itself after a short grace period;
+# the logs survive in RunPod's log stream anyway.
+fail() {
+  echo "=== ÉCHEC: $1"
+  if [ "${LFM2_AUTO_DELETE:-0}" = "1" ] && [ -n "${RUNPOD_API_KEY:-}" ] && [ -n "${RUNPOD_POD_ID:-}" ]; then
+    echo "=== auto-suppression dans 10 min (logs conservés côté RunPod)"
+    sleep 600
+    delete_this_pod
+  fi
+  sleep infinity
+}
+
+[ -n "${HF_TOKEN:-}" ] || fail "HF_TOKEN absent — le toolkit vient du Hub et le corpus y retourne"
+
 # The RunPod image exports HF_HUB_ENABLE_HF_TRANSFER=1 without shipping the
 # package, so every Hub download dies with "hf_transfer is enabled but not
 # available" — including the model weights a job exists to run. Install it
@@ -37,7 +59,7 @@ python -m http.server 8000 --directory "$OUT" >/dev/null 2>&1 &
 
 if [ ! -f "$ROOT/pyproject.toml" ]; then
   rm -rf "$ROOT"
-  git clone --branch "$BRANCH" "$REPO_URL" "$ROOT" || { echo "=== ÉCHEC: clone"; sleep infinity; }
+  git clone --branch "$BRANCH" "$REPO_URL" "$ROOT" || fail "clone"
 fi
 cd "$ROOT"
 git fetch origin "$BRANCH" && git reset --hard "origin/$BRANCH"
@@ -60,12 +82,11 @@ pip install -q -e ".[serving-liquid,eval,inspect]" pytest 2>&1 | tail -5
 # Behavioural assertion, not a version check: a campaign once replayed stale
 # code and published wrong numbers.
 if ! python -m pytest tests/test_inspect_bridge.py -k "target_text or audio_only" -q 2>&1 | tail -3; then
-  echo "=== ÉCHEC: tests de non-régression du pont — code périmé, on ne mesure rien"
-  sleep infinity
+  fail "tests de non-régression du pont — code périmé, on ne mesure rien"
 fi
 
 JOB_PATH="infra/jobs/${JOB}.py"
-[ -f "$JOB_PATH" ] || { echo "=== ÉCHEC: $JOB_PATH introuvable"; sleep infinity; }
+[ -f "$JOB_PATH" ] || fail "$JOB_PATH introuvable"
 
 # Two guards for a pod nobody is watching, both opt-in through the env:
 #   LFM2_MAX_HOURS   hard wall-clock cap on the job (a resumable job loses
@@ -82,10 +103,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 echo "=== job terminé, code $STATUS"
 
-delete_this_pod() {
-  curl -sS -X DELETE "https://api.runpod.io/v2/pods/${RUNPOD_POD_ID}" \
-       -H "Authorization: Bearer ${RUNPOD_API_KEY}" && echo "=== pod supprimé"
-}
 if [ "${LFM2_AUTO_DELETE:-0}" = "1" ] && [ -n "${RUNPOD_API_KEY:-}" ] && [ -n "${RUNPOD_POD_ID:-}" ]; then
   if [ "$STATUS" -ne 0 ]; then
     echo "=== échec : artefacts servis 30 min sur le port 8000, puis suppression"
