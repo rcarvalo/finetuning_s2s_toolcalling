@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from lfm2_audio.evaluation.argument_match import ArgMatch, diff_arguments, token_f1
-from lfm2_audio.evaluation.tool_call_diagnosis import ToolCallDiagnosis
+from lfm2_audio.evaluation.tool_call_diagnosis import diagnose
 
 # `token_f1` and `ArgMatch` moved to `argument_match` when the diagnosis needed
 # them without importing this module; re-exported because this module is the
@@ -106,14 +106,8 @@ def score_case(
     arg_match: ArgMatch = "exact",
     threshold: float = 0.7,
 ) -> CaseResult:
-    """Verdicts only. ``ToolCallDiagnosis.of`` is the same computation with the evidence kept."""
-    diagnosis = ToolCallDiagnosis.of(
-        case_id,
-        predicted_text,
-        expected_calls,
-        arg_match=arg_match,
-        threshold=threshold,
-    )
+    """Verdicts only. ``diagnose`` is the same computation with the evidence kept."""
+    diagnosis = diagnose(case_id, predicted_text, expected_calls, arg_match=arg_match, threshold=threshold)
     return CaseResult(
         case_id=diagnosis.case_id,
         parsed=diagnosis.parsed,

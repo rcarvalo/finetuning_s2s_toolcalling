@@ -1,108 +1,54 @@
-"""Our scorers, exposed to Inspect — wrapped, never reimplemented.
+"""Our scorers, exposed to Inspect — through the evaluation toolkit's adapter.
 
-The same :class:`~lfm2_audio.scorer.base.BaseScorer` grades a training step, a
-campaign report and an Inspect run. Rewriting a metric against Inspect's API
-would let the two drift, and the first symptom would be a number in the viewer
-that no report can reproduce.
-
-The adapter's only real job is turning what Inspect gives a scorer — the sample
-and the model output — back into the :class:`EvalSample` our scorers read.
+The same :class:`~avet.scoring.base_scorer.BaseScorer` grades a training
+step, a campaign report and an Inspect run. What this module adds is the
+LFM2 text cleaner, so what is judged and what is shown as the spoken answer
+cannot diverge. A metric that produced nothing becomes a *stub* (``nan`` +
+``metadata.stub``) that every aggregate skips — never a zero, never a
+sentinel.
 """
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
-from inspect_ai.model import ContentAudio
-from inspect_ai.scorer import Score, Scorer, Target, mean, scorer
+from avet.bridge.eval_sample_adapter import EvalSampleAdapter
+from avet.bridge.inspect_scorer_factory import InspectScorerFactory
+from avet.bridge.scorer_adapter import ScorerAdapter
+from avet.scoring.base_scorer import BaseScorer
+from avet.scoring.eval_sample import EvalSample
+from inspect_ai.scorer import Scorer
 from inspect_ai.solver import TaskState
 
-from lfm2_audio.ds.scoring_config import ScorerConfig, ScoringConfig
-from lfm2_audio.inspect_bridge.audio import data_uri_to_waveform
-from lfm2_audio.inspect_bridge.scores import to_inspect_score
-from lfm2_audio.scorer.base import BaseScorer
-from lfm2_audio.scorer.factory import ScorerFactory
-from lfm2_audio.scorer.sample import EvalSample
+from lfm2_audio.avet_components.text_cleaner import Lfm2TextCleaner
+from lfm2_audio.ds.scoring_config import ScoringConfig
 
-logger = logging.getLogger(__name__)
-
-UNMEASURED = -1.0
-"""Sentinel for a metric that produced nothing.
-
-Inspect needs a value to aggregate; ``None`` would be counted as zero, which
-would read as "the model scored badly" instead of "nothing was measured". The
-explanation carries the reason, and the sentinel is out of every metric's range.
-"""
+_ADAPTER = EvalSampleAdapter(Lfm2TextCleaner())
 
 
 def to_eval_sample(state: TaskState) -> EvalSample:
-    """Rebuild the sample our scorers expect from Inspect's turn state."""
-    completion = state.output.completion if state.output else ""
-    audio = None
-    message = state.output.message if state.output else None
-    if message is not None and not isinstance(message.content, str):
-        parts = [p for p in message.content if isinstance(p, ContentAudio)]
-        audio = data_uri_to_waveform(parts[0].audio) if parts else None
-
-    metadata: dict[str, Any] = dict(state.metadata or {})
-    # input_text raises on an audio-only prompt (spoken question, no transcript
-    # in the message) — the transcript then lives in metadata["prompt_text"].
-    try:
-        prompt_text = str(state.input_text or "")
-    except ValueError:
-        prompt_text = ""
-    prompt_text = prompt_text or str(metadata.get("prompt_text", ""))
-    # .text, not str(): stringifying the Target OBJECT hands its Python repr to
-    # the scorers — the first campaign's WER compared replies to it (mean 5.5).
-    return EvalSample(
-        sample_id=str(state.sample_id),
-        prompt_text=prompt_text,
-        predicted_text=completion,
-        predicted_audio=audio,
-        reference_text=state.target.text if state.target else "",
-        expected_calls=metadata.get("expected_calls", []),
-        tool_results=metadata.get("tool_results", []),
-        metadata=metadata,
-    )
+    """Rebuild the sample our scorers expect from Inspect's turn state (LFM2 markers cleaned)."""
+    return _ADAPTER.from_state(state)
 
 
 def wrap(base: BaseScorer) -> Scorer:
     """One of our scorers as an Inspect scorer."""
-
-    async def score(state: TaskState, target: Target) -> Score:
-        result = base.score(to_eval_sample(state))
-        translated = to_inspect_score(result)
-        if translated is not None:
-            return translated
-        # Not measured: say so, rather than let a zero pass for a verdict.
-        return Score(value=UNMEASURED, explanation=f"{result.status}: {result.reason}")
-
-    return score
+    return ScorerAdapter(adapter=_ADAPTER).wrap(base)
 
 
 def lfm2_scorer(
     name: str,
     *,
     scoring: ScoringConfig | None = None,
-    **kwargs: Any,  # noqa: ANN401 — kwargs du scorer sous-jacent
+    **kwargs: Any,  # noqa: ANN401 — kwargs of the underlying scorer
 ) -> Scorer:
     """Build one of our registered scorers, by name, for an Inspect task.
 
-    Built through :class:`ScorerFactory` rather than the bare registry: the
-    factory injects the shared dependencies (WER's transcriber, the judge) and
-    degrades a missing dependency into a reported unmeasured metric — the same
-    path every campaign takes. Constructing the class directly is what made
-    ``wer`` unreachable from Inspect (missing required ``transcriber``).
-
-    ``scoring`` carries campaign-level knobs like ``asr_language``.
+    Built through the toolkit's factory so shared dependencies (WER's
+    transcriber, the judge, the LFM2 parser) are injected the way every
+    campaign gets them.
     """
-    config = (scoring or ScoringConfig()).model_copy(
-        update={"scorers": (ScorerConfig(name=name, options=dict(kwargs)),)}
-    )
+    return InspectScorerFactory(scoring or ScoringConfig()).build_named(name, **kwargs)
 
-    @scorer(metrics=[mean()], name=name)
-    def build() -> Scorer:
-        return wrap(ScorerFactory(config).build_all()[0])
 
-    return build()
+__all__ = ["lfm2_scorer", "to_eval_sample", "wrap"]

@@ -5,6 +5,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning i
 
 ## [Unreleased]
 
+### Changed
+- **The scorers, the audio value object and the Inspect bridge now live in
+  `avet`** (`../audio-eval-toolkit`, editable path dependency): `BaseScorer`,
+  `EvalSample`, `ScoreResult`, every audio/text scorer, the transcribers, the
+  judge rubrics, the tool-call diagnosis, the VERSA runner and the dialogue
+  schema. The historical import paths (`lfm2_audio.scorer.*`,
+  `lfm2_audio.ds.audio`, `lfm2_audio.evaluation.versa_runner`, …) are kept as
+  re-exports, so callers and training YAMLs do not move. What stays here is
+  what is specific to this model family: the `lfm2` text cleaner and tool-call
+  parser (registered through the `avet.components` entry point), the two Inspect
+  providers, and `ToolCallScorer()` with the LFM2 parser wired in.
+- `ToolCallDiagnosis` now works on a parse result rather than raw text; callers
+  that pass generated text use `lfm2_audio.evaluation.tool_call_diagnosis.diagnose`.
+- The Inspect scorer adapter no longer emits `UNMEASURED = -1.0`: an unmeasured
+  metric is a *stub* (`nan` + `metadata.stub`) that every aggregate skips, and
+  Inspect counts it as an unscored sample. A campaign can no longer read
+  "measured and bad" where it means "not measured".
+- The judge goes through Inspect's model layer (`judge_model` as
+  `provider/model`); `GEMINI_API_KEY` is bridged to `GOOGLE_API_KEY`.
+- The `inspect` extra is gone: `inspect-ai` arrives with the toolkit.
+
 ### Added
 - Anthropic as a dialogue-generation provider: `lfm2-generate-fr --provider
   anthropic` (`AnthropicJudge`, streaming) and `--batch` (`AnthropicBatchJudge`,

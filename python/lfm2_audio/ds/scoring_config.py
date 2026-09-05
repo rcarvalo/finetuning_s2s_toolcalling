@@ -1,96 +1,31 @@
-"""``ScoringConfig`` — quels scorers activer, et avec quels réglages.
+"""``ScoringConfig`` — the toolkit's scoring config with this model family's defaults.
 
-Modèle pydantic : cette configuration vient d'un YAML (campagne d'éval, recette
-d'entraînement), donc d'une frontière externe. Elle nomme les scorers plutôt que
-de les construire, de sorte qu'une config puisse être lue et validée sur une
-machine qui ne saurait pas les instancier.
+The toolkit is model-agnostic; what LFM2 adds is how its replies are cleaned
+(``lfm2`` text cleaner) and how its tool calls are read (``lfm2`` parser).
+Both are registered by :mod:`lfm2_audio.avet_components`.
 """
 
 from __future__ import annotations
 
-from typing import Any, Literal
-
-from pydantic import BaseModel, ConfigDict, Field
-
-
-class ScorerConfig(BaseModel):
-    """Un scorer nommé et ses arguments de construction."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    name: str
-    """Clé du registre (`wer`, `dnsmos`, `tool_call`…)."""
-
-    enabled: bool = True
-    options: dict[str, Any] = Field(default_factory=dict)
-    """kwargs passés au constructeur du scorer."""
+from avet.scoring.scorer_config import ScorerConfig
+from avet.scoring.scoring_config import AsrBackend
+from avet.scoring.scoring_config import ScoringConfig as _ScoringConfig
 
 
-class ScoringConfig(BaseModel):
-    """Jeu de scorers d'une campagne."""
+class ScoringConfig(_ScoringConfig):
+    """LFM2 defaults on top of the toolkit's config."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    scorers: tuple[ScorerConfig, ...] = ()
-
-    asr_model_id: str = "openai/whisper-large-v3-turbo"
-    """ASR de référence du WER — partagé par tous les scorers qui transcrivent."""
-
-    asr_language: str = "en"
-    """Langue par défaut de la transcription (code ISO court).
-
-    C'est le repli : un échantillon qui porte ``metadata["lang"]`` est transcrit
-    dans SA langue, ce qui rend une campagne bilingue mesurable en un seul run.
-    """
-
-    asr_backend: Literal["transformers", "faster_whisper"] = "transformers"
-    """Moteur ASR du WER.
-
-    ``faster_whisper`` transcrit sur CPU en int8 : c'est ce qui rend le WER
-    mesurable pendant un entraînement, là où le chemin ``transformers`` charge
-    Whisper sur ``cuda:0`` et fait déborder la VRAM.
-    """
-
-    asr_model_size: str = "base"
-    """Taille du modèle faster-whisper (``tiny``/``base``/``small``/…)."""
-
-    asr_device: str | None = None
-    """Où charger l'ASR. ``None`` = CUDA si disponible.
-
-    À forcer sur ``"cpu"`` quand le GPU sert déjà : l'entraînement culmine à
-    ~96 % de la VRAM d'une L4, et Whisper à côté la fait déborder.
-    """
-
-    judge_model_id: str = "gemini-3.6-flash"
-    """Juge du scorer de raisonnement.
-
-    ``gemini-2.0-flash`` a été retiré du service (404 « no longer available ») ;
-    ce défaut écrasait celui de ``GeminiJudge`` et faisait échouer toute
-    campagne pilotée par la config.
-    """
-
-    fail_on_unavailable: bool = False
-    """Si vrai, un scorer indisponible fait échouer la campagne au lieu de la dégrader."""
-
-    @property
-    def enabled_names(self) -> tuple[str, ...]:
-        return tuple(s.name for s in self.scorers if s.enabled)
+    text_cleaner: str = "lfm2"
+    tool_call_parser: str = "lfm2"
+    asr_backend: AsrBackend = "transformers"
+    judge_model: str = "google/gemini-3.6-flash"
+    """Judge through Inspect's model layer; ``GEMINI_API_KEY`` is bridged to ``GOOGLE_API_KEY``."""
 
     @classmethod
     def with_defaults(cls) -> ScoringConfig:
-        """Jeu complet : audio (wer, dnsmos, utmos) + texte (tool_call, reasoning).
+        """The historical default set: audio (wer, dnsmos, utmos) + text (tool_call, reasoning)."""
+        names = ("wer", "dnsmos", "utmos", "tool_call", "reasoning")
+        return cls(scorers=tuple(ScorerConfig(name=name) for name in names))
 
-        ``utmos`` remplace ``nisqa`` dans le jeu par défaut : NISQA exige une
-        architecture non distribuée (cf. ``NisqaScorer.unavailable_reason``),
-        et UTMOS couvre le même besoin — le MOS de naturalité — en une
-        dépendance ``torch.hub``. Les deux restent dans le registre.
-        """
-        return cls(
-            scorers=(
-                ScorerConfig(name="wer"),
-                ScorerConfig(name="dnsmos"),
-                ScorerConfig(name="utmos"),
-                ScorerConfig(name="tool_call"),
-                ScorerConfig(name="reasoning"),
-            )
-        )
+
+__all__ = ["ScorerConfig", "ScoringConfig"]

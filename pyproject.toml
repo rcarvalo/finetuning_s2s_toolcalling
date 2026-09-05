@@ -17,6 +17,9 @@ dependencies = [
     "pydantic>=2.9",
     "pydantic-settings>=2.5",
     "pyyaml>=6.0",
+    # The evaluation toolkit: scorers, Inspect bridge, VERSA pass. Sibling checkout,
+    # editable, so a change on either side is visible without a reinstall.
+    "audio-voice-eval-toolkit",
 ]
 
 [project.optional-dependencies]
@@ -102,12 +105,6 @@ app = [
     "gradio>=5.0",
     "httpx>=0.27",
 ]
-# Export d'une campagne vers le viewer Inspect AI : sa liste filtrable, son
-# détail par échantillon et son lecteur audio (`ContentAudio` en data URI)
-# valent mieux qu'un viewer maison. Optionnel : rien ne l'importe hors export.
-inspect = [
-    "inspect-ai>=0.3",
-]
 # Base de connaissances RAG.
 rag = [
     "chromadb>=0.5",
@@ -175,6 +172,11 @@ lfm2-serve-ws = "lfm2_audio.cli.serve.websocket:main"
 # already imported the provider.
 lfm2_audio = "lfm2_audio.inspect_bridge.provider"
 
+# The LFM2-specific text cleaner and tool-call parser register themselves in
+# avet's registries when the toolkit loads its components.
+[project.entry-points."avet.components"]
+lfm2_audio = "lfm2_audio.avet_components"
+
 [project.entry-points."vllm_omni.general_plugins"]
 lfm2_audio = "lfm2_audio.vllm_plugin:register"
 
@@ -200,6 +202,9 @@ packages = ["python/lfm2_audio"]
 
 [tool.uv]
 package = true
+
+[tool.uv.sources]
+audio-voice-eval-toolkit = { path = "../audio-eval-toolkit", editable = true }
 
 # --------------------------------------------------------------------------- #
 # Qualité

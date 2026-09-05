@@ -16,7 +16,7 @@ from typing import Any
 
 from lfm2_audio.core.prompt import spoken_part
 from lfm2_audio.ds.reply import Reply
-from lfm2_audio.evaluation.tool_call_diagnosis import ToolCallDiagnosis
+from lfm2_audio.evaluation.tool_call_diagnosis import diagnose
 from lfm2_audio.evaluation.trajectory import Trajectory
 
 
@@ -34,7 +34,7 @@ class TurnTrajectoryBuilder:
         trajectory.add("prompt", self._prompt_text, spoken=self._spoken_prompt)
 
         raw = reply.raw_text or reply.text
-        diagnosis = ToolCallDiagnosis.of("turn", raw, [])
+        diagnosis = diagnose("turn", raw, [])
         for index, call in enumerate(diagnosis.predicted):
             trajectory.add(
                 "tool_call",

@@ -12,6 +12,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from avet.scorers.toolcall.argument_match import ArgMatch
+
 from lfm2_audio.evaluation.toolcalling import Report, score_case
 
 PredictFn = Callable[[dict[str, Any]], str]  # case -> texte généré (avec le span d'appel)
@@ -47,7 +49,7 @@ def run_audio_eval(
     cases: list[dict[str, Any]],
     predict_fn: PredictFn,
     *,
-    arg_match: str = "exact",
+    arg_match: ArgMatch = "exact",
     threshold: float = 0.7,
 ) -> tuple[list[dict[str, Any]], Report]:
     """Exécute ``predict_fn`` sur chaque cas et score. Retourne (prédictions, rapport)."""

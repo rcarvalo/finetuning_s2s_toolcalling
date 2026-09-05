@@ -446,6 +446,56 @@ wheels = [
 ]
 
 [[package]]
+name = "audio-voice-eval-toolkit"
+version = "0.1.0"
+source = { editable = "../audio-eval-toolkit" }
+dependencies = [
+    { name = "anyio" },
+    { name = "inspect-ai" },
+    { name = "numpy" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "rich" },
+    { name = "soundfile" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anyio", specifier = ">=4.0" },
+    { name = "audio-voice-eval-toolkit", extras = ["audio", "asr", "asr-hf", "judge", "openai", "tts-kokoro", "versa"], marker = "extra == 'all'" },
+    { name = "faster-whisper", marker = "extra == 'asr'", specifier = ">=1.0" },
+    { name = "google-genai", marker = "extra == 'judge'", specifier = ">=0.3" },
+    { name = "inspect-ai", specifier = ">=0.3.205,<0.4" },
+    { name = "kokoro", marker = "extra == 'tts-kokoro'", specifier = ">=0.9" },
+    { name = "numpy", specifier = ">=1.26" },
+    { name = "onnxruntime", marker = "extra == 'audio'", specifier = ">=1.18" },
+    { name = "openai", marker = "extra == 'judge'", specifier = ">=1.40" },
+    { name = "openai", marker = "extra == 'openai'", specifier = ">=1.40" },
+    { name = "pydantic", specifier = ">=2.9" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "rich", specifier = ">=13.0" },
+    { name = "soundfile", specifier = ">=0.12" },
+    { name = "soxr", marker = "extra == 'tts-kokoro'", specifier = ">=0.5" },
+    { name = "torch", marker = "extra == 'asr-hf'", specifier = ">=2.4" },
+    { name = "torch", marker = "extra == 'audio'", specifier = ">=2.4" },
+    { name = "torchaudio", marker = "extra == 'audio'", specifier = ">=2.4" },
+    { name = "transformers", marker = "extra == 'asr-hf'", specifier = ">=4.55" },
+]
+provides-extras = ["audio", "asr", "asr-hf", "judge", "openai", "tts-kokoro", "versa", "all"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.11" },
+    { name = "openai", specifier = ">=1.40" },
+    { name = "pre-commit", specifier = ">=4.0" },
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "pytest-asyncio", specifier = ">=0.24" },
+    { name = "pytest-cov", specifier = ">=5.0" },
+    { name = "ruff", specifier = ">=0.7" },
+    { name = "types-pyyaml", specifier = ">=6.0" },
+]
+
+[[package]]
 name = "audioop-lts"
 version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
@@ -2810,6 +2860,7 @@ name = "lfm2-audio"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "audio-voice-eval-toolkit" },
     { name = "huggingface-hub" },
     { name = "numpy" },
     { name = "pydantic" },
@@ -2833,9 +2884,6 @@ eval = [
     { name = "torch" },
     { name = "torchaudio" },
     { name = "transformers" },
-]
-inspect = [
-    { name = "inspect-ai" },
 ]
 rag = [
     { name = "chromadb" },
@@ -2913,6 +2961,7 @@ requires-dist = [
     { name = "accelerate", marker = "extra == 'train'", specifier = ">=1.0" },
     { name = "anthropic", marker = "extra == 'tooldata'", specifier = ">=0.40" },
     { name = "asyncpg", marker = "extra == 'serve'", specifier = ">=0.29" },
+    { name = "audio-voice-eval-toolkit", editable = "../audio-eval-toolkit" },
     { name = "chromadb", marker = "extra == 'rag'", specifier = ">=0.5" },
     { name = "datasets", marker = "extra == 'tooldata'", specifier = ">=3.0" },
     { name = "datasets", marker = "extra == 'train'", specifier = ">=3.0" },
@@ -2930,7 +2979,6 @@ requires-dist = [
     { name = "huggingface-hub", specifier = ">=0.25" },
     { name = "huggingface-hub", marker = "extra == 'serving-liquid'", specifier = ">=0.25" },
     { name = "huggingface-hub", marker = "extra == 'tooldata'", specifier = ">=0.25" },
-    { name = "inspect-ai", marker = "extra == 'inspect'", specifier = ">=0.3" },
     { name = "kokoro", marker = "extra == 'tooldata'", specifier = ">=0.9" },
     { name = "lfm2-audio", extras = ["client"], marker = "extra == 'voice'" },
     { name = "lfm2-audio", extras = ["serving-liquid"], marker = "extra == 'serving'" },
@@ -2964,7 +3012,7 @@ requires-dist = [
     { name = "wandb", marker = "extra == 'train'", specifier = ">=0.18" },
     { name = "websockets", marker = "extra == 'serve'", specifier = ">=13.0" },
 ]
-provides-extras = ["serving-liquid", "serving", "eval", "train", "serve", "client", "voice", "app", "inspect", "rag", "tooldata"]
+provides-extras = ["serving-liquid", "serving", "eval", "train", "serve", "client", "voice", "app", "rag", "tooldata"]
 
 [package.metadata.requires-dev]
 dev = [

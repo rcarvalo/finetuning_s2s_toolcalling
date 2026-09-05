@@ -13,13 +13,15 @@ from lfm2_audio.evaluation.question import Question
 
 pytest.importorskip("inspect_ai")
 
+from avet.bridge.scorer_adapter import ScorerAdapter
+from avet.bridge.stub_score import is_stub
+from avet.providers.audio_turn import AudioTurn
+from avet.scoring.eval_sample import EvalSample
 from inspect_ai.model import ChatMessageUser, ContentAudio
 from inspect_ai.model import ContentText as InspectText
 
 from lfm2_audio.inspect_bridge.audio import data_uri_to_waveform, waveform_to_data_uri
 from lfm2_audio.inspect_bridge.dataset import question_set_dataset, resolve_dataset_path, to_sample
-from lfm2_audio.inspect_bridge.provider import _last_user_turn
-from lfm2_audio.inspect_bridge.scores import to_inspect_score
 from lfm2_audio.inspect_bridge.task import voice_eval
 from lfm2_audio.scorer.result import ScoreResult
 
@@ -103,16 +105,16 @@ def test_should_prefer_the_audio_over_its_transcript() -> None:
     audio = waveform_to_data_uri(Waveform.of(np.zeros(1600, dtype=np.float32), 16_000))
     message = ChatMessageUser(content=[InspectText(text="transcript"), ContentAudio(audio=audio, format="wav")])
 
-    text, waveform = _last_user_turn([message])
+    turn = AudioTurn.from_messages([message])
 
-    assert text is None
-    assert waveform is not None
+    assert turn.text is None
+    assert turn.audio is not None
 
 
 def test_should_pass_a_written_question_as_text() -> None:
-    text, waveform = _last_user_turn([ChatMessageUser(content="hello")])
+    turn = AudioTurn.from_messages([ChatMessageUser(content="hello")])
 
-    assert (text, waveform) == ("hello", None)
+    assert (turn.text, turn.audio) == ("hello", None)
 
 
 # --------------------------------------------------------------------------- #
@@ -121,11 +123,13 @@ def test_should_pass_a_written_question_as_text() -> None:
 
 
 def test_should_translate_a_measured_result() -> None:
-    score = to_inspect_score(ScoreResult.ok("utmos", 4.12, details={"duration_s": 3.0}))
+    sample = EvalSample(sample_id="s", predicted_text="It is sunny today and warm.")
 
-    assert score is not None
+    score = ScorerAdapter().translate(ScoreResult.ok("utmos", 4.12, details={"duration_s": 3.0}), sample, name="utmos")
+
     assert score.value == 4.12
-    assert score.metadata == {"duration_s": 3.0}
+    assert score.metadata is not None
+    assert score.metadata["duration_s"] == 3.0
 
 
 @pytest.mark.parametrize(
@@ -137,7 +141,10 @@ def test_should_translate_a_measured_result() -> None:
     ],
 )
 def test_should_refuse_to_turn_an_unmeasured_result_into_a_score(result: ScoreResult) -> None:
-    assert to_inspect_score(result) is None
+    """An unmeasured metric becomes a stub the aggregates skip, never a zero."""
+    score = ScorerAdapter().translate(result, EvalSample(sample_id="s"), name=result.scorer)
+
+    assert is_stub(score)
 
 
 def test_voice_eval_should_accept_scorers_as_a_list() -> None:

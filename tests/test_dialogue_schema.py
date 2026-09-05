@@ -25,7 +25,7 @@ def test_tool_call_turn_with_audio_rejected():
             {"role": "assistant", "audio": "a.wav", "tool_calls": [{"name": "f", "arguments": {}}]},
         ],
     }
-    with pytest.raises(DialogueValidationError, match="texte seul"):
+    with pytest.raises(DialogueValidationError, match="must not carry audio"):
         parse_dialogue(obj)
 
 

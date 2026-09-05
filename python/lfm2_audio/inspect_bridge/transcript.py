@@ -21,7 +21,7 @@ from inspect_ai.tool import ToolCall, ToolCallError
 
 from lfm2_audio.core.prompt import spoken_part
 from lfm2_audio.ds.audio import Waveform
-from lfm2_audio.evaluation.tool_call_diagnosis import ToolCallDiagnosis
+from lfm2_audio.evaluation.tool_call_diagnosis import diagnose
 from lfm2_audio.inspect_bridge.audio import waveform_to_data_uri
 from lfm2_audio.scorer.sample import EvalSample
 
@@ -61,7 +61,7 @@ class InspectTranscript:
                 ToolCall(id=f"call_{index}", function=str(row["name"]), arguments=dict(row.get("arguments") or {}))
                 for index, row in enumerate(recorded)
             ]
-        diagnosis = ToolCallDiagnosis.of(self._sample.sample_id, self._sample.predicted_text, [])
+        diagnosis = diagnose(self._sample.sample_id, self._sample.predicted_text, [])
         return [
             ToolCall(id=f"call_{index}", function=str(call["name"]), arguments=dict(call.get("arguments") or {}))
             for index, call in enumerate(diagnosis.predicted)
